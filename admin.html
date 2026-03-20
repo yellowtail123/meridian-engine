@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Meridian Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#1F1D2B;--bs:#272536;--be:#302E40;--bi:#1A1828;--ac:#C9956B;--am:rgba(201,149,107,.10);--ab:rgba(201,149,107,.20);--ag:rgba(201,149,107,.35);--sg:#7B9E87;--sm:rgba(123,158,135,.10);--sb:rgba(123,158,135,.20);--co:#C27878;--cm:rgba(194,120,120,.10);--lv:#9B8EC4;--wa:#D4A04A;--tx:#E8E0D6;--ts:#B5A99D;--tm:#8A837E;--bd:rgba(201,149,107,.06);--rd:10px;--sf:'Source Serif 4',Georgia,serif;--mf:'JetBrains Mono',monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sf);font-size:15px;line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:0}::-webkit-scrollbar-thumb{background:var(--ab);border-radius:3px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.wrap{max-width:960px;margin:0 auto;padding:30px 30px 60px}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--bd)}
+.hdr h1{font-size:22px;color:var(--ac);font-family:var(--sf)}
+.hdr .back{font-family:var(--mf);font-size:12px;color:var(--tm)}
+.hdr .back:hover{color:var(--ac)}
+.loading{text-align:center;padding:60px 20px;color:var(--tm);font-family:var(--mf);font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px}
+.stat{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:16px;text-align:center;animation:fadeIn .3s}
+.stat .val{font-size:28px;font-weight:700;color:var(--ac);font-family:var(--mf)}
+.stat .lbl{font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.card{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:20px;margin-bottom:20px;animation:fadeIn .3s}
+.card h2{font-size:16px;color:var(--ac);margin-bottom:14px;font-family:var(--sf)}
+table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mf)}
+th{text-align:left;padding:8px 10px;color:var(--tm);border-bottom:1px solid var(--ab);font-weight:500;text-transform:uppercase;letter-spacing:.5px;font-size:10px}
+td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--ts)}
+tr:hover td{background:rgba(201,149,107,.03)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
+.badge.admin{background:var(--am);color:var(--ac)}
+.badge.user{background:var(--sm);color:var(--sg)}
+.badge.banned{background:var(--cm);color:var(--co)}
+.btn{padding:4px 10px;font-size:11px;font-family:var(--mf);border:1px solid;border-radius:6px;cursor:pointer;background:0;transition:all .2s}
+.btn:hover{opacity:.8}
+.btn.ban{color:var(--co);border-color:rgba(194,120,120,.3)}
+.btn.unban{color:var(--sg);border-color:var(--sb)}
+.empty{text-align:center;padding:30px;color:var(--tm);font-size:13px}
+.err-card{background:var(--bi);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:10px;font-family:var(--mf);font-size:11px}
+.err-card .err-msg{color:var(--co);margin-bottom:4px}
+.err-card .err-meta{color:var(--tm);font-size:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>Admin Dashboard</h1>
+    <a href="/" class="back">&larr; Back to Meridian</a>
+  </div>
+  <div id="admin-loading" class="loading">Checking authorization...</div>
+  <div id="admin-content" style="display:none">
+    <div id="stats-grid" class="stats"></div>
+    <div class="card">
+      <h2>Users</h2>
+      <div id="users-table"></div>
+    </div>
+    <div class="card">
+      <h2>Error Log</h2>
+      <div id="error-log"><p class="empty">Error reporting integration coming soon. Errors are currently stored client-side in each user's IndexedDB.</p></div>
+    </div>
+  </div>
+</div>
+<script>
+const SUPA_URL='https://wgqfxgxnanvckgqkuqas.supabase.co';
+const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg';
+
+const supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
+const $=s=>document.querySelector(s);
+
+async function init(){
+  const{data:{session}}=await supa.auth.getSession();
+  if(!session){window.location.href='/';return}
+
+  // Check admin role
+  const{data:role}=await supa.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
+  if(!role||role.role!=='admin'){window.location.href='/';return}
+
+  $('#admin-loading').style.display='none';
+  $('#admin-content').style.display='block';
+
+  loadStats();
+  loadUsers();
+}
+
+async function loadStats(){
+  const{data,error}=await supa.rpc('admin_get_stats');
+  if(error){$('#stats-grid').innerHTML='<div class="empty">Failed to load stats</div>';return}
+  const items=[
+    {val:data.total_users,lbl:'Total Users'},
+    {val:data.users_today,lbl:'Signups Today'},
+    {val:data.users_this_week,lbl:'This Week'},
+    {val:data.total_papers,lbl:'Papers Saved'},
+    {val:data.papers_this_week,lbl:'Papers This Week'},
+    {val:data.total_workshop,lbl:'Workshop Sets'},
+    {val:data.total_analyses,lbl:'Analyses'}
+  ];
+  $('#stats-grid').innerHTML=items.map(s=>'<div class="stat"><div class="val">'+s.val+'</div><div class="lbl">'+s.lbl+'</div></div>').join('');
+}
+
+async function loadUsers(){
+  const{data,error}=await supa.rpc('admin_list_users');
+  if(error){$('#users-table').innerHTML='<div class="empty">Failed to load users: '+error.message+'</div>';return}
+  if(!data||!data.length){$('#users-table').innerHTML='<div class="empty">No users found</div>';return}
+
+  let html='<table><thead><tr><th>Email</th><th>Role</th><th>Signed Up</th><th>Last Login</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+  for(const u of data){
+    const signup=u.created_at?new Date(u.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    const last=u.last_sign_in_at?timeAgo(new Date(u.last_sign_in_at)):'Never';
+    const roleBadge=u.role==='admin'?'<span class="badge admin">admin</span>':'<span class="badge user">user</span>';
+    const statusBadge=u.is_banned?'<span class="badge banned">disabled</span>':'<span style="color:var(--sg);font-size:11px">active</span>';
+    const action=u.is_banned
+      ?'<button class="btn unban" onclick="toggleBan(\''+u.id+'\',false)">Enable</button>'
+      :(u.role==='admin'?'—':'<button class="btn ban" onclick="toggleBan(\''+u.id+'\',true)">Disable</button>');
+    html+='<tr><td style="color:var(--tx)">'+u.email+'</td><td>'+roleBadge+'</td><td>'+signup+'</td><td>'+last+'</td><td>'+statusBadge+'</td><td>'+action+'</td></tr>';
+  }
+  html+='</tbody></table>';
+  $('#users-table').innerHTML=html;
+}
+
+function timeAgo(date){
+  const s=Math.floor((Date.now()-date.getTime())/1000);
+  if(s<60)return 'just now';
+  if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';
+  if(s<604800)return Math.floor(s/86400)+'d ago';
+  return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+}
+
+async function toggleBan(userId,ban){
+  const action=ban?'disable':'enable';
+  if(!confirm('Are you sure you want to '+action+' this user?'))return;
+  const{error}=await supa.rpc('admin_set_user_banned',{target_user_id:userId,ban});
+  if(error){alert('Error: '+error.message);return}
+  loadUsers();
+}
+
+init();
+</script>
+</body>
+</html>

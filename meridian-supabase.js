@@ -7,6 +7,7 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 
 let _supa=null;
 let _supaUser=null;
+let _supaIsAdmin=false;
 let _syncInProgress=false;
 
 // ═══ 1. INIT ═══
@@ -15,7 +16,9 @@ function _supaInit(){
   _supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
   _supa.auth.onAuthStateChange(async(event,session)=>{
     _supaUser=session?.user||null;
+    if(_supaUser)await _checkAdminRole();else _supaIsAdmin=false;
     _renderAuthUI();
+    _renderAdminLink();
     if(event==='SIGNED_IN'&&_supaUser){
       toast('Signed in as '+_supaUser.email,'ok');
       await _syncOnLogin();
@@ -23,12 +26,16 @@ function _supaInit(){
     }
     if(event==='SIGNED_OUT'){
       _supaUser=null;
+      _supaIsAdmin=false;
+      _renderAdminLink();
       toast('Signed out','info');
     }
   });
-  _supa.auth.getSession().then(({data})=>{
+  _supa.auth.getSession().then(async({data})=>{
     _supaUser=data.session?.user||null;
+    if(_supaUser)await _checkAdminRole();
     _renderAuthUI();
+    _renderAdminLink();
   });
 }
 
@@ -46,6 +53,19 @@ function _renderAuthUI(){
     el.title='Sign in for cross-device sync';
     el.onclick=_showAuthModal;
   }
+}
+
+async function _checkAdminRole(){
+  if(!_supa||!_supaUser){_supaIsAdmin=false;return}
+  try{
+    const{data}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).maybeSingle();
+    _supaIsAdmin=data?.role==='admin';
+  }catch(e){_supaIsAdmin=false}
+}
+
+function _renderAdminLink(){
+  const el=$('#admin-link');if(!el)return;
+  el.style.display=_supaIsAdmin?'':'none';
 }
 
 function _showAccountMenu(){

@@ -30,6 +30,7 @@ const FILES = [
   "_headers",
   "privacy.html",
   "terms.html",
+  "admin.html",
 ];
 
 // Clean and create dist
