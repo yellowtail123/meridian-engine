@@ -12,30 +12,41 @@ let _syncInProgress=false;
 
 // ═══ 1. INIT ═══
 function _supaInit(){
+  // Set onclick immediately so button always works, even if SDK fails
+  const btn=$('#auth-btn');
+  if(btn)btn.onclick=_showAuthModal;
+
   if(typeof window.supabase==='undefined'){console.warn('Supabase SDK not loaded');return}
-  _supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
+  try{_supa=window.supabase.createClient(SUPA_URL,SUPA_ANON)}catch(e){console.warn('Supabase init failed:',e);return}
+
   _supa.auth.onAuthStateChange(async(event,session)=>{
-    _supaUser=session?.user||null;
-    if(_supaUser)await _checkAdminRole();else _supaIsAdmin=false;
-    _renderAuthUI();
-    _renderAdminLink();
-    if(event==='SIGNED_IN'&&_supaUser){
-      toast('Signed in as '+_supaUser.email,'ok');
-      await _syncOnLogin();
-      _flushQueue();
-    }
-    if(event==='SIGNED_OUT'){
-      _supaUser=null;
-      _supaIsAdmin=false;
+    try{
+      _supaUser=session?.user||null;
+      if(_supaUser)await _checkAdminRole();else _supaIsAdmin=false;
+      _renderAuthUI();
       _renderAdminLink();
-      toast('Signed out','info');
-    }
+      if(event==='SIGNED_IN'&&_supaUser){
+        toast('Signed in as '+_supaUser.email,'ok');
+        await _syncOnLogin();
+        _flushQueue();
+      }
+      if(event==='SIGNED_OUT'){
+        _supaUser=null;
+        _supaIsAdmin=false;
+        _renderAdminLink();
+        toast('Signed out','info');
+      }
+    }catch(e){console.warn('Auth state change error:',e)}
   });
+
   _supa.auth.getSession().then(async({data})=>{
     _supaUser=data.session?.user||null;
     if(_supaUser)await _checkAdminRole();
     _renderAuthUI();
     _renderAdminLink();
+  }).catch(e=>{
+    console.warn('getSession error:',e);
+    // Button already has onclick from above, so it still works
   });
 }
 
@@ -386,8 +397,7 @@ function _hookDataLayer(){
   };
 }
 
-// ═══ 7. INIT ON LOAD ═══
-document.addEventListener('DOMContentLoaded',()=>{
-  _supaInit();
-  _hookDataLayer();
-});
+// ═══ 7. INIT ═══
+// Run immediately — this script loads at bottom of <body>, DOM is ready
+_supaInit();
+_hookDataLayer();
