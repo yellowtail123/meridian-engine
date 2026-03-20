@@ -27,6 +27,8 @@ const FILES = [
   "manifest.json",
   "sw.js",
   "_headers",
+  "privacy.html",
+  "terms.html",
 ];
 
 // Clean and create dist
@@ -66,6 +68,16 @@ html = html.replace(oldIntro, newIntro);
 html = html.replace(
   `Model: Claude Sonnet 4.6 — key required for AI features`,
   `Model: Claude Sonnet 4.6 — your key stays in memory only and is cleared when you close this tab`
+);
+
+// Update footer links to standalone pages
+html = html.replace(
+  `<a href="#" onclick="event.preventDefault();showPrivacyPolicy()" style="color:var(--tm);text-decoration:underline">Privacy</a>`,
+  `<a href="/privacy" style="color:var(--tm);text-decoration:underline">Privacy</a>`
+);
+html = html.replace(
+  `<a href="#" onclick="event.preventDefault();showTerms()" style="color:var(--tm);text-decoration:underline">Terms</a>`,
+  `<a href="/terms" style="color:var(--tm);text-decoration:underline">Terms</a>`
 );
 
 // Add service worker cleanup
