@@ -1,0 +1,373 @@
+// ═══ MERIDIAN SUPABASE — User Accounts & Cloud Sync ═══
+// Optional cloud persistence — app works fully without an account.
+// Loads after meridian-core.js (needs S, $, safeStore, safeParse, toast)
+
+const SUPA_URL='https://wgqfxgxnanvckgqkuqas.supabase.co';
+const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg';
+
+let _supa=null;
+let _supaUser=null;
+let _syncInProgress=false;
+
+// ═══ 1. INIT ═══
+function _supaInit(){
+  if(typeof window.supabase==='undefined'){console.warn('Supabase SDK not loaded');return}
+  _supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
+  _supa.auth.onAuthStateChange(async(event,session)=>{
+    _supaUser=session?.user||null;
+    _renderAuthUI();
+    if(event==='SIGNED_IN'&&_supaUser){
+      toast('Signed in as '+_supaUser.email,'ok');
+      await _syncOnLogin();
+      _flushQueue();
+    }
+    if(event==='SIGNED_OUT'){
+      _supaUser=null;
+      toast('Signed out','info');
+    }
+  });
+  _supa.auth.getSession().then(({data})=>{
+    _supaUser=data.session?.user||null;
+    _renderAuthUI();
+  });
+}
+
+// ═══ 2. AUTH UI ═══
+function _renderAuthUI(){
+  const el=$('#auth-btn');if(!el)return;
+  if(_supaUser){
+    const email=_supaUser.email||'';
+    const short=email.length>20?email.slice(0,17)+'...':email;
+    el.textContent=short;
+    el.title='Signed in as '+email+' — click to manage';
+    el.onclick=_showAccountMenu;
+  }else{
+    el.textContent='Sign In';
+    el.title='Sign in for cross-device sync';
+    el.onclick=_showAuthModal;
+  }
+}
+
+function _showAccountMenu(){
+  const existing=$('#supa-account-menu');if(existing){existing.remove();return}
+  const m=document.createElement('div');m.id='supa-account-menu';
+  m.style.cssText='position:fixed;top:60px;right:20px;z-index:10005;background:var(--bs);border:1px solid var(--ab);border-radius:10px;padding:16px;min-width:220px;animation:fadeIn .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+  m.innerHTML=`
+    <div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px">Signed in as</div>
+    <div style="font-size:13px;color:var(--ac);font-family:var(--mf);word-break:break-all;margin-bottom:14px">${_supaUser.email}</div>
+    <button class="bt sm" style="width:100%;color:var(--sg);border-color:var(--sb);margin-bottom:8px;font-size:12px" onclick="$('#supa-account-menu').remove();_syncOnLogin().then(()=>toast('Sync complete','ok'))">Sync Now</button>
+    <button class="bt sm" style="width:100%;color:var(--co);border-color:rgba(194,120,120,.3);font-size:12px" onclick="$('#supa-account-menu').remove();_supaSignOut()">Sign Out</button>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove()});
+  document.addEventListener('click',function _dismiss(e){if(!m.contains(e.target)&&e.target!==$('#auth-btn')){m.remove();document.removeEventListener('click',_dismiss)}},{capture:true,once:false});
+  document.body.appendChild(m);
+}
+
+function _showAuthModal(){
+  const existing=$('#supa-auth-modal');if(existing)existing.remove();
+  const m=document.createElement('div');m.id='supa-auth-modal';
+  m.style.cssText='position:fixed;inset:0;z-index:10006;background:rgba(6,5,14,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
+  m.innerHTML=`<div style="background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:28px 30px;max-width:380px;width:100%;animation:fadeIn .3s;position:relative">
+    <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer" onclick="$('#supa-auth-modal').remove()">x</button>
+    <h2 style="font-size:18px;color:var(--ac);margin-bottom:4px;font-family:var(--sf)">Sign In to Meridian</h2>
+    <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5">Sync your library and settings across devices. Your account is optional — the app works fully without one.</p>
+    <div id="supa-auth-error" style="display:none;padding:8px 12px;background:var(--cm);border:1px solid rgba(194,120,120,.3);border-radius:6px;font-size:12px;color:var(--co);margin-bottom:12px"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <button class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('google')">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+      <button class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('github')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        Continue with GitHub
+      </button>
+    </div>
+    <div style="position:relative;text-align:center;margin-bottom:16px"><div style="border-top:1px solid var(--bd);position:absolute;top:50%;left:0;right:0"></div><span style="background:var(--bs);padding:0 10px;position:relative;font-size:11px;color:var(--tm);font-family:var(--mf)">or use email</span></div>
+    <div id="supa-auth-tabs" style="display:flex;gap:0;margin-bottom:14px">
+      <button class="bt sm" id="supa-tab-login" style="flex:1;border-radius:6px 0 0 6px;font-size:12px;color:var(--ac);border-color:var(--ab);background:var(--am)" onclick="_supaAuthTab('login')">Sign In</button>
+      <button class="bt sm" id="supa-tab-signup" style="flex:1;border-radius:0 6px 6px 0;font-size:12px;color:var(--tm);border-color:var(--ab)" onclick="_supaAuthTab('signup')">Sign Up</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <input class="si" id="supa-email" type="email" placeholder="Email" style="font-size:13px;padding:10px 12px">
+      <input class="si" id="supa-pass" type="password" placeholder="Password" style="font-size:13px;padding:10px 12px">
+      <button class="bt on" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_supaEmailAuth()">Sign In</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove()});
+  document.body.appendChild(m);
+}
+
+let _authMode='login';
+function _supaAuthTab(mode){
+  _authMode=mode;
+  const l=$('#supa-tab-login'),s=$('#supa-tab-signup'),b=$('#supa-submit');
+  if(mode==='login'){
+    l.style.color='var(--ac)';l.style.background='var(--am)';
+    s.style.color='var(--tm)';s.style.background='';
+    b.textContent='Sign In';
+  }else{
+    s.style.color='var(--ac)';s.style.background='var(--am)';
+    l.style.color='var(--tm)';l.style.background='';
+    b.textContent='Sign Up';
+  }
+}
+
+async function _supaEmailAuth(){
+  const email=$('#supa-email')?.value?.trim();
+  const pass=$('#supa-pass')?.value;
+  const errEl=$('#supa-auth-error');
+  if(!email||!pass){_showAuthError('Enter email and password');return}
+  const btn=$('#supa-submit');btn.disabled=true;btn.textContent='...';
+  try{
+    let result;
+    if(_authMode==='login'){
+      result=await _supa.auth.signInWithPassword({email,password:pass});
+    }else{
+      result=await _supa.auth.signUp({email,password:pass});
+    }
+    if(result.error)throw result.error;
+    if(_authMode==='signup'&&!result.data.session){
+      _showAuthError('Check your email for a confirmation link');
+      btn.disabled=false;btn.textContent='Sign Up';return;
+    }
+    $('#supa-auth-modal')?.remove();
+  }catch(e){
+    _showAuthError(e.message||'Authentication failed');
+    btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';
+  }
+}
+
+function _showAuthError(msg){
+  const el=$('#supa-auth-error');if(!el)return;
+  el.textContent=msg;el.style.display='block';
+}
+
+async function _supaOAuth(provider){
+  if(!_supa)return;
+  const{error}=await _supa.auth.signInWithOAuth({provider,options:{redirectTo:window.location.origin}});
+  if(error)_showAuthError(error.message);
+}
+
+async function _supaSignOut(){
+  if(!_supa)return;
+  await _supa.auth.signOut();
+  _supaUser=null;
+  _renderAuthUI();
+}
+
+// ═══ 3. CLOUD CRUD ═══
+async function _supaUpsertPaper(paper){
+  if(!_supa||!_supaUser)return;
+  const row={
+    user_id:_supaUser.id,
+    title:paper.title||null,
+    authors:Array.isArray(paper.authors)?paper.authors.join('; '):paper.authors||null,
+    abstract:paper.abstract||null,
+    doi:paper.doi||null,
+    source:paper.source||null,
+    year:paper.year||null,
+    journal:paper.journal||null,
+    concepts:paper.concepts||[],
+    tags:paper.tags||[],
+    notes:paper.notes||null,
+    findings:paper.findings||null,
+    project:paper.project||'Default',
+    local_id:paper.id,
+    saved_at:paper.savedAt||new Date().toISOString()
+  };
+  // Upsert by user_id + local_id
+  const{data:existing}=await _supa.from('library_papers').select('id').eq('user_id',_supaUser.id).eq('local_id',paper.id).maybeSingle();
+  if(existing){
+    await _supa.from('library_papers').update(row).eq('id',existing.id);
+  }else{
+    await _supa.from('library_papers').insert(row);
+  }
+}
+
+async function _supaDeletePaper(localId){
+  if(!_supa||!_supaUser)return;
+  await _supa.from('library_papers').delete().eq('user_id',_supaUser.id).eq('local_id',localId);
+}
+
+async function _supaFetchPapers(){
+  if(!_supa||!_supaUser)return[];
+  const{data,error}=await _supa.from('library_papers').select('*').eq('user_id',_supaUser.id);
+  if(error){console.warn('Supabase fetch papers:',error);return[]}
+  return data||[];
+}
+
+async function _supaSaveSettings(){
+  if(!_supa||!_supaUser)return;
+  const row={
+    user_id:_supaUser.id,
+    ai_provider:S.aiProvider||'anthropic',
+    ai_model:S.aiModel||'',
+    theme:document.documentElement.classList.contains('light')?'light':'dark',
+    preferences_json:{
+      skillLevel:S.skillLevel,
+      activeProject:S.activeProject
+    }
+  };
+  const{data:existing}=await _supa.from('user_settings').select('id').eq('user_id',_supaUser.id).maybeSingle();
+  if(existing)await _supa.from('user_settings').update(row).eq('id',existing.id);
+  else await _supa.from('user_settings').insert(row);
+}
+
+async function _supaLoadSettings(){
+  if(!_supa||!_supaUser)return null;
+  const{data}=await _supa.from('user_settings').select('*').eq('user_id',_supaUser.id).maybeSingle();
+  return data;
+}
+
+// ═══ 4. SYNC ON LOGIN ═══
+async function _syncOnLogin(){
+  if(!_supa||!_supaUser||_syncInProgress)return;
+  _syncInProgress=true;
+  try{
+    // Fetch cloud papers
+    const cloudPapers=await _supaFetchPapers();
+    const localPapers=S.lib||[];
+
+    // Build DOI and local_id indexes for dedup
+    const localByDoi={};const localById={};
+    for(const p of localPapers){
+      if(p.doi)localByDoi[p.doi.toLowerCase()]=p;
+      localById[p.id]=p;
+    }
+
+    let imported=0;
+    for(const cp of cloudPapers){
+      const doi=cp.doi?.toLowerCase();
+      // Skip if already exists locally (by DOI or local_id)
+      if(doi&&localByDoi[doi])continue;
+      if(cp.local_id&&localById[cp.local_id])continue;
+      // Import cloud paper to local IDB
+      const lp={
+        id:cp.local_id||('m'+Date.now()+Math.random()),
+        title:cp.title||'',
+        authors:cp.authors?cp.authors.split('; '):[],
+        abstract:cp.abstract||'',
+        doi:cp.doi||'',
+        source:cp.source||'',
+        year:cp.year||null,
+        journal:cp.journal||'',
+        concepts:cp.concepts||[],
+        tags:cp.tags||[],
+        notes:cp.notes||'',
+        findings:cp.findings||null,
+        project:cp.project||'Default',
+        savedAt:cp.saved_at||new Date().toISOString()
+      };
+      await dbPut(lp);
+      imported++;
+    }
+
+    // Push local papers that aren't in cloud
+    const cloudByDoi={};const cloudByLocalId={};
+    for(const cp of cloudPapers){
+      if(cp.doi)cloudByDoi[cp.doi.toLowerCase()]=true;
+      if(cp.local_id)cloudByLocalId[cp.local_id]=true;
+    }
+    let pushed=0;
+    for(const lp of localPapers){
+      const doi=lp.doi?.toLowerCase();
+      if(doi&&cloudByDoi[doi])continue;
+      if(cloudByLocalId[lp.id])continue;
+      await _supaUpsertPaper(lp);
+      pushed++;
+    }
+
+    if(imported>0){
+      await loadLib();renderLib();
+      toast(imported+' paper'+(imported>1?'s':'')+' synced from cloud','ok');
+    }
+    if(pushed>0)toast(pushed+' local paper'+(pushed>1?'s':'')+' backed up to cloud','ok');
+
+    // Sync settings
+    const cloudSettings=await _supaLoadSettings();
+    if(cloudSettings?.preferences_json){
+      // Only apply if user hasn't set locally
+      if(cloudSettings.theme){
+        const curTheme=document.documentElement.classList.contains('light')?'light':'dark';
+        if(curTheme!==cloudSettings.theme&&typeof toggleTheme==='function'){toggleTheme()}
+      }
+    }else{
+      await _supaSaveSettings();
+    }
+  }catch(e){
+    console.warn('Sync error:',e);
+  }
+  _syncInProgress=false;
+}
+
+// ═══ 5. OFFLINE QUEUE ═══
+const _QUEUE_KEY='meridian_sync_queue';
+
+function _queuePush(op){
+  if(!_supaUser)return;
+  const q=safeParse(_QUEUE_KEY,[]);
+  q.push({...op,ts:Date.now()});
+  safeStore(_QUEUE_KEY,q);
+}
+
+async function _flushQueue(){
+  if(!_supa||!_supaUser)return;
+  const q=safeParse(_QUEUE_KEY,[]);
+  if(!q.length)return;
+  safeStore(_QUEUE_KEY,[]);
+  for(const op of q){
+    try{
+      if(op.type==='upsert_paper')await _supaUpsertPaper(op.data);
+      else if(op.type==='delete_paper')await _supaDeletePaper(op.localId);
+      else if(op.type==='save_settings')await _supaSaveSettings();
+    }catch(e){
+      console.warn('Queue flush error:',e);
+    }
+  }
+}
+
+// Flush when coming back online
+window.addEventListener('online',()=>{if(_supaUser)_flushQueue()});
+
+// ═══ 6. HOOKS INTO DATA LAYER ═══
+function _hookDataLayer(){
+  // Wrap dbPut to sync papers to cloud
+  const _origDbPut=dbPut;
+  dbPut=async function(p){
+    await _origDbPut(p);
+    if(_supaUser){
+      if(navigator.onLine)_supaUpsertPaper(p).catch(e=>console.warn('Cloud sync:',e));
+      else _queuePush({type:'upsert_paper',data:p});
+    }
+  };
+
+  // Wrap dbDel to sync deletions
+  const _origDbDel=dbDel;
+  dbDel=async function(id){
+    await _origDbDel(id);
+    if(_supaUser){
+      if(navigator.onLine)_supaDeletePaper(id).catch(e=>console.warn('Cloud delete:',e));
+      else _queuePush({type:'delete_paper',localId:id});
+    }
+  };
+
+  // Periodically save settings when logged in
+  let _settingsTimer=null;
+  const _origSafeStore=safeStore;
+  safeStore=function(key,val){
+    _origSafeStore(key,val);
+    // Debounce settings sync for relevant keys
+    if(_supaUser&&['meridian_provider','meridian_theme','meridian_skill','meridian_active_project'].some(k=>key.startsWith(k))){
+      clearTimeout(_settingsTimer);
+      _settingsTimer=setTimeout(()=>{
+        if(navigator.onLine)_supaSaveSettings().catch(()=>{});
+        else _queuePush({type:'save_settings'});
+      },2000);
+    }
+  };
+}
+
+// ═══ 7. INIT ON LOAD ═══
+document.addEventListener('DOMContentLoaded',()=>{
+  _supaInit();
+  _hookDataLayer();
+});
