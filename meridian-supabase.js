@@ -16,13 +16,17 @@ function _supaInit(){
   const btn=$('#auth-btn');
   if(btn)btn.onclick=_showAuthModal;
 
-  if(typeof window.supabase==='undefined'){console.warn('Supabase SDK not loaded');return}
-  try{_supa=window.supabase.createClient(SUPA_URL,SUPA_ANON)}catch(e){console.warn('Supabase init failed:',e);return}
+  if(typeof window.supabase==='undefined'){
+    console.warn('Supabase SDK not loaded');
+    _maybeAutoShowModal();
+    return;
+  }
+  try{_supa=window.supabase.createClient(SUPA_URL,SUPA_ANON)}catch(e){console.warn('Supabase init failed:',e);_maybeAutoShowModal();return}
 
   _supa.auth.onAuthStateChange(async(event,session)=>{
     try{
       _supaUser=session?.user||null;
-      if(_supaUser)await _checkAdminRole();else _supaIsAdmin=false;
+      if(_supaUser){await _checkAdminRole();_dismissAuthModal(false)}else{_supaIsAdmin=false}
       _renderAuthUI();
       _renderAdminLink();
       if(event==='SIGNED_IN'&&_supaUser){
@@ -44,10 +48,22 @@ function _supaInit(){
     if(_supaUser)await _checkAdminRole();
     _renderAuthUI();
     _renderAdminLink();
+    if(!_supaUser)_maybeAutoShowModal();
   }).catch(e=>{
     console.warn('getSession error:',e);
-    // Button already has onclick from above, so it still works
+    _maybeAutoShowModal();
   });
+}
+
+function _maybeAutoShowModal(){
+  if(_supaUser)return;
+  if(sessionStorage.getItem('meridian_modal_dismissed'))return;
+  _showAuthModal();
+}
+
+function _dismissAuthModal(remember){
+  const m=$('#supa-auth-modal');if(m)m.remove();
+  if(remember)sessionStorage.setItem('meridian_modal_dismissed','1');
 }
 
 // ═══ 2. AUTH UI ═══
@@ -97,19 +113,22 @@ function _showAuthModal(){
   const existing=$('#supa-auth-modal');if(existing)existing.remove();
   const m=document.createElement('div');m.id='supa-auth-modal';
   m.style.cssText='position:fixed;inset:0;z-index:10006;background:rgba(6,5,14,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
-  m.innerHTML=`<div style="background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:28px 30px;max-width:380px;width:100%;animation:fadeIn .3s;position:relative">
-    <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer" onclick="$('#supa-auth-modal').remove()">x</button>
-    <h2 style="font-size:18px;color:var(--ac);margin-bottom:4px;font-family:var(--sf)">Sign In to Meridian</h2>
-    <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5">Sync your library and settings across devices. Your account is optional — the app works fully without one.</p>
+  m.innerHTML=`<div style="background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:32px 30px 24px;max-width:380px;width:100%;animation:fadeIn .3s;position:relative">
+    <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1" onclick="_dismissAuthModal(true)">&times;</button>
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:28px;font-family:var(--sf);color:var(--ac);font-weight:700;letter-spacing:.5px">Meridian</div>
+      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px;letter-spacing:1px;text-transform:uppercase">Marine Research Engine</div>
+    </div>
+    <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5;text-align:center">Sign in to sync your library and settings across devices.</p>
     <div id="supa-auth-error" style="display:none;padding:8px 12px;background:var(--cm);border:1px solid rgba(194,120,120,.3);border-radius:6px;font-size:12px;color:var(--co);margin-bottom:12px"></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
       <button class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('google')">
         <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Continue with Google
+        Sign in with Google
       </button>
       <button class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('github')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-        Continue with GitHub
+        Sign in with GitHub
       </button>
     </div>
     <div style="position:relative;text-align:center;margin-bottom:16px"><div style="border-top:1px solid var(--bd);position:absolute;top:50%;left:0;right:0"></div><span style="background:var(--bs);padding:0 10px;position:relative;font-size:11px;color:var(--tm);font-family:var(--mf)">or use email</span></div>
@@ -122,8 +141,11 @@ function _showAuthModal(){
       <input class="si" id="supa-pass" type="password" placeholder="Password" style="font-size:13px;padding:10px 12px">
       <button class="bt on" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_supaEmailAuth()">Sign In</button>
     </div>
+    <div style="text-align:center;margin-top:16px">
+      <a href="#" onclick="event.preventDefault();_dismissAuthModal(true)" style="font-size:12px;color:var(--tm);text-decoration:none;opacity:.8">Continue without account</a>
+    </div>
   </div>`;
-  m.addEventListener('click',e=>{if(e.target===m)m.remove()});
+  m.addEventListener('click',e=>{if(e.target===m)_dismissAuthModal(true)});
   document.body.appendChild(m);
 }
 
@@ -160,7 +182,7 @@ async function _supaEmailAuth(){
       _showAuthError('Check your email for a confirmation link');
       btn.disabled=false;btn.textContent='Sign Up';return;
     }
-    $('#supa-auth-modal')?.remove();
+    _dismissAuthModal(false);
   }catch(e){
     _showAuthError(e.message||'Authentication failed');
     btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';
@@ -174,7 +196,7 @@ function _showAuthError(msg){
 
 async function _supaOAuth(provider){
   if(!_supa)return;
-  const{error}=await _supa.auth.signInWithOAuth({provider,options:{redirectTo:window.location.origin}});
+  const{error}=await _supa.auth.signInWithOAuth({provider,options:{redirectTo:'https://meridian-engine.com'}});
   if(error)_showAuthError(error.message);
 }
 
