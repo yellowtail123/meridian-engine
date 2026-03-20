@@ -3,51 +3,40 @@
 
 // ═══ AI — Multi-Provider Support ═══
 const AI_PROVIDERS={
-  anthropic:{name:'Anthropic (Claude)',placeholder:'sk-ant-...',model:'claude-sonnet-4-6'},
-  openai:{name:'OpenAI (GPT)',placeholder:'sk-...',model:'gpt-4o'},
-  google:{name:'Google (Gemini)',placeholder:'AIza...',model:'gemini-2.5-flash'}
+  anthropic:{name:'Anthropic (Claude)',placeholder:'sk-ant-...',models:['claude-sonnet-4-20250514','claude-opus-4-20250514'],defaultModel:'claude-sonnet-4-20250514'},
+  openai:{name:'OpenAI (GPT)',placeholder:'sk-...',models:['gpt-4o','gpt-4o-mini','gpt-4-turbo'],defaultModel:'gpt-4o'},
+  google:{name:'Google (Gemini)',placeholder:'AIza...',models:['gemini-2.0-flash','gemini-2.0-pro'],defaultModel:'gemini-2.0-flash'},
+  mistral:{name:'Mistral',placeholder:'...',models:['mistral-large-latest','mistral-small-latest'],defaultModel:'mistral-large-latest'},
+  deepseek:{name:'DeepSeek',placeholder:'sk-...',models:['deepseek-chat','deepseek-reasoner'],defaultModel:'deepseek-chat'}
 };
-async function updateAIProvider(){
-  S.aiProvider='anthropic';const info=AI_PROVIDERS.anthropic;
-  const saved=await _keyVault.retrieve('meridian_key_anthropic');
+const _OAI_ENDPOINTS={openai:'https://api.openai.com/v1/chat/completions',mistral:'https://api.mistral.ai/v1/chat/completions',deepseek:'https://api.deepseek.com/v1/chat/completions'};
+function _syncModelDropdown(prov){
+  const sel=$('#aimodel');if(!sel)return;
+  const info=AI_PROVIDERS[prov];if(!info)return;
+  sel.innerHTML=info.models.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+  const savedModel=localStorage.getItem('meridian_model_'+prov);
+  if(savedModel&&info.models.includes(savedModel)){sel.value=savedModel;S.aiModel=savedModel}
+  else{sel.value=info.defaultModel;S.aiModel=info.defaultModel}
+}
+async function updateAIProvider(prov){
+  prov=prov||S.aiProvider||'anthropic';
+  S.aiProvider=prov;
+  const info=AI_PROVIDERS[prov];if(!info)return;
+  $('#aki').placeholder=info.placeholder;
+  _syncModelDropdown(prov);
+  const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel;
+  const saved=await _keyVault.retrieve('meridian_key_'+prov);
   if(saved){$('#aki').value=saved;S.apiK=saved;$('#aks').style.borderColor='var(--sb)'}
   else{$('#aki').value='';S.apiK='';$('#aks').style.borderColor='var(--bd)'}
 }
 async function callAI({messages,system,tools,maxTokens=4096,signal}){
-  const prov=S.aiProvider||'anthropic',model=AI_PROVIDERS[prov].model,key=S.apiK;
+  const prov=S.aiProvider||'anthropic',model=S.aiModel||AI_PROVIDERS[prov].defaultModel,key=S.apiK;
   if(prov==='anthropic'){
     const body={model,max_tokens:maxTokens,messages};
     if(system)body.system=system;if(tools?.length)body.tools=tools;
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body),signal});
     if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
     return await r.json();
-  }
-  if(prov==='openai'){
-    const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
-    for(const m of messages){
-      if(m.role==='user'){
-        if(Array.isArray(m.content)&&m.content[0]?.type==='tool_result'){
-          for(const tr of m.content)oaiMsgs.push({role:'tool',tool_call_id:tr.tool_use_id,content:typeof tr.content==='string'?tr.content:JSON.stringify(tr.content)});
-        }else oaiMsgs.push({role:'user',content:typeof m.content==='string'?m.content:JSON.stringify(m.content)});
-      }else if(m.role==='assistant'){
-        if(Array.isArray(m.content)){
-          const txt=m.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-          const tcs=m.content.filter(b=>b.type==='tool_use');
-          const msg={role:'assistant',content:txt||null};
-          if(tcs.length)msg.tool_calls=tcs.map(tc=>({id:tc.id,type:'function',function:{name:tc.name,arguments:JSON.stringify(tc.input)}}));
-          oaiMsgs.push(msg);
-        }else oaiMsgs.push({role:'assistant',content:m.content});
-      }
-    }
-    const body={model,max_tokens:maxTokens,messages:oaiMsgs};
-    if(tools?.length)body.tools=tools.map(t=>({type:'function',function:{name:t.name,description:t.description,parameters:t.input_schema}}));
-    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
-    const data=await r.json();if(!data.choices?.[0])throw new Error('No response from OpenAI');
-    const ch=data.choices[0],content=[];
-    if(ch.message.content)content.push({type:'text',text:ch.message.content});
-    if(ch.message.tool_calls)for(const tc of ch.message.tool_calls){try{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:JSON.parse(tc.function.arguments)})}catch{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:{}})}}
-    return{content,stop_reason:ch.finish_reason==='tool_calls'?'tool_use':'end_turn'};
   }
   if(prov==='google'){
     const gc=[];
@@ -73,10 +62,39 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     for(const p of parts){if(p.text)content.push({type:'text',text:p.text});if(p.functionCall)content.push({type:'tool_use',id:'gem_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name:p.functionCall.name,input:p.functionCall.args||{}})}
     return{content,stop_reason:content.some(c=>c.type==='tool_use')?'tool_use':'end_turn'};
   }
+  // OpenAI-compatible providers: OpenAI, Mistral, DeepSeek
+  const endpoint=_OAI_ENDPOINTS[prov];
+  if(endpoint){
+    const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
+    for(const m of messages){
+      if(m.role==='user'){
+        if(Array.isArray(m.content)&&m.content[0]?.type==='tool_result'){
+          for(const tr of m.content)oaiMsgs.push({role:'tool',tool_call_id:tr.tool_use_id,content:typeof tr.content==='string'?tr.content:JSON.stringify(tr.content)});
+        }else oaiMsgs.push({role:'user',content:typeof m.content==='string'?m.content:JSON.stringify(m.content)});
+      }else if(m.role==='assistant'){
+        if(Array.isArray(m.content)){
+          const txt=m.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+          const tcs=m.content.filter(b=>b.type==='tool_use');
+          const msg={role:'assistant',content:txt||null};
+          if(tcs.length)msg.tool_calls=tcs.map(tc=>({id:tc.id,type:'function',function:{name:tc.name,arguments:JSON.stringify(tc.input)}}));
+          oaiMsgs.push(msg);
+        }else oaiMsgs.push({role:'assistant',content:m.content});
+      }
+    }
+    const body={model,max_tokens:maxTokens,messages:oaiMsgs};
+    if(tools?.length)body.tools=tools.map(t=>({type:'function',function:{name:t.name,description:t.description,parameters:t.input_schema}}));
+    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal});
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    const data=await r.json();if(!data.choices?.[0])throw new Error('No response from '+AI_PROVIDERS[prov].name);
+    const ch=data.choices[0],content=[];
+    if(ch.message.content)content.push({type:'text',text:ch.message.content});
+    if(ch.message.tool_calls)for(const tc of ch.message.tool_calls){try{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:JSON.parse(tc.function.arguments)})}catch{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:{}})}}
+    return{content,stop_reason:ch.finish_reason==='tool_calls'?'tool_use':'end_turn'};
+  }
   throw new Error('Unknown provider: '+prov);
 }
 async function streamAI({messages,system,maxTokens=2000,onDelta}){
-  const prov=S.aiProvider||'anthropic',model=AI_PROVIDERS[prov].model,key=S.apiK;
+  const prov=S.aiProvider||'anthropic',model=S.aiModel||AI_PROVIDERS[prov].defaultModel,key=S.apiK;
   if(prov==='anthropic'){
     const body={model,max_tokens:maxTokens,stream:true,messages};if(system)body.system=system;
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
@@ -85,17 +103,6 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;
         try{const ev=JSON.parse(d);if(ev.type==='content_block_delta'&&ev.delta?.type==='text_delta'){text+=ev.delta.text;onDelta(text)}}catch{}}}
-    return text;
-  }
-  if(prov==='openai'){
-    const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
-    messages.forEach(m=>oaiMsgs.push({role:m.role,content:m.content}));
-    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,stream:true,messages:oaiMsgs})});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
-    const reader=r.body.getReader(),dec=new TextDecoder();let text='';
-    while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
-      for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;
-        try{const ev=JSON.parse(d);const delta=ev.choices?.[0]?.delta?.content;if(delta){text+=delta;onDelta(text)}}catch{}}}
     return text;
   }
   if(prov==='google'){
@@ -107,6 +114,19 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();
         try{const ev=JSON.parse(d);const pts=ev.candidates?.[0]?.content?.parts;if(pts)for(const p of pts)if(p.text){text+=p.text;onDelta(text)}}catch{}}}
+    return text;
+  }
+  // OpenAI-compatible providers: OpenAI, Mistral, DeepSeek
+  const endpoint=_OAI_ENDPOINTS[prov];
+  if(endpoint){
+    const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
+    messages.forEach(m=>oaiMsgs.push({role:m.role,content:m.content}));
+    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,stream:true,messages:oaiMsgs})});
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    const reader=r.body.getReader(),dec=new TextDecoder();let text='';
+    while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
+      for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;
+        try{const ev=JSON.parse(d);const delta=ev.choices?.[0]?.delta?.content;if(delta){text+=delta;onDelta(text)}}catch{}}}
     return text;
   }
   throw new Error('Unknown provider');
@@ -505,8 +525,10 @@ async function sCh(){
     dbPutChat(toStore);
   }catch{}
 }
-$('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓';$('#aim').textContent='Model: '+AI_PROVIDERS[S.aiProvider].model;toast('API key saved (encrypted) for '+AI_PROVIDERS[S.aiProvider].name,'ok');setTimeout(()=>$('#akb').textContent='Save',2000)}else{toast('Enter an API key first','err')}});
+$('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓';$('#aim').textContent='Model: '+S.aiModel;toast('API key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');setTimeout(()=>$('#akb').textContent='Save',2000)}else{toast('Enter an API key first','err')}});
 $('#aki').addEventListener('keydown',e=>{if(e.key==='Enter')$('#akb').click()});
+$('#aip').addEventListener('change',()=>{updateAIProvider($('#aip').value)});
+$('#aimodel').addEventListener('change',()=>{S.aiModel=$('#aimodel').value;safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#aim').textContent='Model: '+S.aiModel});
 $('#csnd').addEventListener('click',sCh);$('#ci').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey)sCh()});
 // ═══ CHART EXPORT ═══
 function exportChart(id){const el=$('#'+id)||document.getElementById(id);if(!el)return;Plotly.downloadImage(el,{format:'png',width:1200,height:600,filename:'meridian_chart'}).then(()=>toast('Chart saved','ok')).catch(()=>toast('Chart export failed','err'))}
@@ -1228,15 +1250,17 @@ openDB().then(loadLib).then(async()=>{S.cols=await loadCols();renderLib();
   const legacyKey=localStorage.getItem('meridian_key');
   if(legacyKey){_keyVault.store('meridian_key_anthropic',legacyKey).then(()=>localStorage.removeItem('meridian_key'))}
   // Migrate any existing plaintext keys to encrypted
-  for(const prov of ['anthropic','openai','google']){
+  for(const prov of Object.keys(AI_PROVIDERS)){
     const raw=localStorage.getItem('meridian_key_'+prov);
     if(raw&&!raw.startsWith('enc:')){_keyVault.store('meridian_key_'+prov,raw)}
   }
-  // Restore provider
-  const savedProv=localStorage.getItem('meridian_provider')||'anthropic';S.aiProvider=savedProv;
-  const aip=$('#aip');if(aip)aip.value=savedProv;
-  const provInfo=AI_PROVIDERS[savedProv];if(provInfo){$('#aki').placeholder=provInfo.placeholder;$('#aim').textContent='Model: '+provInfo.model}
-  _keyVault.retrieve('meridian_key_'+savedProv).then(sk=>{if(sk){S.apiK=sk;const ai=$('#aki');if(ai)ai.value=sk;$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓'}})
+  // Restore provider and model
+  const savedProv=localStorage.getItem('meridian_provider')||'anthropic';
+  S.aiProvider=AI_PROVIDERS[savedProv]?savedProv:'anthropic';
+  const aip=$('#aip');if(aip)aip.value=S.aiProvider;
+  _syncModelDropdown(S.aiProvider);
+  const provInfo=AI_PROVIDERS[S.aiProvider];if(provInfo){$('#aki').placeholder=provInfo.placeholder;$('#aim').textContent='Model: '+S.aiModel}
+  _keyVault.retrieve('meridian_key_'+S.aiProvider).then(sk=>{if(sk){S.apiK=sk;const ai=$('#aki');if(ai)ai.value=sk;$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓'}})
   if(typeof PADI!=='undefined'&&PADI.init)PADI.init().catch(e=>console.warn('PADI init:',e));
   setTimeout(autoRestoreSession,500);
 }).catch(e=>{console.warn('DB init:',e);rCh()});
@@ -2828,7 +2852,7 @@ function showOnboarding(){
       <div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Optional — AI API Key</div>
       <div style="font-size:12px;color:var(--ts);margin-bottom:10px;line-height:1.5">Bring your own key to enable the AI research assistant. You can also set this later in the AI tab.</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select class="fs" id="splash-aip" style="min-width:130px"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google</option></select>
+        <select class="fs" id="splash-aip" style="min-width:130px"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google</option><option value="mistral">Mistral</option><option value="deepseek">DeepSeek</option></select>
         <input type="password" class="si" id="splash-aki" placeholder="sk-ant-..." style="font-size:12px;flex:1;padding:9px 12px">
       </div>
     </div>
@@ -2845,7 +2869,7 @@ function showOnboarding(){
   const splashAip=ov.querySelector('#splash-aip');
   splashAip.addEventListener('change',()=>{
     const p=splashAip.value;
-    const ph={anthropic:'sk-ant-...',openai:'sk-...',google:'AIza...'}[p]||'API key';
+    const ph=AI_PROVIDERS[p]?.placeholder||'API key';
     ov.querySelector('#splash-aki').placeholder=ph;
   });
   window._splashEnter=function(){
@@ -2858,7 +2882,8 @@ function showOnboarding(){
       const mainAip=$('#aip');if(mainAip)mainAip.value=prov;
       const mainAki=$('#aki');if(mainAki)mainAki.value=key;
       const aks=$('#aks');if(aks)aks.style.borderColor='var(--sb)';
-      const info=AI_PROVIDERS[prov];if(info){const aim=$('#aim');if(aim)aim.textContent='Model: '+info.model}
+      _syncModelDropdown(prov);
+      const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel
     }
     ov.remove();
     safeStore('meridian_onboarded','1');
