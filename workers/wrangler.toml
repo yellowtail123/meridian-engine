@@ -1,0 +1,10 @@
+name = "meridian-errors"
+main = "error-reporter.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ADMIN_KEY = "CHANGE_ME_TO_A_SECURE_KEY"
+
+[[kv_namespaces]]
+binding = "ERROR_STORE"
+id = "YOUR_KV_NAMESPACE_ID"

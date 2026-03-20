@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html><head><title>Meridian Stats Tests</title>
+<style>body{font-family:monospace;padding:20px;background:#1F1D2B;color:#E8E0D6}
+.pass{color:#7B9E87}.fail{color:#C27878}.summary{margin-top:20px;padding:10px;border:1px solid #302E40;border-radius:6px}</style>
+</head><body>
+<h2>Meridian Stats — Unit Tests</h2>
+<div id="results"></div>
+<script src="../meridian-core.js"></script>
+<script src="../meridian-stats.js"></script>
+<script>
+let passed=0,failed=0;const results=document.getElementById('results');
+function assert(name,condition,detail){
+  const el=document.createElement('div');
+  if(condition){passed++;el.className='pass';el.textContent='✓ '+name}
+  else{failed++;el.className='fail';el.textContent='✗ '+name+(detail?' — '+detail:'')}
+  results.appendChild(el);
+}
+function approxEq(a,b,tol){return Math.abs(a-b)<(tol||0.001)}
+
+// normCDF tests
+assert('normCDF(0) = 0.5', approxEq(normCDF(0), 0.5));
+assert('normCDF(1.96) ≈ 0.975', approxEq(normCDF(1.96), 0.975, 0.001));
+assert('normCDF(-1.96) ≈ 0.025', approxEq(normCDF(-1.96), 0.025, 0.001));
+
+// pearsonR tests
+assert('pearsonR perfect positive', approxEq(pearsonR([1,2,3,4,5],[1,2,3,4,5]), 1.0));
+assert('pearsonR perfect negative', approxEq(pearsonR([1,2,3,4,5],[5,4,3,2,1]), -1.0));
+assert('pearsonR uncorrelated ≈ 0', approxEq(pearsonR([1,2,3,4,5],[3,1,4,2,5]), 0, 0.5));
+
+// RMSE tests
+assert('rmse identical = 0', approxEq(rmse([1,2,3],[1,2,3]), 0));
+assert('rmse known values', approxEq(rmse([1,2,3],[2,3,4]), 1.0));
+
+// Shannon diversity
+const shannon = shannonDiversity([10,10,10,10]);
+assert('Shannon H > 0 for even distribution', shannon.H > 0);
+assert('Shannon evenness J = 1 for equal counts', approxEq(shannon.J, 1.0, 0.01));
+assert('Shannon S = 4', shannon.S === 4);
+
+// Simpson diversity
+const simp = simpsonDiversity([50,50]);
+assert('Simpson 1-D for two equal = 0.5', approxEq(simp.oneMinusD, 0.5, 0.02));
+
+// Mann-Kendall
+const mkData = Array.from({length:30}, (_, i) => ({time: '2020-01-'+(i+1).toString().padStart(2,'0'), value: i + Math.random()*2}));
+const mk = mannKendall(mkData);
+assert('Mann-Kendall detects increasing trend', mk && mk.trend === 'increasing');
+assert('Mann-Kendall S > 0 for increasing', mk && mk.S > 0);
+
+// Shapiro-Wilk
+const normalData = Array.from({length:100}, () => {let u=0,v=0;while(!u)u=Math.random();v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)});
+const sw = shapiroWilk(normalData);
+assert('Shapiro-Wilk W close to 1 for normal data', sw.W > 0.9);
+assert('Shapiro-Wilk p > 0.05 for normal data', sw.p > 0.05);
+
+// LTTB downsampling
+const lttbData = Array.from({length:200}, (_, i) => ({time: '2020-01-01', value: Math.sin(i/10)}));
+const downsampled = lttb(lttbData, 50);
+assert('LTTB reduces to threshold', downsampled.length === 50);
+assert('LTTB preserves first point', downsampled[0] === lttbData[0]);
+assert('LTTB preserves last point', downsampled[downsampled.length-1] === lttbData[lttbData.length-1]);
+
+// escHTML
+assert('escHTML escapes <', escHTML('<script>') === '&lt;script&gt;');
+assert('escHTML escapes backtick', escHTML('`test`') === '&#96;test&#96;');
+assert('escHTML escapes single quote', escHTML("it's") === "it&#39;s");
+
+// Logistic growth
+const lg = logisticGrowth(100, 0.5, 1000, 50);
+assert('Logistic growth reaches near K', lg[lg.length-1].N > 900);
+assert('Logistic growth starts at N0', lg[0].N === 100);
+
+// Summary
+const summary = document.createElement('div');
+summary.className = 'summary';
+summary.innerHTML = '<strong>Results:</strong> '+passed+' passed, '+failed+' failed out of '+(passed+failed)+' tests';
+results.appendChild(summary);
+document.title = (failed ? '✗ ' : '✓ ') + 'Stats Tests — ' + passed + '/' + (passed+failed);
+</script></body></html>

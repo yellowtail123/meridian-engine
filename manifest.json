@@ -1,0 +1,13 @@
+{
+  "name": "Meridian — Marine Research Platform",
+  "short_name": "Meridian",
+  "description": "Search academic databases, explore species data, visualize NOAA environmental time series, and analyze everything in one tool.",
+  "start_url": "/meridian.html",
+  "display": "standalone",
+  "theme_color": "#1F1D2B",
+  "background_color": "#1F1D2B",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

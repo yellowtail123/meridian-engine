@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meridian — Marine Research Platform</title>
+<meta name="description" content="Search 4 academic databases, explore species data from WoRMS/GBIF/OBIS, visualize NOAA environmental time series, and analyze everything in one tool. Free, open, runs in your browser.">
+<meta name="keywords" content="marine research, fisheries science, literature search, species data, environmental data, academic search, WoRMS, GBIF, OBIS, ERDDAP, research platform">
+<meta name="author" content="Meridian Engine">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://meridian-engine.com">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://meridian-engine.com">
+<meta property="og:title" content="Meridian — Marine Research Platform">
+<meta property="og:description" content="Search 4 academic databases, explore species data, visualize NOAA environmental time series, and analyze everything in one tool. Free and runs in your browser.">
+<meta property="og:image" content="https://meridian-engine.com/og-image.png">
+<meta property="og:site_name" content="Meridian Engine">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Meridian — Marine Research Platform">
+<meta name="twitter:description" content="Search 4 academic databases, explore species data, visualize NOAA environmental time series, and analyze everything in one tool.">
+<meta name="twitter:image" content="https://meridian-engine.com/og-image.png">
+<!-- Content Security Policy — lock down external connections to prevent key exfiltration -->
+<!-- NOTE: frame-ancestors must be set via HTTP header (Cloudflare _headers file): frame-ancestors 'none' -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.plot.ly cdnjs.cloudflare.com d3js.org unpkg.com;
+  style-src 'self' 'unsafe-inline' unpkg.com cdnjs.cloudflare.com fonts.googleapis.com;
+  font-src fonts.gstatic.com;
+  img-src 'self' data: blob: *.basemaps.cartocdn.com server.arcgisonline.com gibs.earthdata.nasa.gov api.gbif.org coastwatch.pfeg.noaa.gov coastwatch.noaa.gov polarwatch.noaa.gov pae-paha.pacioos.hawaii.edu oceanwatch.pifsc.noaa.gov www.ncei.noaa.gov tiles.arcgis.com;
+  worker-src blob: cdnjs.cloudflare.com;
+  connect-src 'self'
+    api.anthropic.com
+    api.openalex.org
+    api.semanticscholar.org
+    api.crossref.org
+    eutils.ncbi.nlm.nih.gov
+    www.marinespecies.org
+    api.gbif.org
+    api.obis.org
+    coastwatch.pfeg.noaa.gov
+    coastwatch.noaa.gov
+    www.ncei.noaa.gov
+    pae-paha.pacioos.hawaii.edu
+    oceanwatch.pifsc.noaa.gov
+    polarwatch.noaa.gov
+    marine-api.open-meteo.com
+    archive-api.open-meteo.com
+    gml.noaa.gov
+    scrippsco2.ucsd.edu
+    api.open-meteo.com
+    climate-api.open-meteo.com
+    api.seaaroundus.org
+    paleobiodb.org
+    seamap.env.duke.edu
+    api.opentreeoflife.org
+    www.boldsystems.org
+    members.oceantrack.org
+    www.cpc.ncep.noaa.gov
+    nominatim.openstreetmap.org
+    api.speciesplus.net
+    *.basemaps.cartocdn.com
+    server.arcgisonline.com
+    gibs.earthdata.nasa.gov
+    api.osf.io
+    api.biorxiv.org
+    www.gmrt.org
+    gateway.api.globalfishingwatch.org
+    raw.githubusercontent.com;
+  frame-src 'none';
+  object-src 'none';
+  base-uri 'self';
+">
+<!-- Favicon (inline SVG globe) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231b6090'/%3E%3Cellipse cx='16' cy='16' rx='6' ry='14' fill='none' stroke='%23C9956B' stroke-width='1.2'/%3E%3Cline x1='2' y1='16' x2='30' y2='16' stroke='%23C9956B' stroke-width='1'/%3E%3Cpath d='M4 10h24M4 22h24' stroke='%23C9956B' stroke-width='.7' opacity='.6'/%3E%3Ccircle cx='16' cy='16' r='14' fill='none' stroke='%23C9956B' stroke-width='1.5'/%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHveXg==" crossorigin="anonymous"></script>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" integrity="sha384-Hl48Kq2HifOWdXEjMsKo6qxqvRLTYqIGbvlENBmkHAxZKIGCXv43H6W1jA671RzC" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous" onerror="console.warn('SheetJS CDN unavailable — Excel import disabled')"></script>
+<script src="https://d3js.org/d3.v7.min.js" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous" onerror="console.warn('D3 CDN unavailable — citation graph disabled')"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e" crossorigin="anonymous" onerror="console.warn('PDF.js CDN unavailable — PDF viewer disabled')"></script>
+<script>if(typeof pdfjsLib!=='undefined')pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" integrity="sha384-NZLkVuBRMEeB4VeZz27WwTRvlhec30biQ8Xx7zG7JJnkvEKRg5qi6BNbEXo9ydwv" crossorigin="anonymous"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js" integrity="sha384-JP5UPxIO2Tm2o79Fb0tGYMa44jkWar53aBoCbd8ah0+LcCDoohTIYr+zIXyfGIJN" crossorigin="anonymous"></script>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="meridian.css">
+<style>
+.layer-err { border-color: var(--co) !important; opacity: 0.7; position: relative; }
+.layer-err::after { content: '!'; position: absolute; top: -4px; right: -4px; background: var(--co); color: white; font-size: 9px; width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+<div id="padi-bar"><div class="pb-track"><div class="pb-fill"></div></div><span class="pb-label"></span></div>
+<div id="app">
+<header class="hdr">
+<div class="hdr-title">
+<div class="hdr-stars">
+<span style="top:8%;left:2%;opacity:.3"></span><span style="top:55%;left:7%;opacity:.2"></span>
+<span style="top:14%;left:19%;opacity:.35"></span><span style="top:72%;left:15%;opacity:.15"></span>
+<span style="top:5%;left:33%;opacity:.25"></span><span style="top:82%;left:26%;opacity:.18"></span>
+<span style="top:18%;left:73%;opacity:.3"></span><span style="top:66%;left:80%;opacity:.2"></span>
+<span style="top:9%;left:89%;opacity:.28"></span><span style="top:76%;left:93%;opacity:.15"></span>
+<span style="top:42%;left:97%;opacity:.22"></span><span style="top:28%;left:3%;opacity:.18"></span>
+<span style="top:88%;left:46%;opacity:.12"></span><span style="top:4%;left:56%;opacity:.25"></span>
+<span style="top:50%;left:40%;opacity:.1"></span><span style="top:35%;left:62%;opacity:.12"></span>
+</div>
+<svg class="hdr-globe" width="140" height="140" viewBox="0 0 200 200">
+<defs>
+<radialGradient id="gOcean" cx="42%" cy="40%">
+<stop offset="0%" stop-color="#1b6090"/><stop offset="20%" stop-color="#175580"/><stop offset="45%" stop-color="#124868"/><stop offset="70%" stop-color="#0c3550"/><stop offset="100%" stop-color="#072438"/>
+</radialGradient>
+<radialGradient id="gSun" cx="30%" cy="25%">
+<stop offset="0%" stop-color="rgba(255,255,255,.15)"/><stop offset="25%" stop-color="rgba(220,240,255,.08)"/><stop offset="60%" stop-color="rgba(0,0,0,0)"/><stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+</radialGradient>
+<radialGradient id="gShadow" cx="75%" cy="78%">
+<stop offset="0%" stop-color="rgba(0,0,0,0)"/><stop offset="40%" stop-color="rgba(0,0,10,.03)"/><stop offset="75%" stop-color="rgba(0,0,15,.12)"/><stop offset="100%" stop-color="rgba(0,0,20,.28)"/>
+</radialGradient>
+<radialGradient id="gAtmo" cx="50%" cy="50%">
+<stop offset="82%" stop-color="rgba(60,140,220,0)"/><stop offset="92%" stop-color="rgba(70,150,230,.05)"/><stop offset="97%" stop-color="rgba(100,175,255,.1)"/><stop offset="100%" stop-color="rgba(130,195,255,.06)"/>
+</radialGradient>
+<clipPath id="gc"><circle cx="100" cy="100" r="72"/></clipPath>
+</defs>
+<!-- atmosphere outer glow -->
+<circle cx="100" cy="100" r="80" fill="none" stroke="rgba(80,160,255,.03)" stroke-width="6"/>
+<circle cx="100" cy="100" r="76" fill="none" stroke="rgba(80,160,255,.02)" stroke-width="3"/>
+<!-- ocean sphere -->
+<circle cx="100" cy="100" r="72" fill="url(#gOcean)"/>
+<g clip-path="url(#gc)">
+<!-- ═══ NORTH AMERICA ═══ -->
+<!-- Alaska -->
+<path d="M30,38 L28,36 L26,37 L24,35 L26,33 L29,32 L32,30 L35,31 L37,29 L40,30 L42,28 L44,30 L42,33 L40,35 L38,34 L36,36 L34,35 L32,37 Z" fill="#2a6840" stroke="#388550" stroke-width=".4"/>
+<!-- Aleutians -->
+<path d="M24,35 L22,36 L20,35" fill="none" stroke="#2a6840" stroke-width="1" stroke-linecap="round"/>
+<!-- Arctic Canada + Canadian Shield -->
+<path d="M44,30 L47,28 L50,27 L53,26 L56,25 L60,24 L63,25 L66,24 L69,25 L72,24 L74,26 L72,28 L68,27 L65,28 L62,27 L58,28 L55,30 L58,32 L56,34 L52,33 L50,35 L48,33 L46,35 L44,33 Z" fill="#2a6840" stroke="#388550" stroke-width=".4"/>
+<!-- Hudson Bay (water cutout) -->
+<path d="M54,30 Q58,32 56,35 Q53,37 50,35 Q48,33 50,31 Q52,30 54,30 Z" fill="#10405c" stroke="#124868" stroke-width=".3"/>
+<!-- Canadian mainland + US -->
+<path d="M44,33 L46,35 L48,37 L50,38 L52,37 L54,39 L56,38 L58,40 L60,38 L62,40 L64,38 L66,40 L68,38 L70,40 L72,38 L74,36 L76,38 L78,36 L80,38 L82,40 L80,42 L78,44 L76,42 L74,44 L72,46 L70,44 L68,46 L66,48 L68,50 L66,52 L64,54 L62,52 L60,54 L58,56 L56,54 L54,56 L52,58 L50,56 L48,54 L46,52 L44,50 L42,48 L40,46 L38,44 L36,42 L34,40 L36,38 L38,36 L40,38 L42,36 Z" fill="#2a6840" stroke="#388550" stroke-width=".4"/>
+<!-- Great Lakes -->
+<path d="M60,40 Q62,41 61,43 Q59,42 60,40 Z" fill="#10405c" opacity=".6"/>
+<path d="M63,39 Q65,40 64,42 Q62,41 63,39 Z" fill="#10405c" opacity=".5"/>
+<!-- Florida peninsula -->
+<path d="M58,56 L60,58 L62,62 L64,66 L62,68 L60,66 L58,62 L56,60 L56,58 Z" fill="#2a6840" stroke="#388550" stroke-width=".3"/>
+<!-- Gulf of Mexico (water) -->
+<path d="M44,56 Q48,62 52,64 Q56,66 58,62 L56,58 L52,58 L50,56 L48,54 L46,56 Z" fill="#0e3a55" opacity=".4"/>
+<!-- Mexico -->
+<path d="M36,52 L38,50 L40,52 L42,54 L44,56 L46,58 L48,60 L46,62 L44,64 L42,66 L40,68 L38,66 L36,64 L34,62 L32,60 L34,58 L36,56 Z" fill="#2a6840" stroke="#388550" stroke-width=".4"/>
+<!-- ═══ CENTRAL AMERICA & CARIBBEAN ═══ -->
+<path d="M42,68 L44,70 L46,72 L48,74 L50,76 L48,78 L46,76 L44,74 L42,72 L40,70 Z" fill="#2a6840" stroke="#388550" stroke-width=".3"/>
+<!-- Cuba -->
+<path d="M52,66 L56,64 L60,66 L62,68 L60,69 L56,68 L52,67 Z" fill="#2a6840" stroke="#388550" stroke-width=".3"/>
+<!-- Hispaniola -->
+<path d="M64,68 L67,67 L69,69 L67,70 L64,69 Z" fill="#2a6840" stroke="#388550" stroke-width=".25"/>
+<!-- Puerto Rico -->
+<ellipse cx="71" cy="69" rx="1.5" ry=".8" fill="#2a6840" opacity=".7"/>
+<!-- Jamaica -->
+<ellipse cx="60" cy="70" rx="1.5" ry=".7" fill="#2a6840" opacity=".6"/>
+<!-- Lesser Antilles -->
+<circle cx="74" cy="72" r=".6" fill="#2a6840" opacity=".5"/>
+<circle cx="75" cy="74" r=".5" fill="#2a6840" opacity=".5"/>
+<circle cx="76" cy="76" r=".5" fill="#2a6840" opacity=".4"/>
+<!-- ═══ SOUTH AMERICA ═══ -->
+<!-- Venezuela/Colombia coast + Guianas + Brazil bulge + full continent -->
+<path d="M50,78 L54,76 L58,78 L62,76 L66,78 L70,76 L74,78 L78,80 L82,78 L84,80 L86,84 L88,88 L88,92 L86,96 L84,100 L82,104 L80,108 L78,112 L76,116 L72,120 L68,124 L64,126 L60,128 L56,126 L54,122 L52,118 L50,114 L48,108 L46,102 L46,96 L48,90 L50,86 L48,82 Z" fill="#2a6840" stroke="#388550" stroke-width=".4"/>
+<!-- Amazon basin (slightly different shade) -->
+<path d="M62,84 Q72,86 78,90 Q80,96 74,100 Q66,96 60,90 Q58,86 62,84 Z" fill="#24602e" opacity=".4"/>
+<!-- ═══ GREENLAND ═══ -->
+<path d="M72,18 L74,16 L78,14 L82,15 L86,16 L88,18 L90,22 L88,26 L86,28 L82,30 L78,28 L76,26 L74,24 L72,22 Z" fill="#4a8a6a" stroke="#5aaa78" stroke-width=".3" opacity=".75"/>
+<!-- interior ice -->
+<path d="M76,18 Q82,17 86,20 Q88,24 84,27 Q80,26 76,22 Z" fill="rgba(180,210,220,.12)"/>
+<!-- ═══ ICELAND ═══ -->
+<path d="M88,24 L90,22 L93,23 L92,26 L89,26 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".6"/>
+<!-- ═══ BRITISH ISLES ═══ -->
+<!-- Great Britain -->
+<path d="M97,32 L98,30 L99,28 L101,30 L100,33 L99,35 L97,34 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".85"/>
+<!-- Ireland -->
+<path d="M94,31 L96,30 L97,32 L96,34 L94,33 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".8"/>
+<!-- ═══ SCANDINAVIA ═══ -->
+<path d="M108,18 L110,15 L112,14 L114,16 L115,20 L116,24 L118,28 L116,32 L114,30 L112,28 L110,26 L108,24 L106,22 L107,20 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".85"/>
+<!-- Finland -->
+<path d="M118,18 L120,16 L122,18 L122,24 L120,28 L118,26 L116,22 L118,20 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".75"/>
+<!-- ═══ EUROPE ═══ -->
+<!-- Iberian Peninsula -->
+<path d="M93,38 L96,36 L99,37 L100,40 L98,43 L96,44 L93,44 L91,42 L92,40 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".88"/>
+<!-- France -->
+<path d="M99,33 L102,32 L105,33 L106,36 L104,38 L100,38 L98,36 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".88"/>
+<!-- Central Europe (Germany/Poland/etc) -->
+<path d="M105,30 L110,28 L114,30 L118,32 L120,34 L122,36 L120,38 L116,38 L112,38 L108,38 L106,36 L104,34 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".85"/>
+<!-- Italy -->
+<path d="M106,38 L108,40 L109,42 L110,44 L112,48 L110,50 L108,48 L106,46 L105,44 L104,42 L105,40 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".82"/>
+<!-- Sicily -->
+<ellipse cx="108" cy="51" rx="1.5" ry="1" fill="#2a6840" opacity=".6"/>
+<!-- Sardinia + Corsica -->
+<ellipse cx="104" cy="44" rx=".8" ry="1.5" fill="#2a6840" opacity=".5"/>
+<ellipse cx="104" cy="42" rx=".7" ry="1" fill="#2a6840" opacity=".5"/>
+<!-- Balkans / Greece -->
+<path d="M114,40 L118,38 L120,40 L122,42 L120,44 L118,46 L116,48 L114,46 L112,44 L113,42 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".82"/>
+<!-- Greece peninsula + Peloponnese -->
+<path d="M116,48 L118,50 L117,52 L115,51 L114,49 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".7"/>
+<!-- Crete -->
+<ellipse cx="118" cy="53" rx="2" ry=".6" fill="#2a6840" opacity=".5"/>
+<!-- Turkey -->
+<path d="M120,42 L124,40 L128,42 L132,42 L134,44 L132,46 L128,46 L124,46 L120,44 Z" fill="#3a7450" stroke="#388550" stroke-width=".3" opacity=".8"/>
+<!-- Ukraine / Russia west -->
+<path d="M120,32 L124,30 L128,32 L132,30 L136,32 L138,34 L136,38 L132,40 L128,42 L124,40 L120,40 L118,38 L120,36 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".78"/>
+<!-- Mediterranean Sea hint -->
+<path d="M94,44 Q100,46 106,44 Q110,46 114,44 Q118,46 120,44" fill="none" stroke="#0e4060" stroke-width="1.2" opacity=".3"/>
+<!-- ═══ AFRICA ═══ -->
+<!-- Northwest Africa (Morocco/Algeria/Tunisia) -->
+<path d="M92,48 L96,46 L100,47 L104,46 L108,48 L112,47 L114,50 L112,54 L108,52 L104,54 L100,52 L96,52 L92,52 L90,50 Z" fill="#4a8050" stroke="#388550" stroke-width=".35" opacity=".88"/>
+<!-- Sahara band (lighter) -->
+<path d="M90,52 L96,52 L100,52 L104,54 L108,52 L112,54 L116,56 L120,58 L122,62 L118,64 L112,62 L106,62 L100,62 L96,60 L92,58 L88,56 Z" fill="#5a8a50" stroke="#4a7a48" stroke-width=".3" opacity=".7"/>
+<!-- West Africa (Gulf of Guinea coast) -->
+<path d="M88,56 L92,58 L96,60 L100,62 L96,66 L92,68 L88,70 L86,68 L84,66 L82,64 L84,62 L86,60 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".85"/>
+<!-- Central/East Africa -->
+<path d="M100,62 L106,62 L112,62 L118,64 L122,62 L126,64 L128,68 L130,72 L128,78 L126,82 L124,86 L122,88 L118,90 L114,92 L110,90 L106,88 L102,86 L100,82 L98,78 L96,74 L94,70 L96,66 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".88"/>
+<!-- Horn of Africa -->
+<path d="M130,64 L134,62 L136,64 L134,68 L130,72 L128,68 Z" fill="#4a7a4a" stroke="#388550" stroke-width=".3" opacity=".75"/>
+<!-- Southern Africa -->
+<path d="M102,86 L106,88 L110,90 L114,92 L116,96 L114,100 L112,104 L108,108 L104,110 L100,108 L96,104 L94,100 L94,96 L96,92 L98,88 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".88"/>
+<!-- Madagascar -->
+<path d="M132,88 L134,86 L136,88 L136,94 L134,98 L132,96 L130,92 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".7"/>
+<!-- ═══ MIDDLE EAST ═══ -->
+<!-- Arabian Peninsula -->
+<path d="M126,50 L130,48 L134,50 L136,54 L138,58 L136,62 L132,64 L128,62 L126,58 L124,54 Z" fill="#5a8a50" stroke="#4a7a48" stroke-width=".3" opacity=".7"/>
+<!-- Red Sea -->
+<path d="M124,54 Q126,60 128,66" fill="none" stroke="#0e3a55" stroke-width="1" opacity=".4"/>
+<!-- Persian Gulf -->
+<path d="M134,50 Q136,52 134,54" fill="none" stroke="#0e3a55" stroke-width=".8" opacity=".35"/>
+<!-- ═══ ASIA ═══ -->
+<!-- Russia/Siberia -->
+<path d="M136,28 L140,26 L146,24 L152,22 L158,20 L164,22 L168,24 L172,22 L174,26 L170,30 L166,28 L162,30 L158,28 L154,30 L150,28 L146,30 L142,28 L138,30 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".75"/>
+<!-- Central Asia (Kazakhstan etc) -->
+<path d="M134,36 L138,34 L142,34 L146,36 L148,38 L146,40 L142,42 L138,40 L136,38 Z" fill="#3a7450" stroke="#388550" stroke-width=".3" opacity=".72"/>
+<!-- India -->
+<path d="M140,50 L144,48 L148,50 L150,54 L152,60 L150,66 L146,70 L142,68 L138,64 L136,60 L138,56 L140,52 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".85"/>
+<!-- Sri Lanka -->
+<ellipse cx="148" cy="72" rx="1.5" ry="2" fill="#2a6840" opacity=".6"/>
+<!-- China / East Asia -->
+<path d="M150,32 L156,30 L162,32 L168,34 L172,38 L174,42 L172,46 L168,50 L164,52 L160,50 L156,48 L152,46 L150,42 L148,38 L150,34 Z" fill="#2a6840" stroke="#388550" stroke-width=".35" opacity=".82"/>
+<!-- Korea -->
+<path d="M170,40 L172,38 L174,42 L172,46 L170,44 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".7"/>
+<!-- Japan -->
+<path d="M176,34 L178,32 L179,36 L178,40 L176,42 L175,38 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".7"/>
+<path d="M174,44 L176,42 L177,46 L175,47 Z" fill="#2a6840" opacity=".5"/>
+<!-- Southeast Asia (Indochina) -->
+<path d="M156,52 L160,50 L164,52 L166,56 L168,60 L166,64 L162,66 L158,64 L156,60 L154,56 Z" fill="#2a6840" stroke="#388550" stroke-width=".3" opacity=".8"/>
+<!-- Malay Peninsula -->
+<path d="M158,66 L160,68 L162,72 L160,74 L158,72 L156,70 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".7"/>
+<!-- Indonesia — Sumatra -->
+<path d="M154,72 L158,74 L160,78 L156,80 L152,76 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".65"/>
+<!-- Java -->
+<path d="M160,80 L166,78 L170,80 L168,82 L162,82 Z" fill="#2a6840" opacity=".55"/>
+<!-- Borneo -->
+<path d="M164,70 L168,68 L172,72 L170,76 L166,74 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".6"/>
+<!-- Sulawesi -->
+<path d="M172,74 L174,72 L176,76 L174,78 Z" fill="#2a6840" opacity=".45"/>
+<!-- Philippines -->
+<path d="M170,58 L172,56 L174,60 L172,64 L170,62 Z" fill="#2a6840" stroke="#388550" stroke-width=".2" opacity=".6"/>
+<!-- Taiwan -->
+<ellipse cx="172" cy="50" rx="1" ry="1.5" fill="#2a6840" opacity=".55"/>
+<!-- Papua New Guinea -->
+<path d="M180,72 L184,70 L186,74 L184,78 L180,76 Z" fill="#2a6840" opacity=".5"/>
+<!-- ═══ AUSTRALIA ═══ -->
+<path d="M164,84 L168,82 L174,80 L180,82 L184,86 L186,90 L184,96 L180,102 L176,106 L170,108 L164,106 L160,102 L158,96 L158,90 L160,86 Z" fill="#3a7450" stroke="#388550" stroke-width=".35" opacity=".8"/>
+<!-- Tasmania -->
+<ellipse cx="174" cy="110" rx="2" ry="1.5" fill="#2a6840" opacity=".55"/>
+<!-- New Zealand -->
+<path d="M190,100 L192,96 L193,100 L192,104 L190,103 Z" fill="#2a6840" stroke="#388550" stroke-width=".25" opacity=".55"/>
+<path d="M189,106 L191,104 L192,108 L190,109 Z" fill="#2a6840" opacity=".45"/>
+<!-- ═══ ANTARCTICA ═══ -->
+<path d="M28,156 Q44,150 62,153 Q78,148 96,152 Q112,148 128,152 Q142,148 158,153 Q170,157 172,162 L28,162 Z" fill="#5a8a9a" opacity=".2"/>
+<!-- ice shelf highlights -->
+<path d="M50,153 Q70,150 90,153" fill="none" stroke="rgba(200,220,230,.08)" stroke-width="1"/>
+<path d="M110,152 Q130,149 148,153" fill="none" stroke="rgba(200,220,230,.06)" stroke-width=".8"/>
+<!-- ═══ CLOUD COVER ═══ -->
+<path d="M34,42 Q40,38 48,42 Q54,38 58,42" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1.8" stroke-linecap="round"/>
+<path d="M120,58 Q128,54 138,58 Q144,54 150,58" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M62,98 Q70,94 80,98 Q86,94 90,98" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1.2" stroke-linecap="round"/>
+<path d="M148,36 Q154,32 162,36" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1" stroke-linecap="round"/>
+<path d="M38,74 Q46,70 56,74" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="1" stroke-linecap="round"/>
+<path d="M160,86 Q168,82 176,86" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="1" stroke-linecap="round"/>
+</g>
+<!-- sphere shading -->
+<circle cx="100" cy="100" r="72" fill="url(#gSun)"/>
+<circle cx="100" cy="100" r="72" fill="url(#gShadow)"/>
+<circle cx="100" cy="100" r="72" fill="url(#gAtmo)"/>
+<!-- rim edge -->
+<circle cx="100" cy="100" r="71.5" fill="none" stroke="rgba(120,180,240,.05)" stroke-width="1"/>
+<!-- specular highlights -->
+<ellipse cx="74" cy="64" rx="16" ry="20" fill="rgba(255,255,255,.025)"/>
+<ellipse cx="68" cy="56" rx="7" ry="9" fill="rgba(255,255,255,.035)"/>
+</svg>
+<div class="hdr-top">
+<div><h1 class="logo" style="font-family:var(--sf)">Meridian <span style="font-size:18px;font-family:var(--mf);letter-spacing:6px;text-transform:uppercase;-webkit-text-fill-color:#C27878;text-shadow:0 0 7px rgba(194,120,120,.6),0 0 20px rgba(194,120,120,.35),0 0 40px rgba(194,120,120,.15);background:none;-webkit-background-clip:unset;animation:none;margin-left:18px">THE WORLD IS YOURS</span></h1></div>
+<div style="display:flex;align-items:center;gap:10px"><button id="themeToggle" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:15px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="toggleTheme()" title="Toggle light/dark theme">&#9789;</button><button id="workflowBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--sg);border-color:var(--sb);flex-shrink:0" onclick="showWorkflows()" title="Guided analysis workflows">Workflows</button><button id="glossaryBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--lv);border-color:rgba(155,142,196,.3);flex-shrink:0" onclick="showGlossary()" title="Glossary of scientific terms">Glossary</button><button id="reproBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="exportReproZipBundle()" title="Export reproducibility bundle (ZIP)">Export Bundle</button><button id="helpBtn" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:14px;font-weight:700;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="localStorage.removeItem('meridian_onboarded');showOnboarding()">?</button><div class="meta"><div>WoRMS+GBIF+OBIS · Plotly</div><div class="tc" style="margin:4px 0 0;display:inline-block">Free</div></div></div>
+</div>
+</div>
+<div class="hdr-tabwrap">
+<div class="tabs">
+<button class="tab on" role="tab" data-tab="lit" aria-label="Literature search"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="tab-lbl">Literature</span></button>
+<button class="tab" role="tab" data-tab="library" aria-label="Paper library"><span class="tab-icon"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="4" height="11" rx="0.5"/><rect x="7" y="2" width="3.5" height="12" rx="0.5"/><path d="M12 14l2-12" stroke-width="1.5"/></svg></span><span class="tab-lbl">Library</span><span class="tc" id="libc" style="display:none">0</span></button>
+<button class="tab" role="tab" data-tab="species" aria-label="Species lookup"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" style="fill:currentColor" stroke="none"/><path d="M2 8L0 5.5M2 8L0 10.5"/></svg></span><span class="tab-lbl">Species</span></button>
+<button class="tab" role="tab" data-tab="env" aria-label="Environmental data explorer"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.5" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/><path d="M2.5 5h11M2.5 11h11"/></svg></span><span class="tab-lbl">Environmental Data</span></button>
+<button class="tab" role="tab" data-tab="workshop" aria-label="Data analysis workshop"><span class="tab-icon"><svg viewBox="0 0 16 16"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg></span><span class="tab-lbl">Analysis</span></button>
+<button class="tab" role="tab" data-tab="graph" aria-label="Citation network graph"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="3" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.8"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/><line x1="4.3" y1="3.7" x2="6.5" y2="7"/><line x1="11.7" y1="3.7" x2="9.5" y2="7"/><line x1="6.5" y1="9" x2="4.3" y2="12"/><line x1="9.5" y1="9" x2="11.7" y2="12"/></svg></span><span class="tab-lbl">Citations</span></button>
+<button class="tab" role="tab" data-tab="gaps" aria-label="Research gap analysis"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M3 2h4l1.5 2L10 2h3v4l-2 1.5L13 9v4h-4l-1 -2-1 2H3V9l2-1.5L3 6z"/></svg></span><span class="tab-lbl">Gap Analysis</span></button>
+<button class="tab" role="tab" data-tab="fielddata" aria-label="Field data upload"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M8 1v9M4 6l4 4 4-4"/><path d="M2 12h12v2H2z"/></svg></span><span class="tab-lbl">Field Data</span></button>
+<button class="tab" role="tab" data-tab="ecostats" aria-label="Ecological statistics"><span class="tab-icon"><svg viewBox="0 0 16 16"><text x="3" y="13" font-size="14" font-weight="700" fill="currentColor" stroke="none">Σ</text></svg></span><span class="tab-lbl">Eco Stats</span></button>
+<button class="tab" role="tab" data-tab="studydesign" aria-label="Study design calculators"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M3 2h10v12H3z" fill="none"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span><span class="tab-lbl">Study Design</span></button>
+<button class="tab" role="tab" data-tab="ai" aria-label="AI research assistant"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M8 1l1.5 3.5L13 5.5l-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-1z"/><path d="M12 10l.8 1.8 1.8.5-1.3 1.3.3 1.8-1.6-.8-1.6.8.3-1.8L9.5 12.3l1.8-.5z" stroke-width="1"/></svg></span><span class="tab-lbl">AI Assistant</span></button>
+</div>
+</div>
+</header>
+<main class="mn">
+<div class="tp on" id="tab-lit">
+<div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Literature Search.</b> Searches OpenAlex, Semantic Scholar, CrossRef & PubMed simultaneously. Click a result to see its abstract, then save to Library or compile all to Workshop for analysis. You can also import papers directly by DOI below.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>
+<div class="doi-row"><input class="fi" id="doi-input" placeholder="Paste a DOI to import directly (e.g. 10.1038/s41586-020-2649-2)" style="flex:1" onkeydown="if(event.key==='Enter')importDOI()"/><button class="bt sm" onclick="importDOI()">Import DOI</button><button class="bt sm" onclick="openBatchImport()" title="Import multiple DOIs at once">Batch Import</button></div>
+<div id="litSearchRow" style="display:flex;gap:8px;margin-bottom:12px;position:relative"><div class="si-wrap"><input class="si" id="lq" placeholder="Search academic databases... (try: coral bleaching, otolith, CPUE)" aria-label="Search academic databases" onfocus="showSearchHist()" oninput="filterSearchHist()"/><button class="si-clear" type="button" onclick="$('#lq').value='';$('#lq').focus();hi('#searchHist')" aria-label="Clear search" title="Clear">×</button></div><button class="bt on" id="lsb" aria-label="Search literature">Search</button><div class="search-hist" id="searchHist"></div></div>
+<div id="litProgress" style="display:none"></div>
+<div id="litFilterRow" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center"><span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Year:</span><input class="fi" type="number" id="yf" placeholder="From" style="width:70px" min="1900" max="2030"/><span style="color:var(--tm);font-size:11px">–</span><input class="fi" type="number" id="yt" placeholder="To" style="width:70px" min="1900" max="2030"/><span style="width:1px;height:20px;background:var(--bd);margin:0 2px"></span><button class="bt sm" id="oaf" title="Show only Open Access papers">OA Only</button><span style="width:1px;height:20px;background:var(--bd);margin:0 2px"></span><span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Sort:</span><select class="fs" id="sby"><option value="relevance">Relevance</option><option value="citations">Most Cited</option><option value="year">Newest First</option></select><span style="width:1px;height:20px;background:var(--bd);margin:0 2px"></span><button class="bt sm" id="togEng" title="Browse additional search engines">Engines</button><button class="bt sm" id="togJnl" title="Filter by journal">Journals</button><div id="litFilterActions" style="margin-left:auto;display:flex;gap:4px"><button class="bt sm" id="saveAllBtn" style="display:none" onclick="saveAllToLib()">Save All → Library</button><button class="bt sm on" id="compileBtn" style="display:none" onclick="compileToWS()">Compile → Workshop</button></div></div>
+<div id="engPanel" style="display:none"></div><div id="jnlPanel" style="display:none"></div>
+<div id="lstat" style="display:none;font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:10px"></div><div id="lres"></div><div id="lemp"></div>
+</div>
+<div class="tp" id="tab-library"><div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Local Paper Database.</b> Persists between sessions (IndexedDB). Full-text search across titles, abstracts, concepts. Extract numeric data from abstracts → Workshop.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div><div id="lib-content"><div class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F4DA;</div>Your library is empty. Search for papers in the Literature tab and save them here for analysis.</div></div></div>
+<div class="tp" id="tab-species"><div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Species Database.</b> Enter a scientific or common name to retrieve taxonomy (WoRMS), global occurrences (GBIF+OBIS), and biology (FishBase/SeaLifeBase). Results include maps, depth profiles, and downloadable data.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>
+<div style="display:flex;gap:8px;margin-bottom:12px"><input class="si" id="sq" placeholder="Scientific or common name (e.g. Tursiops truncatus, humpback whale, clownfish)" aria-label="Search species"/><button class="bt on" id="ssb" aria-label="Search species">Search</button><button class="bt sm" onclick="openSpeciesCompare()">Compare</button></div>
+<div id="sload" style="display:none"></div><div id="sres"><div class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F41F;</div>Search for a species by scientific or common name to see taxonomy, occurrences, and biology.</div></div></div>
+<div class="tp" id="tab-env"><div class="tip tip-inline"><b>Historical environmental data.</b> Click the map to select a point or draw a rectangle for area averages. Toggle NOAA layers to explore global SST, chlorophyll, and bathymetry patterns. <span class="tip-lag">Note: SST has ~2 week lag, Chlorophyll ~8 day lag, PAR covers 2012–2022 only.</span></div>
+<!-- Group A: Map & Layers (open) -->
+<div class="sec" id="env-grp-map">
+<div class="sh" onclick="toggleEnvGroup('map')"><h4>Map & Layers</h4><span style="color:var(--tm)" id="env-map-arrow">▾</span></div>
+<div class="sb" id="env-map-body">
+<div class="map-toolbar">
+<div class="map-toolbar-row">
+  <span class="ctrl-group"><span class="lbl">Layers</span>
+    <button class="bt sm" id="ml-sst" onclick="toggleMapLayer('sst')" title="Sea Surface Temperature (NOAA OISST v2.1, 0.25° grid)">SST</button>
+    <button class="bt sm" id="ml-chlor" onclick="toggleMapLayer('chlor')" title="Chlorophyll-a concentration (MODIS Aqua, ~4 km, ~8-day lag)">Chlorophyll</button>
+    <button class="bt sm" id="ml-bath" onclick="toggleMapLayer('bath')" title="ETOPO1 bathymetry/topography (1 arc-minute resolution)">Bathymetry</button>
+  </span>
+  <span class="ctrl-group"><span class="lbl">Base</span>
+    <button class="bt sm on" id="base-dark" onclick="switchBasemap('dark')">Dark</button>
+    <button class="bt sm" id="base-sat" onclick="switchBasemap('satellite')">Satellite</button>
+  </span>
+  <input class="fi" id="geoSearch" placeholder="Search place..." style="padding:8px;font-size:12px;max-width:160px" onkeydown="if(event.key==='Enter')geoLookup()"/>
+  <button class="bt sm" onclick="geoLookup()">Go</button>
+  <div class="geo-results" id="geoResults"></div>
+  <span style="flex:1"></span>
+  <span id="area-indicator"></span>
+  <span class="coord-readout" id="coordReadout">—</span>
+  <button class="bt sm" id="envMoreTools" onclick="toggleEnvTools()" style="font-size:11px">More Tools ▾</button>
+</div>
+<div class="map-toolbar-drawer" id="env-secondary-tools" style="display:none">
+  <div class="tool-group">
+    <span class="tool-group-label">Extra Layers</span>
+    <button class="bt sm" id="ml-sst_anom" onclick="toggleMapLayer('sst_anom')" title="SST Anomaly — deviation from 1991–2020 climatological mean">SST Anomaly</button>
+    <button class="bt sm" id="ml-par" onclick="toggleMapLayer('par')" title="Diffuse attenuation coefficient for PAR (2012–2022 only)">Kd(PAR)</button>
+    <button class="bt sm" id="ml-dhw" onclick="toggleMapLayer('dhw')" title="Degree Heating Weeks — accumulated thermal stress for coral bleaching">DHW</button>
+    <button class="bt sm" id="ml-gfw" title="Fishing Effort (Global Fishing Watch)" onclick="toggleMapLayer('gfw')">Fishing</button>
+  </div>
+  <div class="tool-group">
+    <span class="tool-group-label">Climate Indices</span>
+    <button class="bt sm" id="idx-oni" onclick="toggleClimateIndex('oni')" title="ONI/ENSO — time series overlay applied during data fetch. Not a spatial map layer.">ONI/ENSO</button>
+    <button class="bt sm" id="idx-nao" onclick="toggleClimateIndex('nao')" title="NAO — time series overlay applied during data fetch. Not a spatial map layer.">NAO</button>
+    <button class="bt sm" id="idx-pdo" onclick="toggleClimateIndex('pdo')" title="PDO — time series overlay applied during data fetch. Not a spatial map layer.">PDO</button>
+  </div>
+  <div class="tool-group">
+    <span class="tool-group-label">Map Tools</span>
+    <button class="bt sm" id="wmsQueryBtn" onclick="toggleWmsQuery()" title="Click map to query WMS layer values at a point">Query</button>
+    <button class="bt sm" id="measureBtn" onclick="toggleMeasure()" title="Measure distance between points on the map">Measure</button>
+    <button class="bt sm" id="isobathBtn" onclick="toggleIsobaths()" title="Show depth contour lines (isobaths) on map">Isobaths</button>
+    <button class="bt sm" id="gratBtn" onclick="toggleGraticule()" title="Toggle latitude/longitude graticule grid overlay">Grid</button>
+    <button class="bt sm" id="dmsBtn" onclick="toggleDMS()" title="Switch coordinates between decimal degrees and degrees-minutes-seconds">DMS</button>
+  </div>
+  <div class="tool-group">
+    <span class="tool-group-label">Imagery</span>
+    <button class="bt sm" id="gibsTCBtn" onclick="toggleGIBSLayer('truecolor')" title="NASA GIBS True Color satellite imagery (MODIS Terra)">True Color</button>
+    <button class="bt sm" id="gibsIceBtn" onclick="toggleGIBSLayer('seaice')" title="NASA GIBS sea ice extent overlay">Sea Ice</button>
+  </div>
+  <div class="tool-group">
+    <span class="tool-group-label">Opacity</span>
+    <input type="range" id="wmsOpacity" min="0.1" max="1" step="0.05" value="0.75" oninput="setWmsOpacity(this.value)" style="width:100px">
+  </div>
+  <div class="tool-group" style="margin-left:auto">
+    <button class="bt sm" id="mapExportBtn" onclick="exportMap()" title="Export current map view as PNG image">Export</button>
+    <button class="bt sm" id="mapFullscreen" onclick="toggleMapFullscreen()" title="Toggle full-screen map view">Expand</button>
+    <button class="bt sm" id="clearAreaBtn" style="display:none;color:var(--co)" onclick="clearAreaSelection()">Clear Area</button>
+  </div>
+</div>
+</div>
+<div id="envMap"></div>
+<div id="noaa-filters" class="noaa-panel" style="display:none">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="lbl">NOAA Environmental Filters — select area on map</div><button class="bt sm" onclick="applyNoaaFilters()">Apply to Fetch</button></div>
+<div class="range-slider"><span style="font-size:11px;color:var(--tm);width:50px">SST</span><input type="range" id="noaa-sst-min" min="-2" max="35" value="0" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-min-v','°C')"/><span class="rv" id="noaa-sst-min-v">0°C</span><span style="color:var(--tm)">–</span><input type="range" id="noaa-sst-max" min="-2" max="35" value="30" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-max-v','°C')"/><span class="rv" id="noaa-sst-max-v">30°C</span></div>
+<div class="range-slider"><span style="font-size:11px;color:var(--tm);width:50px">Depth</span><input type="range" id="noaa-depth-min" min="0" max="11000" value="0" step="100" oninput="updateFilterLabel(this,'noaa-depth-min-v','m')"/><span class="rv" id="noaa-depth-min-v">0m</span><span style="color:var(--tm)">–</span><input type="range" id="noaa-depth-max" min="0" max="11000" value="5000" step="100" oninput="updateFilterLabel(this,'noaa-depth-max-v','m')"/><span class="rv" id="noaa-depth-max-v">5000m</span></div>
+<div class="range-slider"><span style="font-size:11px;color:var(--tm);width:50px">Chlor</span><input type="range" id="noaa-chlor-min" min="0" max="30" value="0" step="0.1" oninput="updateFilterLabel(this,'noaa-chlor-min-v','mg/m³')"/><span class="rv" id="noaa-chlor-min-v">0</span><span style="color:var(--tm)">–</span><input type="range" id="noaa-chlor-max" min="0" max="30" value="10" step="0.1" oninput="updateFilterLabel(this,'noaa-chlor-max-v','mg/m³')"/><span class="rv" id="noaa-chlor-max-v">10</span></div>
+</div>
+<div id="polygon-filter" class="noaa-panel" style="display:none">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+  <div class="lbl">Polygon Spatial Mode</div>
+</div>
+<div style="display:flex;gap:4px;margin-bottom:8px">
+  <span class="vc pm-btn" data-mode="crop" onclick="setPolygonMode('crop')">Crop</span>
+  <span class="vc pm-btn sel" data-mode="filter" onclick="setPolygonMode('filter')">Filter</span>
+  <span class="vc pm-btn" data-mode="cut" onclick="setPolygonMode('cut')">Cut</span>
+</div>
+<div id="polygon-mode-desc" style="font-size:10px;color:var(--ts);font-family:var(--mf);line-height:1.5;margin-bottom:6px">Point-in-polygon — grid points outside the polygon boundary are excluded from analysis.</div>
+<div id="polygon-stats" style="font-size:11px;color:var(--tm);font-family:var(--mf);line-height:1.6"></div>
+</div>
+<div id="env-climate-charts" style="margin-top:12px"></div>
+</div></div>
+<!-- Group B: Location & Time (collapsed, auto-opens on map click) -->
+<div class="sec" id="env-grp-loc">
+<div class="sh" onclick="toggleEnvGroup('loc')"><h4>Location & Time <span id="env-loc-ctx" style="font-weight:400;color:var(--ts);text-transform:none;letter-spacing:0;font-size:11px"></span></h4><span style="color:var(--tm)" id="env-loc-arrow">▸</span></div>
+<div class="sb" id="env-loc-body" style="display:none">
+<div class="env-coord-row" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
+<div><label for="elat" style="font-size:12px;color:var(--tm);font-family:var(--mf)">LAT</label><br><input class="fi" style="width:85px;padding:8px;font-size:13px" id="elat" value="" placeholder="36.13"/></div>
+<div><label for="elon" style="font-size:12px;color:var(--tm);font-family:var(--mf)">LON</label><br><input class="fi" style="width:85px;padding:8px;font-size:13px" id="elon" value="" placeholder="-5.35"/></div>
+<div><label for="emode" style="font-size:12px;color:var(--tm);font-family:var(--mf)">MODE</label><br><select class="fs" id="emode" style="padding:8px"><option value="latest">Latest</option><option value="timeseries" selected>Time Series</option><option value="depthprofile">Depth Profile</option></select></div>
+<div id="edepth-ctrl" style="display:none"><label for="edepth" style="font-size:12px;color:var(--tm);font-family:var(--mf)">DEPTH</label><br><select class="fs" id="edepth" style="padding:8px"><option value="0">Surface (0m)</option></select></div>
+<div id="edts"><label for="edf" style="font-size:12px;color:var(--tm);font-family:var(--mf)">DATE RANGE</label><br><input type="date" class="fi" style="width:125px;padding:6px" id="edf"/> <input type="date" class="fi" style="width:125px;padding:6px" id="edt"/></div>
+<button class="bt on" id="efb">Fetch</button><label style="font-size:11px;color:var(--tm);font-family:var(--mf);display:inline-flex;align-items:center;gap:4px;margin-left:6px;cursor:pointer" title="Fetch from all available data sources for each parameter and compute ensemble statistics"><input type="checkbox" id="efusion" onchange="_fusionMode=this.checked" style="accent-color:var(--ac)">Multi-Source</label><button class="bt sm" id="etog2" onclick="toggleCompareLocation()">+ Compare</button><button class="bt sm" id="esa">All</button><button class="bt sm" id="eca">Clear</button></div>
+<div class="query-meter" id="qmeter" style="display:none"><span class="qm-label" id="qm-txt"></span><div class="qm-bar"><div class="qm-fill" id="qm-fill"></div></div></div>
+<div id="eloc2" style="display:none;margin-top:8px;padding:8px;background:var(--be);border:1px solid var(--bd);border-radius:6px">
+  <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:4px">LOCATION 2 (comparison)</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <input class="fi" style="width:85px" id="elat2" value="" placeholder="Lat 2"/>
+    <input class="fi" style="width:85px" id="elon2" value="" placeholder="Lon 2"/>
+  </div>
+</div>
+<div style="display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap"><span style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-right:4px">Quick:</span>
+<button class="bt sm" onclick="setDateRange(30)">30 days</button><button class="bt sm" onclick="setDateRange(90)">90 days</button><button class="bt sm" onclick="setDateRange(365)">1 year</button><button class="bt sm" onclick="setDateRange(1825)">5 years</button><button class="bt sm" onclick="setDateRange(3650)">10 years</button><button class="bt sm" onclick="setCustomRange('2000-01-01')">Since 2000</button><button class="bt sm" onclick="setCustomRange('1990-01-01')">Since 1990</button></div>
+<div class="seasonal-filter-row"><span style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-right:4px">Seasonal:</span>
+<button class="bt sm" onclick="setSeasonalFilter([12,1,2])">Winter</button><button class="bt sm" onclick="setSeasonalFilter([3,4,5])">Spring</button><button class="bt sm" onclick="setSeasonalFilter([6,7,8])">Summer</button><button class="bt sm" onclick="setSeasonalFilter([9,10,11])">Fall</button>
+<span style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-left:6px">Months:</span>
+<select class="fs" id="sfrom" style="padding:4px;font-size:11px"><option value="">All</option><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select>
+<span style="font-size:11px;color:var(--tm)">to</span>
+<select class="fs" id="sto" style="padding:4px;font-size:11px"><option value="">All</option><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select>
+<button class="bt sm" id="clearSeasonBtn" style="display:none;color:var(--co)" onclick="clearSeasonalFilter()">Clear</button>
+</div>
+<div class="preset-bar"><span style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-right:4px">Presets:</span><button class="bt sm on" onclick="saveEnvPreset()">+ Save</button><span id="presetList"></span></div>
+<div style="margin-top:12px;padding:10px 12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)">
+  <div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">CMIP6 Climate Projections (2024–2050)</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:10px;color:var(--ts);font-family:var(--mf)">Multi-model ensemble · ~SSP5-8.5</span>
+    <button class="bt on" onclick="fetchCMIP6Projection()" style="margin-left:6px">Fetch Projections</button>
+  </div>
+</div>
+<div id="cmip6-chart" style="margin-top:12px"></div>
+<div id="cmip6-interp" style="display:none;margin-top:6px;font-size:12px;color:var(--ts);line-height:1.6;font-family:var(--sf)"></div>
+</div></div>
+<!-- Group C: Variables (collapsed, auto-opens on fetch) -->
+<div class="sec" id="env-grp-vars">
+<div class="sh" onclick="toggleEnvGroup('vars')"><h4>Variables <span id="env-vars-ctx" style="font-weight:400;color:var(--ts);text-transform:none;letter-spacing:0;font-size:11px"></span></h4><span style="color:var(--tm)" id="env-vars-arrow">▸</span></div>
+<div class="sb" id="env-vars-body" style="display:none">
+<div id="evars"></div>
+</div></div>
+<!-- Progress & results stay outside groups (always visible) -->
+<div id="eprog" style="display:none"></div><div id="esum"></div><div id="echarts"></div><div id="env-mhw"></div><div id="eannotations"></div><div id="ethresholds"></div><div id="esyn"></div><div id="elagcorr"></div><div id="eseason"></div><div id="edepthchart"></div><div id="env-plankton" style="margin-top:10px"></div><div id="eact" style="display:none"></div></div>
+<div class="tp" id="tab-workshop"><div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Plotly analysis.</b> 10 chart types. Export CSV/R/Python/TSV/JSON.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div><div id="wcon"><div class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F4CA;</div>No data loaded. Compile papers from Literature search results, or upload data in the Field Data tab.</div></div></div>
+<div class="tp" id="tab-graph">
+<div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Citation Graph.</b> Select a seed paper from your Library. Explore forward (cited by) and backward (references) citation chains. Visualize as a force-directed network.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>
+<div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+<button class="bt sm on" id="gm-cit" onclick="_setGraphMode('citation')">Citation Network</button>
+<button class="bt sm" id="gm-coauth" onclick="_setGraphMode('coauthor')">Co-authorship</button>
+<button class="bt sm" id="gm-brain" onclick="_setGraphMode('brainmap')">Brain Map</button>
+</div>
+<div id="bm-seed-section" style="display:none;margin-bottom:10px">
+<div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Seed papers</div>
+<div id="bm-seed-chips" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px;padding:6px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);margin-bottom:6px"><span style="font-size:11px;color:var(--ts);font-family:var(--mf);align-self:center" id="bm-seed-placeholder">No seeds selected — add from Library below</span></div>
+<button class="bt sm" onclick="openSeedSelector()">+ Add seed papers</button>
+</div>
+<div id="bm-expansion-row" style="display:none;margin-bottom:10px">
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+<span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Expand via:</span>
+<label class="bm-edge-toggle" title="Papers that cite your seeds, and papers your seeds cite"><input type="checkbox" id="bmet-citation" checked onchange="toggleEdgeType('citation',this.checked)"><span class="bmet-label" style="background:#E6F1FB;color:#0C447C">Citations</span></label>
+<label class="bm-edge-toggle" title="Papers sharing conceptual similarity via OpenAlex concept vectors"><input type="checkbox" id="bmet-concept" checked onchange="toggleEdgeType('concept',this.checked)"><span class="bmet-label" style="background:#E1F5EE;color:#085041">Concepts</span></label>
+<label class="bm-edge-toggle" title="Papers studying the same species or taxa"><input type="checkbox" id="bmet-species" checked onchange="toggleEdgeType('species',this.checked)"><span class="bmet-label" style="background:#FAECE7;color:#712B13">Species</span></label>
+<label class="bm-edge-toggle" title="Papers from the same geographic region"><input type="checkbox" id="bmet-geographic" checked onchange="toggleEdgeType('geographic',this.checked)"><span class="bmet-label" style="background:#FAEEDA;color:#633806">Geographic</span></label>
+<label class="bm-edge-toggle" title="Papers using the same research methods"><input type="checkbox" id="bmet-method" checked onchange="toggleEdgeType('method',this.checked)"><span class="bmet-label" style="background:#EEEDFE;color:#3C3489">Methods</span></label>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+<button class="bt on" id="bm-build-btn" onclick="buildBrainMap(getSelectedSeedIds())">Build Map</button>
+<select class="fs" id="bm-layout" onchange="switchLayout(this.value)" style="width:140px">
+<option value="force">Force-directed</option>
+<option value="temporal">Timeline</option>
+<option value="cluster">Thematic clusters</option>
+<option value="radial">Radial (ego)</option>
+</select>
+<input type="number" id="bm-hops" value="2" min="1" max="3" style="width:50px" title="Expansion depth — number of hops from seed papers">
+<span style="font-size:11px;color:var(--tm);font-family:var(--mf)">hops</span>
+<span style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-left:4px">Min score:</span>
+<input type="range" id="bm-threshold" min="0" max="0.7" step="0.05" value="0.3" style="width:70px" oninput="updateThreshold(parseFloat(this.value))">
+<span id="bm-threshold-val" style="font-size:11px;color:var(--tm);font-family:var(--mf);min-width:28px">0.30</span>
+<button class="bt sm" onclick="saveBrainMap()" title="Save map to Library">Save</button>
+<button class="bt sm" onclick="exportBrainMapJSON()" title="Export graph as JSON">Export</button>
+<span id="bmStats" style="margin-left:auto;font-size:11px;color:var(--tm);font-family:var(--mf)"></span>
+</div>
+</div>
+<details id="bm-score-weights" style="display:none;margin-bottom:10px">
+<summary style="font-size:11px;color:var(--tm);font-family:var(--mf);cursor:pointer;user-select:none;padding:4px 0">Score weights ▾</summary>
+<div id="bm-weight-sliders" style="margin-top:8px;display:grid;grid-template-columns:100px 1fr 32px;gap:4px 8px;align-items:center"></div>
+<div style="margin-top:6px;font-size:10px;color:var(--ts);font-family:var(--mf)">Adjust to prioritise different paper qualities. Weights auto-normalise to 1.0.</div>
+</details>
+<div id="graph-cit-controls" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+<select class="fs" id="graphSeedSel" style="flex:1;max-width:400px"><option value="">Select seed paper from Library...</option></select>
+<select class="fi" id="graphEngine" style="width:120px" title="Citation data source">
+<option value="openalex" selected>OpenAlex</option>
+<option value="s2">Semantic Scholar</option>
+</select>
+<input class="fi" type="number" id="graphDepth" value="1" min="1" max="3" style="width:60px" title="Traversal depth"/>
+<span style="font-size:11px;color:var(--tm);font-family:var(--mf)">hops</span>
+<button class="bt on" onclick="buildCitGraph()">Build Graph</button>
+<button class="bt sm" onclick="snowballDiscover()">Snowball</button>
+</div>
+<div id="graph-coauth-controls" style="display:none;margin-bottom:12px">
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+<button class="bt on" onclick="buildCoauthorGraph()">Build Co-authorship Graph</button>
+<input class="si" id="coauth-inst-filter" placeholder="Filter by institution..." oninput="_coauthFilter(this.value)" style="max-width:250px;padding:6px 10px;font-size:12px">
+</div>
+</div>
+<div id="bm-legend" style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">
+<span class="idx-legend"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ac);margin-right:3px"></span>Seed</span>
+<span class="idx-legend"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--sg);margin-right:3px"></span>Cites (forward)</span>
+<span class="idx-legend"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--lv);margin-right:3px"></span>Referenced by (backward)</span>
+<span id="graphStats" style="margin-left:auto;font-size:11px;color:var(--tm);font-family:var(--mf)"></span>
+</div>
+<div id="bm-main" style="display:flex;gap:10px;align-items:flex-start">
+<div id="bm-graph-col" style="flex:1;min-width:0">
+<div id="citGraphWrap" style="position:relative"><svg id="citGraphSvg" height="500"></svg><div id="citGraphEmpty" class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F578;&#xFE0F;</div>Select a seed paper from your Library to build a citation network.</div></div>
+<div id="bm-progress" style="display:none;margin-top:8px;padding:8px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)">
+<div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:4px">Building map...</div>
+<div id="bm-prog-citation" class="bm-prog-row">Citations: waiting</div>
+<div id="bm-prog-concept" class="bm-prog-row">Concepts: waiting</div>
+<div id="bm-prog-species" class="bm-prog-row">Species: waiting</div>
+<div id="bm-prog-geographic" class="bm-prog-row">Geographic: waiting</div>
+<div id="bm-prog-method" class="bm-prog-row">Methods: waiting</div>
+<div id="bm-prog-scoring" class="bm-prog-row">Scoring: waiting</div>
+</div>
+</div>
+<div id="bm-rec-panel" style="width:290px;flex-shrink:0;display:none;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:10px;max-height:520px;overflow-y:auto">
+<div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Recommended papers</div>
+<div style="font-size:11px;color:var(--ts);font-family:var(--mf);display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">Sort:
+<span class="bm-sort-btn on" onclick="sortRecs('composite',this)">Overall</span>
+<span class="bm-sort-btn" onclick="sortRecs('confidence',this)">Confidence</span>
+<span class="bm-sort-btn" onclick="sortRecs('application',this)">Applied</span>
+<span class="bm-sort-btn" onclick="sortRecs('relevance',this)">Relevant</span>
+<span class="bm-sort-btn" onclick="sortRecs('recency',this)">Recent</span>
+</div>
+<div id="bm-rec-list"></div>
+</div>
+</div>
+<div id="graphPaperDetail" style="margin-top:12px"></div>
+</div>
+<div class="tp" id="tab-gaps">
+<div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Gap Network.</b> Scans your library for research gaps — weighted by importance from Actionable (10) to Theoretical (1). Gaps connect into a network through shared species, regions, and methods.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+<button class="bt on" onclick="buildGapMap()">Discover Gaps</button>
+<button class="bt sm" onclick="detectContradictions()">Contradictions</button>
+<button class="bt sm" style="color:var(--lv);border-color:rgba(155,142,196,.3)" onclick="showEffectSizeCalc()">Effect Size Calculator</button>
+<span id="gapStats" style="margin-left:auto;font-size:11px;color:var(--tm);font-family:var(--mf)"></span>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+<span style="font-size:10px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px">Visualise</span>
+<button class="bt sm" onclick="buildTimeline()">Temporal Coverage</button>
+<button class="bt sm" onclick="buildForestPlot()">Sample Size Plot</button>
+<button class="bt sm" onclick="buildKeywordNetwork()">Keyword Network</button>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+<span style="font-size:10px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px">Export</span>
+<button class="bt sm" onclick="buildEvidenceTable()">Evidence Table</button>
+<button class="bt sm" onclick="buildPRISMADiagram()">PRISMA Flow</button>
+<button class="bt sm" style="color:var(--sg);border-color:var(--sb)" onclick="generateReport()">Generate Report</button>
+</div>
+</div>
+<div id="gapContent"><div class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F50D;</div>Click 'Discover Gaps' to scan your library for research gaps. Add papers to your library first.</div></div>
+</div>
+<div class="tp" id="tab-fielddata"><div id="fd-content"></div></div>
+<div class="tp" id="tab-ecostats"><div id="es-content"></div></div>
+<div class="tp" id="tab-studydesign"><div id="sd-content"></div></div>
+<div class="tp" id="tab-ai">
+<div style="margin-bottom:14px;padding:14px 18px;background:linear-gradient(135deg,var(--am),rgba(123,158,135,.06));border:1px solid var(--ab);border-radius:var(--rd);font-size:13px;color:var(--ts);line-height:1.65"><b style="color:var(--ac)">AI Research Assistant.</b> Ask questions about your library, request statistical advice, generate R/Python code for your data, or explore methods. The assistant has access to your saved papers, environmental data, and analysis results.</div>
+<div id="ai-session-ctx" style="margin-bottom:10px;padding:8px 12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);font-size:11px;color:var(--tm);font-family:var(--mf)">
+  <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleAiCtx()">
+    <span id="ai-ctx-summary">Session context: loading…</span>
+    <span id="ai-ctx-arrow" style="color:var(--ts)">▸</span>
+  </div>
+  <pre id="ai-ctx-detail" style="display:none;margin-top:8px;white-space:pre-wrap;font-size:10px;line-height:1.6;color:var(--ts)"></pre>
+</div>
+<details id="aks-details" style="margin-bottom:12px">
+<summary style="cursor:pointer;font-size:12px;font-family:var(--mf);color:var(--tm);padding:8px 0;user-select:none">API Key Settings</summary>
+<div id="aks" style="padding:12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)"><div style="display:flex;gap:8px;align-items:center"><select class="fs" id="aip" style="min-width:150px;display:none"><option value="anthropic" selected>Anthropic (Claude)</option></select><input type="password" class="si" id="aki" placeholder="Paste your Anthropic API key (sk-ant-...)" style="font-size:12px;flex:1"/><button class="bt on" id="akb">Save</button></div><div style="margin-top:6px;font-size:11px;color:var(--tm);font-family:var(--mf)" id="aim">Model: Claude Sonnet 4.6 — key required for AI features</div></div>
+</details>
+<div class="cc"><div class="cm" id="cmsg"></div><div style="display:flex;gap:8px;flex-shrink:0"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div></div>
+</main>
+<footer style="padding:12px 30px;text-align:center;font-size:11px;color:var(--tm);font-family:var(--mf);border-top:1px solid var(--bd)">
+<span>Meridian Engine</span>
+<span style="margin:0 6px">·</span>
+<a href="#" onclick="event.preventDefault();showPrivacyPolicy()" style="color:var(--tm);text-decoration:underline">Privacy</a>
+<span style="margin:0 6px">·</span>
+<a href="#" onclick="event.preventDefault();showTerms()" style="color:var(--tm);text-decoration:underline">Terms</a>
+<span style="margin:0 6px">·</span>
+<a href="#" onclick="event.preventDefault();_errPipeline.showConsole()" style="color:var(--tm);text-decoration:none" title="Error Console (Ctrl+Shift+E)">
+<svg viewBox="0 0 16 16" width="12" height="12" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" style="vertical-align:-2px"><path d="M2 12c1-2 3-3 6-3s5 1 6 3"/><circle cx="5" cy="5" r="1.5"/><circle cx="11" cy="5" r="1.5"/><path d="M4 1L5 3M12 1l-1 2M1 6h2M13 6h2"/></svg>
+</a>
+</footer>
+</div>
+<script src="meridian-core.js"></script>
+<script src="meridian-stats.js"></script>
+<script src="meridian-gapfill.js"></script>
+<script src="meridian-session.js"></script>
+<script src="meridian-ui.js"></script>
+<script src="meridian-data.js"></script>
+<script src="meridian-workshop.js"></script>
+<script src="meridian-features.js"></script>
+<script src="meridian-brainmap.js"></script>
+<script src="meridian-fielddata.js"></script>
+<script src="meridian-ecostats.js"></script>
+<script src="meridian-repro.js"></script>
+<script src="meridian-studydesign.js"></script>
+<script src="meridian-padi.js"></script>
+</body>
+</html>
