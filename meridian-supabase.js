@@ -75,8 +75,9 @@ function _renderAuthUI(){
   if(_supaUser){
     const email=_supaUser.email||'';
     const short=email.length>20?email.slice(0,17)+'...':email;
-    el.textContent=short;
-    el.title='Signed in as '+email+' — click to manage';
+    const prefix=_supaIsAdmin?'\u{1F6E1}\uFE0F ':'';
+    el.textContent=prefix+short;
+    el.title=(_supaIsAdmin?'[Admin] ':'')+'Signed in as '+email+' — click to manage';
     el.onclick=_showAccountMenu;
   }else{
     el.textContent='Sign In';
@@ -86,18 +87,32 @@ function _renderAuthUI(){
 }
 
 async function _checkAdminRole(){
-  if(!_supa||!_supaUser){_supaIsAdmin=false;console.log('[Meridian Auth] admin check skipped — no client or user');return}
+  if(!_supa||!_supaUser){
+    _supaIsAdmin=false;
+    console.log('[Meridian Auth] admin check skipped — supa:',!!_supa,'user:',!!_supaUser);
+    return;
+  }
+  console.log('[Meridian Auth] querying user_roles for user_id:', _supaUser.id);
   try{
-    const{data,error}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).maybeSingle();
-    console.log('[Meridian Auth] admin check result:', data, error||'no error');
-    _supaIsAdmin=data?.role==='admin';
-  }catch(e){console.warn('[Meridian Auth] admin check failed:', e);_supaIsAdmin=false}
-  console.log('[Meridian Auth] isAdmin:', _supaIsAdmin);
+    const{data,error}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).single();
+    if(error){
+      console.warn('[Meridian Auth] admin query error:', error.code, error.message, error.details);
+      _supaIsAdmin=false;
+    }else{
+      console.log('[Meridian Auth] admin query returned:', JSON.stringify(data));
+      _supaIsAdmin=data?.role==='admin';
+    }
+  }catch(e){
+    console.warn('[Meridian Auth] admin check exception:', e);
+    _supaIsAdmin=false;
+  }
+  console.log('[Meridian Auth] _supaIsAdmin =', _supaIsAdmin);
 }
 
 function _renderAdminLink(){
   const el=$('#admin-link');if(!el)return;
   el.style.display=_supaIsAdmin?'inline-flex':'none';
+  console.log('[Meridian Auth] renderAdminLink — isAdmin:', _supaIsAdmin, 'element found:', !!el);
 }
 
 function _showAccountMenu(){
@@ -107,6 +122,7 @@ function _showAccountMenu(){
   m.innerHTML=`
     <div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px">Signed in as</div>
     <div style="font-size:13px;color:var(--ac);font-family:var(--mf);word-break:break-all;margin-bottom:14px">${_supaUser.email}</div>
+    ${_supaIsAdmin?'<a href="/admin" class="bt sm" style="display:block;width:100%;text-align:center;color:var(--wa);border-color:rgba(212,160,74,.3);margin-bottom:8px;font-size:12px;text-decoration:none;box-sizing:border-box">\u{1F6E1}\uFE0F Admin Dashboard</a>':''}
     <button class="bt sm" style="width:100%;color:var(--sg);border-color:var(--sb);margin-bottom:8px;font-size:12px" onclick="$('#supa-account-menu').remove();_syncOnLogin().then(()=>toast('Sync complete','ok'))">Sync Now</button>
     <button class="bt sm" style="width:100%;color:var(--co);border-color:rgba(194,120,120,.3);font-size:12px" onclick="$('#supa-account-menu').remove();_supaSignOut()">Sign Out</button>`;
   m.addEventListener('click',e=>{if(e.target===m)m.remove()});
