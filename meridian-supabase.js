@@ -86,16 +86,18 @@ function _renderAuthUI(){
 }
 
 async function _checkAdminRole(){
-  if(!_supa||!_supaUser){_supaIsAdmin=false;return}
+  if(!_supa||!_supaUser){_supaIsAdmin=false;console.log('[Meridian Auth] admin check skipped — no client or user');return}
   try{
-    const{data}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).maybeSingle();
+    const{data,error}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).maybeSingle();
+    console.log('[Meridian Auth] admin check result:', data, error||'no error');
     _supaIsAdmin=data?.role==='admin';
-  }catch(e){_supaIsAdmin=false}
+  }catch(e){console.warn('[Meridian Auth] admin check failed:', e);_supaIsAdmin=false}
+  console.log('[Meridian Auth] isAdmin:', _supaIsAdmin);
 }
 
 function _renderAdminLink(){
   const el=$('#admin-link');if(!el)return;
-  el.style.display=_supaIsAdmin?'':'none';
+  el.style.display=_supaIsAdmin?'inline-flex':'none';
 }
 
 function _showAccountMenu(){
