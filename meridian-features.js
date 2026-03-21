@@ -1052,7 +1052,7 @@ function exportMap(){
       ctx.drawImage(img,panX+tpX+left,panY+tpY+top,w,h)}catch{}});
     // Draw overlay: coordinates + timestamp
     ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,rect.height-35,rect.width,35);
-    ctx.fillStyle='#E8E0D6';ctx.font='11px JetBrains Mono, monospace';
+    ctx.fillStyle='#E8E0D6';ctx.font='11px Inconsolata, monospace';
     const center=_envMap.getCenter();
     const coordText=_coordDMS?formatCoordDMS(center.lat,center.lng):center.lat.toFixed(4)+'°N, '+center.lng.toFixed(4)+'°E';
     ctx.fillText('Meridian · '+coordText+' · z'+_envMap.getZoom()+' · '+new Date().toISOString().split('T')[0],8,rect.height-12);
@@ -2100,7 +2100,7 @@ function generateReport(){
   const html=`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Meridian Research Report</title>
 <style>
 @media print{body{font-size:11pt}h1{font-size:18pt}h2{font-size:14pt}.no-print{display:none!important}}
-body{font-family:'Source Serif Pro',Georgia,serif;max-width:800px;margin:40px auto;padding:0 20px;color:#2a2a2a;line-height:1.7}
+body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#2a2a2a;line-height:1.7}
 h1{color:#1a1a2e;border-bottom:2px solid #C9956B;padding-bottom:8px;font-size:24px}
 h2{color:#C9956B;margin-top:28px;font-size:18px}
 table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}
