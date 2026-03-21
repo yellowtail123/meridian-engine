@@ -13,21 +13,26 @@ body{background:var(--bg);color:var(--tx);font-family:var(--sf);font-size:15px;l
 a{color:var(--ac);text-decoration:none}a:hover{text-decoration:underline}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:0}::-webkit-scrollbar-thumb{background:var(--ab);border-radius:3px}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.wrap{max-width:960px;margin:0 auto;padding:30px 30px 60px}
+.wrap{max-width:1100px;margin:0 auto;padding:30px 30px 60px}
 .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--bd)}
 .hdr h1{font-size:22px;color:var(--ac);font-family:var(--sf)}
+.hdr .right{display:flex;align-items:center;gap:14px}
 .hdr .back{font-family:var(--mf);font-size:12px;color:var(--tm)}
 .hdr .back:hover{color:var(--ac)}
+.hdr .admin-email{font-family:var(--mf);font-size:11px;color:var(--ts)}
 .loading{text-align:center;padding:60px 20px;color:var(--tm);font-family:var(--mf);font-size:13px}
-.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:28px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:28px}
 .stat{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:16px;text-align:center;animation:fadeIn .3s}
-.stat .val{font-size:28px;font-weight:700;color:var(--ac);font-family:var(--mf)}
-.stat .lbl{font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+.stat .val{font-size:26px;font-weight:700;color:var(--ac);font-family:var(--mf)}
+.stat .lbl{font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
 .card{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:20px;margin-bottom:20px;animation:fadeIn .3s}
-.card h2{font-size:16px;color:var(--ac);margin-bottom:14px;font-family:var(--sf)}
+.card h2{font-size:16px;color:var(--ac);margin-bottom:14px;font-family:var(--sf);display:flex;align-items:center;gap:8px}
+.card h2 .count{font-size:11px;color:var(--tm);font-family:var(--mf);font-weight:400}
 table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mf)}
-th{text-align:left;padding:8px 10px;color:var(--tm);border-bottom:1px solid var(--ab);font-weight:500;text-transform:uppercase;letter-spacing:.5px;font-size:10px}
-td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--ts)}
+th{text-align:left;padding:8px 10px;color:var(--tm);border-bottom:1px solid var(--ab);font-weight:500;text-transform:uppercase;letter-spacing:.5px;font-size:10px;white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--ac)}
+th.sorted{color:var(--ac)}
+td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--ts);max-width:200px;overflow:hidden;text-overflow:ellipsis}
 tr:hover td{background:rgba(201,149,107,.03)}
 .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
 .badge.admin{background:var(--am);color:var(--ac)}
@@ -35,33 +40,94 @@ tr:hover td{background:rgba(201,149,107,.03)}
 .badge.banned{background:var(--cm);color:var(--co)}
 .btn{padding:4px 10px;font-size:11px;font-family:var(--mf);border:1px solid;border-radius:6px;cursor:pointer;background:0;transition:all .2s}
 .btn:hover{opacity:.8}
-.btn.ban{color:var(--co);border-color:rgba(194,120,120,.3)}
-.btn.unban{color:var(--sg);border-color:var(--sb)}
+.btn.danger{color:var(--co);border-color:rgba(194,120,120,.3)}
+.btn.safe{color:var(--sg);border-color:var(--sb)}
+.btn.primary{color:var(--ac);border-color:var(--ab)}
+.btn.sm{padding:2px 6px;font-size:10px}
 .empty{text-align:center;padding:30px;color:var(--tm);font-size:13px}
-.err-card{background:var(--bi);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:10px;font-family:var(--mf);font-size:11px}
-.err-card .err-msg{color:var(--co);margin-bottom:4px}
-.err-card .err-meta{color:var(--tm);font-size:10px}
+.filters{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.filters input,.filters select{background:var(--bi);border:1px solid var(--ab);border-radius:6px;padding:6px 10px;font-size:12px;font-family:var(--mf);color:var(--tx);outline:none}
+.filters input:focus,.filters select:focus{border-color:var(--ac)}
+.filters input{flex:1;min-width:180px}
+.filters select{min-width:100px}
+.chart-wrap{height:160px;margin-bottom:8px;display:flex;align-items:flex-end;gap:2px;padding:10px 0}
+.chart-bar{background:var(--ac);border-radius:3px 3px 0 0;min-width:6px;flex:1;transition:height .3s;position:relative;cursor:default}
+.chart-bar:hover{opacity:.8}
+.chart-bar .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--bi);border:1px solid var(--ab);border-radius:4px;padding:3px 6px;font-size:10px;font-family:var(--mf);color:var(--tx);white-space:nowrap;margin-bottom:4px}
+.chart-bar:hover .tip{display:block}
+.chart-labels{display:flex;gap:2px;font-size:9px;font-family:var(--mf);color:var(--tm)}
+.chart-labels span{flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis}
+.log-entry{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid var(--bd);font-family:var(--mf);font-size:11px}
+.log-entry:last-child{border-bottom:0}
+.log-time{color:var(--tm);font-size:10px}
+.log-action{color:var(--ts)}
+.log-action .act{font-weight:600}
+.log-action .act.ban_user,.log-action .act.delete_user{color:var(--co)}
+.log-action .act.unban_user{color:var(--sg)}
+.log-action .act.change_role{color:var(--wa)}
+.modal-overlay{position:fixed;inset:0;z-index:10006;background:rgba(6,5,14,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.modal-box{background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:24px;max-width:700px;width:100%;max-height:80vh;overflow-y:auto;animation:fadeIn .3s;position:relative}
+.modal-box h3{color:var(--ac);font-size:16px;margin-bottom:14px}
+.modal-close{position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1}
+.role-select{background:var(--bi);border:1px solid var(--ab);border-radius:4px;padding:2px 4px;font-size:10px;font-family:var(--mf);color:var(--tx);cursor:pointer}
+.actions-cell{display:flex;gap:4px;flex-wrap:nowrap}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hdr">
     <h1>Admin Dashboard</h1>
-    <a href="/" class="back">&larr; Back to Meridian</a>
+    <div class="right">
+      <span id="admin-email" class="admin-email"></span>
+      <a href="/" class="back">&larr; Back to Meridian</a>
+    </div>
   </div>
   <div id="admin-loading" class="loading">Checking authorization...</div>
   <div id="admin-content" style="display:none">
     <div id="stats-grid" class="stats"></div>
-    <div class="card">
-      <h2>Users</h2>
-      <div id="users-table"></div>
+
+    <div class="card" id="chart-card">
+      <h2>Signups Over Time <span class="count">(last 30 days)</span></h2>
+      <div id="signup-chart" class="chart-wrap"></div>
+      <div id="signup-labels" class="chart-labels"></div>
     </div>
+
     <div class="card">
-      <h2>Error Log</h2>
-      <div id="error-log"><p class="empty">Error reporting integration coming soon. Errors are currently stored client-side in each user's IndexedDB.</p></div>
+      <h2>Users <span id="user-count" class="count"></span></h2>
+      <div class="filters">
+        <input type="text" id="filter-email" placeholder="Search by email..." oninput="filterUsers()">
+        <select id="filter-role" onchange="filterUsers()">
+          <option value="">All roles</option>
+          <option value="admin">Admin</option>
+          <option value="user">User</option>
+          <option value="banned">Banned</option>
+        </select>
+        <select id="filter-provider" onchange="filterUsers()">
+          <option value="">All providers</option>
+          <option value="google">Google</option>
+          <option value="github">GitHub</option>
+          <option value="email">Email</option>
+        </select>
+      </div>
+      <div id="users-table" style="overflow-x:auto"></div>
+    </div>
+
+    <div class="card">
+      <h2>Admin Actions Log <span id="log-count" class="count"></span></h2>
+      <div id="admin-logs"></div>
     </div>
   </div>
 </div>
+
+<!-- User Library Modal -->
+<div id="library-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('library-modal').style.display='none'">&times;</button>
+    <h3 id="library-modal-title">User Library</h3>
+    <div id="library-modal-content"></div>
+  </div>
+</div>
+
 <script>
 const SUPA_URL='https://wgqfxgxnanvckgqkuqas.supabase.co';
 const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg';
@@ -69,55 +135,161 @@ const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
 const $=s=>document.querySelector(s);
 
+let allUsers=[];
+let currentSort={col:'created_at',asc:false};
+
 async function init(){
   const{data:{session}}=await supa.auth.getSession();
   if(!session){window.location.href='/';return}
 
-  // Check admin role
   const{data:role}=await supa.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
   if(!role||role.role!=='admin'){window.location.href='/';return}
 
   $('#admin-loading').style.display='none';
   $('#admin-content').style.display='block';
+  $('#admin-email').textContent=session.user.email;
 
   loadStats();
   loadUsers();
+  loadSignupChart();
+  loadLogs();
 }
 
+// ═══ STATS ═══
 async function loadStats(){
   const{data,error}=await supa.rpc('admin_get_stats');
   if(error){$('#stats-grid').innerHTML='<div class="empty">Failed to load stats</div>';return}
   const items=[
     {val:data.total_users,lbl:'Total Users'},
+    {val:data.active_7d,lbl:'Active (7d)'},
     {val:data.users_today,lbl:'Signups Today'},
     {val:data.users_this_week,lbl:'This Week'},
     {val:data.total_papers,lbl:'Papers Saved'},
-    {val:data.papers_this_week,lbl:'Papers This Week'},
+    {val:data.total_presets,lbl:'Env Presets'},
     {val:data.total_workshop,lbl:'Workshop Sets'},
     {val:data.total_analyses,lbl:'Analyses'}
   ];
-  $('#stats-grid').innerHTML=items.map(s=>'<div class="stat"><div class="val">'+s.val+'</div><div class="lbl">'+s.lbl+'</div></div>').join('');
+  $('#stats-grid').innerHTML=items.map(s=>'<div class="stat"><div class="val">'+(s.val||0)+'</div><div class="lbl">'+s.lbl+'</div></div>').join('');
 }
 
+// ═══ SIGNUP CHART ═══
+async function loadSignupChart(){
+  const{data,error}=await supa.rpc('admin_signups_over_time');
+  if(error||!data){$('#chart-card').style.display='none';return}
+  const max=Math.max(...data.map(d=>d.signups),1);
+  let bars='',labels='';
+  for(const d of data){
+    const h=Math.max((d.signups/max)*130,2);
+    const dt=new Date(d.day);
+    const label=(dt.getMonth()+1)+'/'+dt.getDate();
+    bars+='<div class="chart-bar" style="height:'+h+'px"><span class="tip">'+label+': '+d.signups+'</span></div>';
+    labels+='<span>'+label+'</span>';
+  }
+  $('#signup-chart').innerHTML=bars;
+  $('#signup-labels').innerHTML=labels;
+}
+
+// ═══ USERS ═══
 async function loadUsers(){
   const{data,error}=await supa.rpc('admin_list_users');
   if(error){$('#users-table').innerHTML='<div class="empty">Failed to load users: '+error.message+'</div>';return}
-  if(!data||!data.length){$('#users-table').innerHTML='<div class="empty">No users found</div>';return}
+  allUsers=data||[];
+  $('#user-count').textContent='('+allUsers.length+')';
+  renderUsers(allUsers);
+}
 
-  let html='<table><thead><tr><th>Email</th><th>Role</th><th>Signed Up</th><th>Last Login</th><th>Status</th><th>Action</th></tr></thead><tbody>';
-  for(const u of data){
+function filterUsers(){
+  const q=$('#filter-email').value.toLowerCase().trim();
+  const role=$('#filter-role').value;
+  const provider=$('#filter-provider').value;
+  let filtered=allUsers;
+  if(q)filtered=filtered.filter(u=>u.email&&u.email.toLowerCase().includes(q));
+  if(role){
+    if(role==='banned')filtered=filtered.filter(u=>u.is_banned);
+    else filtered=filtered.filter(u=>u.role===role&&!u.is_banned);
+  }
+  if(provider)filtered=filtered.filter(u=>u.provider===provider);
+  renderUsers(filtered);
+}
+
+function sortUsers(col){
+  if(currentSort.col===col)currentSort.asc=!currentSort.asc;
+  else{currentSort.col=col;currentSort.asc=true}
+  filterUsers();
+}
+
+function renderUsers(users){
+  if(!users.length){$('#users-table').innerHTML='<div class="empty">No users found</div>';return}
+
+  // Sort
+  const{col,asc}=currentSort;
+  users=[...users].sort((a,b)=>{
+    let va=a[col],vb=b[col];
+    if(va==null)va='';if(vb==null)vb='';
+    if(typeof va==='number')return asc?va-vb:vb-va;
+    if(typeof va==='string')return asc?va.localeCompare(vb):vb.localeCompare(va);
+    return 0;
+  });
+
+  const arrow=currentSort.asc?' &#9650;':' &#9660;';
+  const sc=col=>currentSort.col===col?'sorted':'';
+
+  let html='<table><thead><tr>';
+  html+='<th class="'+sc('email')+'" onclick="sortUsers(\'email\')">Email'+(sc('email')?arrow:'')+'</th>';
+  html+='<th class="'+sc('provider')+'" onclick="sortUsers(\'provider\')">Provider'+(sc('provider')?arrow:'')+'</th>';
+  html+='<th class="'+sc('role')+'" onclick="sortUsers(\'role\')">Role'+(sc('role')?arrow:'')+'</th>';
+  html+='<th class="'+sc('created_at')+'" onclick="sortUsers(\'created_at\')">Signed Up'+(sc('created_at')?arrow:'')+'</th>';
+  html+='<th class="'+sc('last_sign_in_at')+'" onclick="sortUsers(\'last_sign_in_at\')">Last Login'+(sc('last_sign_in_at')?arrow:'')+'</th>';
+  html+='<th class="'+sc('papers_count')+'" onclick="sortUsers(\'papers_count\')">Papers'+(sc('papers_count')?arrow:'')+'</th>';
+  html+='<th class="'+sc('presets_count')+'" onclick="sortUsers(\'presets_count\')">Presets'+(sc('presets_count')?arrow:'')+'</th>';
+  html+='<th>Actions</th>';
+  html+='</tr></thead><tbody>';
+
+  for(const u of users){
     const signup=u.created_at?new Date(u.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
     const last=u.last_sign_in_at?timeAgo(new Date(u.last_sign_in_at)):'Never';
-    const roleBadge=u.role==='admin'?'<span class="badge admin">admin</span>':'<span class="badge user">user</span>';
-    const statusBadge=u.is_banned?'<span class="badge banned">disabled</span>':'<span style="color:var(--sg);font-size:11px">active</span>';
-    const action=u.is_banned
-      ?'<button class="btn unban" onclick="toggleBan(\''+u.id+'\',false)">Enable</button>'
-      :(u.role==='admin'?'—':'<button class="btn ban" onclick="toggleBan(\''+u.id+'\',true)">Disable</button>');
-    html+='<tr><td style="color:var(--tx)">'+u.email+'</td><td>'+roleBadge+'</td><td>'+signup+'</td><td>'+last+'</td><td>'+statusBadge+'</td><td>'+action+'</td></tr>';
+    const providerLabel=u.provider==='google'?'Google':u.provider==='github'?'GitHub':'Email';
+    const roleBadge=u.is_banned?'<span class="badge banned">banned</span>'
+      :u.role==='admin'?'<span class="badge admin">admin</span>'
+      :'<span class="badge user">user</span>';
+    const totalData=(u.papers_count||0)+(u.presets_count||0)+(u.workshop_count||0)+(u.analyses_count||0);
+    const viewLib=(u.papers_count||0)>0?'<button class="btn sm primary" onclick="viewUserLibrary(\''+u.id+'\',\''+esc(u.email)+'\')">View</button>':'—';
+
+    html+='<tr>';
+    html+='<td style="color:var(--tx)">'+esc(u.email)+'</td>';
+    html+='<td>'+providerLabel+'</td>';
+    html+='<td>'+roleBadge+'</td>';
+    html+='<td>'+signup+'</td>';
+    html+='<td>'+last+'</td>';
+    html+='<td style="text-align:center">'+(u.papers_count||0)+' '+viewLib+'</td>';
+    html+='<td style="text-align:center">'+(u.presets_count||0)+'</td>';
+    html+='<td><div class="actions-cell">'+renderActions(u)+'</div></td>';
+    html+='</tr>';
   }
   html+='</tbody></table>';
   $('#users-table').innerHTML=html;
 }
+
+function renderActions(u){
+  // Don't allow actions on self
+  let btns='';
+  const isSelf=u.email===document.getElementById('admin-email').textContent;
+  if(isSelf)return '<span style="color:var(--tm);font-size:10px">you</span>';
+
+  // Role change dropdown
+  btns+='<select class="role-select" onchange="changeRole(\''+u.id+'\',this.value)">';
+  btns+='<option value="user"'+(u.role!=='admin'&&!u.is_banned?' selected':'')+'>user</option>';
+  btns+='<option value="admin"'+(u.role==='admin'?' selected':'')+'>admin</option>';
+  btns+='<option value="banned"'+(u.is_banned?' selected':'')+'>banned</option>';
+  btns+='</select>';
+
+  // Delete button
+  btns+=' <button class="btn sm danger" onclick="deleteUser(\''+u.id+'\',\''+esc(u.email)+'\')">Delete</button>';
+
+  return btns;
+}
+
+function esc(s){return s?s.replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;'):''}
 
 function timeAgo(date){
   const s=Math.floor((Date.now()-date.getTime())/1000);
@@ -128,12 +300,78 @@ function timeAgo(date){
   return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
-async function toggleBan(userId,ban){
-  const action=ban?'disable':'enable';
-  if(!confirm('Are you sure you want to '+action+' this user?'))return;
-  const{error}=await supa.rpc('admin_set_user_banned',{target_user_id:userId,ban});
+// ═══ ADMIN ACTIONS ═══
+async function changeRole(userId,newRole){
+  const action=newRole==='banned'?'ban':'set role to '+newRole+' for';
+  if(!confirm('Are you sure you want to '+action+' this user?'))return loadUsers();
+  const{error}=await supa.rpc('admin_set_user_role',{target_user_id:userId,new_role:newRole});
   if(error){alert('Error: '+error.message);return}
   loadUsers();
+  loadLogs();
+}
+
+async function deleteUser(userId,email){
+  if(!confirm('Permanently delete user '+email+'? This removes all their data and cannot be undone.'))return;
+  if(!confirm('Final confirmation: DELETE '+email+'?'))return;
+  const{error}=await supa.rpc('admin_delete_user',{target_user_id:userId});
+  if(error){alert('Error: '+error.message);return}
+  loadUsers();
+  loadStats();
+  loadLogs();
+}
+
+// ═══ VIEW USER LIBRARY ═══
+async function viewUserLibrary(userId,email){
+  const modal=$('#library-modal');
+  const content=$('#library-modal-content');
+  $('#library-modal-title').textContent='Library: '+email;
+  content.innerHTML='<div class="empty">Loading...</div>';
+  modal.style.display='flex';
+
+  const{data,error}=await supa.rpc('admin_get_user_papers',{target_user_id:userId});
+  if(error){content.innerHTML='<div class="empty">Error: '+error.message+'</div>';return}
+  if(!data||!data.length){content.innerHTML='<div class="empty">No papers</div>';return}
+
+  let html='<table><thead><tr><th>Title</th><th>Authors</th><th>Journal</th><th>Year</th><th>DOI</th><th>Project</th></tr></thead><tbody>';
+  for(const p of data){
+    const doi=p.doi?'<a href="https://doi.org/'+esc(p.doi)+'" target="_blank" rel="noopener" style="font-size:10px">'+esc(p.doi)+'</a>':'—';
+    html+='<tr><td style="color:var(--tx);max-width:250px">'+esc(p.title||'Untitled')+'</td><td style="max-width:150px">'+esc(p.authors||'—')+'</td><td>'+esc(p.journal||'—')+'</td><td>'+(p.year||'—')+'</td><td>'+doi+'</td><td>'+esc(p.project||'—')+'</td></tr>';
+  }
+  html+='</tbody></table>';
+  content.innerHTML=html;
+}
+
+// ═══ ADMIN LOGS ═══
+async function loadLogs(){
+  const{data,error}=await supa.rpc('admin_get_logs',{lim:50});
+  const el=$('#admin-logs');
+  if(error){el.innerHTML='<div class="empty">Failed to load logs</div>';return}
+  if(!data||!data.length){el.innerHTML='<div class="empty">No admin actions recorded yet</div>';return}
+
+  $('#log-count').textContent='('+data.length+')';
+  let html='';
+  for(const log of data){
+    const time=new Date(log.created_at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    const actionLabel=formatAction(log);
+    html+='<div class="log-entry"><div class="log-time">'+time+'</div><div class="log-action">'+actionLabel+'</div></div>';
+  }
+  el.innerHTML=html;
+}
+
+function formatAction(log){
+  const admin='<span style="color:var(--ac)">'+esc(log.admin_email||'unknown')+'</span>';
+  const target='<span style="color:var(--tx)">'+esc(log.target_email||'deleted user')+'</span>';
+  switch(log.action){
+    case 'ban_user':return admin+' <span class="act ban_user">banned</span> '+target;
+    case 'unban_user':return admin+' <span class="act unban_user">unbanned</span> '+target;
+    case 'change_role':
+      const d=log.details||{};
+      return admin+' <span class="act change_role">changed role</span> of '+target+' from <b>'+esc(d.old_role||'?')+'</b> to <b>'+esc(d.new_role||'?')+'</b>';
+    case 'delete_user':
+      const email=log.details?.email||'unknown';
+      return admin+' <span class="act delete_user">deleted</span> '+esc(email);
+    default:return admin+' <span class="act">'+esc(log.action)+'</span> '+target;
+  }
 }
 
 init();
