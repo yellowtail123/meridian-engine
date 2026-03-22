@@ -428,19 +428,9 @@ function toggleSettingsGroup(g){
   if(a)a.textContent=show?'▾':'▸';
 }
 
-let _settingsInit=false;
 function initSettings(){
   _refreshDisplayButtons();
   _refreshSidebarBehaviorButtons();
-  if(_settingsInit)return;
-  _settingsInit=true;
-  // Apply saved font size on load
-  const savedSize=localStorage.getItem('meridian_fontsize');
-  if(savedSize)document.body.style.fontSize=savedSize+'px';
-  // Apply saved sidebar behavior
-  const sbBehavior=localStorage.getItem('meridian_sb_behavior')||'hover';
-  _applySidebarBehavior(sbBehavior);
-  // Load profile if signed in
   _loadProfile();
 }
 
@@ -494,10 +484,21 @@ function _refreshSidebarBehaviorButtons(){
 }
 
 // ── Profile settings ──
-async function _loadProfile(){
-  if(!window.SB||!window._supaUser)return;
+async function _getAuthUser(){
+  if(window._supaUser)return window._supaUser;
+  if(!window.SB)return null;
   try{
-    const{data}=await SB.from('user_profiles').select('*').eq('user_id',_supaUser.id).maybeSingle();
+    const{data:{session}}=await SB.auth.getSession();
+    if(session?.user){window._supaUser=session.user;return session.user}
+  }catch(e){console.warn('getSession:',e)}
+  return null;
+}
+
+async function _loadProfile(){
+  const user=await _getAuthUser();
+  if(!window.SB||!user)return;
+  try{
+    const{data}=await SB.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
     if(data){
       const dn=$('#set-displayname'),af=$('#set-affiliation'),or=$('#set-orcid');
       if(dn)dn.value=data.display_name||'';
@@ -512,7 +513,8 @@ async function _loadProfile(){
 }
 
 async function saveProfile(){
-  if(!window.SB||!window._supaUser){toast('Sign in to save your profile','err');return}
+  const user=await _getAuthUser();
+  if(!window.SB||!user){toast('Sign in to save your profile','err');return}
   const msg=$('#set-profile-msg');
   if(msg){msg.style.color='var(--ac)';msg.textContent='Saving…'}
   const orcid=$('#set-orcid')?.value?.trim();
@@ -524,7 +526,7 @@ async function saveProfile(){
     }
   }
   const row={
-    user_id:_supaUser.id,
+    user_id:user.id,
     display_name:$('#set-displayname')?.value?.trim()||null,
     affiliation:$('#set-affiliation')?.value?.trim()||null,
     orcid:orcid||null,
@@ -534,7 +536,7 @@ async function saveProfile(){
     updated_at:new Date().toISOString()
   };
   try{
-    const{data:existing}=await SB.from('user_profiles').select('id').eq('user_id',_supaUser.id).maybeSingle();
+    const{data:existing}=await SB.from('user_profiles').select('id').eq('user_id',user.id).maybeSingle();
     if(existing)await SB.from('user_profiles').update(row).eq('id',existing.id);
     else await SB.from('user_profiles').insert(row);
     if(msg){msg.style.color='var(--sg)';msg.textContent='Saved';setTimeout(()=>msg.textContent='',3000)}
@@ -571,15 +573,16 @@ async function exportMyData(){
   toast('Exporting data…','info');
   const out={exportedAt:new Date().toISOString(),user:null,publications:[],library:[],settings:null};
   try{
-    if(window.SB&&window._supaUser){
-      out.user={id:_supaUser.id,email:_supaUser.email};
-      const{data:pubs}=await SB.from('publications').select('*').eq('user_id',_supaUser.id);
+    const user=await _getAuthUser();
+    if(window.SB&&user){
+      out.user={id:user.id,email:user.email};
+      const{data:pubs}=await SB.from('publications').select('*').eq('user_id',user.id);
       out.publications=pubs||[];
-      const{data:papers}=await SB.from('library_papers').select('*').eq('user_id',_supaUser.id);
+      const{data:papers}=await SB.from('library_papers').select('*').eq('user_id',user.id);
       out.library=papers||[];
-      const{data:settings}=await SB.from('user_settings').select('*').eq('user_id',_supaUser.id).maybeSingle();
+      const{data:settings}=await SB.from('user_settings').select('*').eq('user_id',user.id).maybeSingle();
       out.settings=settings;
-      const{data:profile}=await SB.from('user_profiles').select('*').eq('user_id',_supaUser.id).maybeSingle();
+      const{data:profile}=await SB.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
       out.profile=profile;
     }
     // Include local library
@@ -652,8 +655,9 @@ function deleteAccountStep1(){
 async function _doDeleteAccount(btn){
   btn.textContent='Deleting…';btn.disabled=true;
   try{
-    if(window.SB&&window._supaUser){
-      const uid=_supaUser.id;
+    const user=await _getAuthUser();
+    if(window.SB&&user){
+      const uid=user.id;
       await SB.from('library_papers').delete().eq('user_id',uid);
       await SB.from('user_settings').delete().eq('user_id',uid);
       await SB.from('user_profiles').delete().eq('user_id',uid);
