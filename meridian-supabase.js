@@ -112,7 +112,7 @@ function _showAccountMenu(){
   m.innerHTML=`
     <div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px">Signed in as</div>
     <div style="font-size:13px;color:var(--ac);font-family:var(--mf);word-break:break-all;margin-bottom:14px">${_supaUser.email}</div>
-    ${_supaIsAdmin?'<a href="/admin" class="bt sm" style="display:block;width:100%;text-align:center;color:var(--wa);border-color:rgba(212,160,74,.3);margin-bottom:8px;font-size:12px;text-decoration:none;box-sizing:border-box">\u{1F6E1}\uFE0F Admin Dashboard</a>':''}
+    ${_supaIsAdmin?'<button class="bt sm" style="display:block;width:100%;text-align:center;color:var(--wa);border-color:rgba(212,160,74,.3);margin-bottom:8px;font-size:12px;box-sizing:border-box" onclick="document.getElementById(\'supa-account-menu\')?.remove();showAdminDashboard()">\u{1F6E1}\uFE0F Admin Dashboard</button>':''}
     <button class="bt sm" style="width:100%;color:var(--sg);border-color:var(--sb);margin-bottom:8px;font-size:12px" onclick="$('#supa-account-menu').remove();_syncOnLogin().then(()=>toast('Sync complete','ok'))">Sync Now</button>
     <button class="bt sm" style="width:100%;color:var(--co);border-color:rgba(194,120,120,.3);font-size:12px" onclick="$('#supa-account-menu').remove();_supaSignOut()">Sign Out</button>`;
   m.addEventListener('click',e=>{if(e.target===m)m.remove()});
