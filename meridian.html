@@ -172,7 +172,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <span style="top:50%;left:40%;opacity:.1"></span><span style="top:35%;left:62%;opacity:.12"></span>
 </div>
 <div class="hdr-top">
-<div><h1 class="logo" style="font-family:var(--sf)">Meridian <span id="daily-quote" class="daily-quote"></span></h1></div>
+<div><h1 class="logo" style="font-family:var(--sf);cursor:pointer" onclick="goTab('home')">Meridian <span id="daily-quote" class="daily-quote"></span></h1></div>
 <div style="display:flex;align-items:center;gap:10px"><button id="workflowBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--sg);border-color:var(--sb);flex-shrink:0" onclick="showWorkflows()" title="Guided analysis workflows">Workflows</button><button id="glossaryBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--lv);border-color:rgba(155,142,196,.3);flex-shrink:0" onclick="showGlossary()" title="Glossary of scientific terms">Glossary</button><button id="reproBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="exportReproZipBundle()" title="Export reproducibility bundle (ZIP)">Export Bundle</button><button id="helpBtn" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:14px;font-weight:700;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="localStorage.removeItem('meridian_onboarded');showOnboarding()">?</button><div class="meta"><div>WoRMS+GBIF+OBIS · Plotly</div><div class="tc" style="margin:4px 0 0;display:inline-block">Free</div></div></div>
 </div>
 </div>
