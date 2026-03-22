@@ -419,4 +419,269 @@ function setSkillLevel(level){
     else if(req==='expert')el.classList.toggle('skill-hidden',level!=='advanced')});
   toast('Skill level: '+level,'ok')}
 
+// ═══ SETTINGS PAGE ═══
+function toggleSettingsGroup(g){
+  const b=$('#settings-'+g+'-body'),a=$('#settings-'+g+'-arrow');
+  if(!b)return;
+  const show=b.style.display==='none';
+  b.style.display=show?'':'none';
+  if(a)a.textContent=show?'▾':'▸';
+}
+
+let _settingsInit=false;
+function initSettings(){
+  _refreshDisplayButtons();
+  _refreshSidebarBehaviorButtons();
+  if(_settingsInit)return;
+  _settingsInit=true;
+  // Apply saved font size on load
+  const savedSize=localStorage.getItem('meridian_fontsize');
+  if(savedSize)document.body.style.fontSize=savedSize+'px';
+  // Apply saved sidebar behavior
+  const sbBehavior=localStorage.getItem('meridian_sb_behavior')||'hover';
+  _applySidebarBehavior(sbBehavior);
+  // Load profile if signed in
+  _loadProfile();
+}
+
+// ── Display settings ──
+function setThemeFromSettings(theme){
+  const isLight=document.documentElement.classList.contains('light');
+  if((theme==='light')!==isLight)toggleTheme();
+  _refreshDisplayButtons();
+}
+
+function setFontSize(px){
+  document.body.style.fontSize=px+'px';
+  localStorage.setItem('meridian_fontsize',px);
+  _refreshDisplayButtons();
+  toast('Font size: '+px+'px','ok');
+}
+
+function setSidebarBehavior(mode){
+  localStorage.setItem('meridian_sb_behavior',mode);
+  _applySidebarBehavior(mode);
+  _refreshSidebarBehaviorButtons();
+  toast('Sidebar: '+mode,'ok');
+}
+
+function _applySidebarBehavior(mode){
+  const sb=$('#sidebar');
+  if(!sb)return;
+  if(mode==='click'){
+    sb.classList.add('sb-no-hover');
+  }else{
+    sb.classList.remove('sb-no-hover');
+  }
+}
+
+function _refreshDisplayButtons(){
+  const isLight=document.documentElement.classList.contains('light');
+  $$('.set-theme-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.theme===(isLight?'light':'dark'));
+  });
+  const curSize=parseInt(localStorage.getItem('meridian_fontsize'))||15;
+  $$('.set-font-btn').forEach(b=>{
+    b.classList.toggle('on',parseInt(b.dataset.size)===curSize);
+  });
+}
+
+function _refreshSidebarBehaviorButtons(){
+  const cur=localStorage.getItem('meridian_sb_behavior')||'hover';
+  $$('.set-sb-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.sbbehavior===cur);
+  });
+}
+
+// ── Profile settings ──
+async function _loadProfile(){
+  if(!window.SB||!window._supaUser)return;
+  try{
+    const{data}=await SB.from('user_profiles').select('*').eq('user_id',_supaUser.id).maybeSingle();
+    if(data){
+      const dn=$('#set-displayname'),af=$('#set-affiliation'),or=$('#set-orcid');
+      if(dn)dn.value=data.display_name||'';
+      if(af)af.value=data.affiliation||'';
+      if(or)or.value=data.orcid||'';
+      const nc=$('#set-notify-comments'),nf=$('#set-notify-flags'),pp=$('#set-public-profile');
+      if(nc)nc.checked=!!data.notify_comments;
+      if(nf)nf.checked=!!data.notify_flags;
+      if(pp)pp.checked=!!data.public_profile;
+    }
+  }catch(e){console.warn('Load profile:',e)}
+}
+
+async function saveProfile(){
+  if(!window.SB||!window._supaUser){toast('Sign in to save your profile','err');return}
+  const msg=$('#set-profile-msg');
+  if(msg){msg.style.color='var(--ac)';msg.textContent='Saving…'}
+  const orcid=$('#set-orcid')?.value?.trim();
+  if(orcid){
+    const valid=await _validateOrcid(orcid);
+    if(!valid){
+      if(msg){msg.style.color='var(--co)';msg.textContent='Invalid ORCID iD'}
+      return;
+    }
+  }
+  const row={
+    user_id:_supaUser.id,
+    display_name:$('#set-displayname')?.value?.trim()||null,
+    affiliation:$('#set-affiliation')?.value?.trim()||null,
+    orcid:orcid||null,
+    notify_comments:!!$('#set-notify-comments')?.checked,
+    notify_flags:!!$('#set-notify-flags')?.checked,
+    public_profile:!!$('#set-public-profile')?.checked,
+    updated_at:new Date().toISOString()
+  };
+  try{
+    const{data:existing}=await SB.from('user_profiles').select('id').eq('user_id',_supaUser.id).maybeSingle();
+    if(existing)await SB.from('user_profiles').update(row).eq('id',existing.id);
+    else await SB.from('user_profiles').insert(row);
+    if(msg){msg.style.color='var(--sg)';msg.textContent='Saved';setTimeout(()=>msg.textContent='',3000)}
+  }catch(e){
+    console.error('Save profile:',e);
+    if(msg){msg.style.color='var(--co)';msg.textContent='Error saving profile'}
+  }
+}
+
+async function _validateOrcid(orcid){
+  const status=$('#set-orcid-status');
+  const pattern=/^\d{4}-\d{4}-\d{4}-[\dX]$/;
+  if(!pattern.test(orcid)){
+    if(status){status.style.color='var(--co)';status.textContent='✕ Invalid format'}
+    return false;
+  }
+  if(status){status.style.color='var(--ac)';status.textContent='Verifying…'}
+  try{
+    const r=await fetch('https://pub.orcid.org/v3.0/'+orcid+'/record',{headers:{'Accept':'application/json'}});
+    if(r.ok){
+      if(status){status.style.color='var(--sg)';status.textContent='✓ Verified'}
+      return true;
+    }
+    if(status){status.style.color='var(--co)';status.textContent='✕ Not found'}
+    return false;
+  }catch(e){
+    if(status){status.style.color='var(--wa)';status.textContent='⚠ Could not verify'}
+    return true;// allow save if API unreachable
+  }
+}
+
+// ── Data & Privacy ──
+async function exportMyData(){
+  toast('Exporting data…','info');
+  const out={exportedAt:new Date().toISOString(),user:null,publications:[],library:[],settings:null};
+  try{
+    if(window.SB&&window._supaUser){
+      out.user={id:_supaUser.id,email:_supaUser.email};
+      const{data:pubs}=await SB.from('publications').select('*').eq('user_id',_supaUser.id);
+      out.publications=pubs||[];
+      const{data:papers}=await SB.from('library_papers').select('*').eq('user_id',_supaUser.id);
+      out.library=papers||[];
+      const{data:settings}=await SB.from('user_settings').select('*').eq('user_id',_supaUser.id).maybeSingle();
+      out.settings=settings;
+      const{data:profile}=await SB.from('user_profiles').select('*').eq('user_id',_supaUser.id).maybeSingle();
+      out.profile=profile;
+    }
+    // Include local library
+    if(typeof dbAll==='function'){
+      const local=await dbAll();
+      out.localLibrary=local||[];
+    }
+  }catch(e){console.warn('Export error:',e)}
+  dl(JSON.stringify(out,null,2),'meridian-export-'+new Date().toISOString().slice(0,10)+'.json','application/json');
+  toast('Data exported','ok');
+}
+
+async function clearLocalLibrary(){
+  const overlay=document.createElement('div');
+  overlay.className='meridian-modal-overlay';
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.innerHTML=`<div class="meridian-modal" style="max-width:440px;position:relative">
+    <button class="mm-close" onclick="this.closest('.meridian-modal-overlay').remove()">×</button>
+    <h3 style="color:var(--wa)">Clear Local Library</h3>
+    <p style="font-size:14px;color:var(--ts);line-height:1.6;margin-bottom:18px">This will remove all saved papers from your local library. Cloud-synced data will not be affected.</p>
+    <p style="font-size:14px;color:var(--ts);margin-bottom:18px">Are you sure?</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bt" onclick="this.closest('.meridian-modal-overlay').remove()">Cancel</button>
+      <button class="bt" style="color:var(--co);border-color:rgba(194,120,120,.3)" onclick="_doClearLocal(this)">Yes, Clear Library</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function _doClearLocal(btn){
+  btn.textContent='Clearing…';btn.disabled=true;
+  try{
+    const req=indexedDB.deleteDatabase('MeridianLib');
+    req.onsuccess=()=>{
+      window.db=null;
+      if(typeof openDB==='function')openDB();
+      btn.closest('.meridian-modal-overlay').remove();
+      toast('Local library cleared','ok');
+    };
+    req.onerror=()=>{toast('Error clearing library','err');btn.closest('.meridian-modal-overlay').remove()};
+  }catch(e){toast('Error: '+e.message,'err');btn.closest('.meridian-modal-overlay').remove()}
+}
+
+function deleteAccountStep1(){
+  const overlay=document.createElement('div');
+  overlay.className='meridian-modal-overlay';
+  overlay.onclick=e=>{if(e.target===overlay)overlay.remove()};
+  overlay.innerHTML=`<div class="meridian-modal" style="max-width:440px;position:relative">
+    <button class="mm-close" onclick="this.closest('.meridian-modal-overlay').remove()">×</button>
+    <h3 style="color:var(--co)">Delete Account</h3>
+    <p style="font-size:14px;color:var(--ts);line-height:1.6;margin-bottom:14px">This is permanent and cannot be undone. All your data will be deleted, including your publications, library, and profile.</p>
+    <p style="font-size:14px;color:var(--ts);margin-bottom:12px">Type <strong style="color:var(--co)">DELETE</strong> to confirm:</p>
+    <input class="si" id="delete-confirm-input" placeholder="Type DELETE" style="max-width:200px;margin-bottom:18px"/>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bt" onclick="this.closest('.meridian-modal-overlay').remove()">Cancel</button>
+      <button class="bt" id="delete-confirm-btn" style="color:#fff;background:var(--co);border-color:var(--co);opacity:.5;cursor:not-allowed" disabled onclick="_doDeleteAccount(this)">Delete My Account</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const inp=overlay.querySelector('#delete-confirm-input');
+  const btn=overlay.querySelector('#delete-confirm-btn');
+  inp.addEventListener('input',()=>{
+    const ok=inp.value.trim()==='DELETE';
+    btn.disabled=!ok;
+    btn.style.opacity=ok?'1':'.5';
+    btn.style.cursor=ok?'pointer':'not-allowed';
+  });
+}
+
+async function _doDeleteAccount(btn){
+  btn.textContent='Deleting…';btn.disabled=true;
+  try{
+    if(window.SB&&window._supaUser){
+      const uid=_supaUser.id;
+      await SB.from('library_papers').delete().eq('user_id',uid);
+      await SB.from('user_settings').delete().eq('user_id',uid);
+      await SB.from('user_profiles').delete().eq('user_id',uid);
+      await SB.from('publications').delete().eq('user_id',uid);
+      await SB.from('user_roles').delete().eq('user_id',uid);
+      // Sign out — full account deletion requires a server-side admin call
+      // but we clear all user data and sign out
+      await SB.auth.signOut();
+    }
+    // Clear local data
+    indexedDB.deleteDatabase('MeridianLib');
+    localStorage.clear();
+    btn.closest('.meridian-modal-overlay').remove();
+    toast('Account data deleted. You have been signed out.','ok');
+    setTimeout(()=>location.reload(),1500);
+  }catch(e){
+    console.error('Delete account:',e);
+    toast('Error deleting account: '+e.message,'err');
+    btn.textContent='Delete My Account';btn.disabled=false;
+  }
+}
+
+// Apply saved display preferences on page load
+(function(){
+  const fs=localStorage.getItem('meridian_fontsize');
+  if(fs)document.body.style.fontSize=fs+'px';
+  const sb=localStorage.getItem('meridian_sb_behavior');
+  if(sb==='click'){const el=$('#sidebar');if(el)el.classList.add('sb-no-hover')}
+})();
+
 // ═══ TOAST ═══

@@ -328,9 +328,32 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .quality-badge{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
 .quality-badge.green{background:#4CAF50}.quality-badge.yellow{background:#FFC107}.quality-badge.red{background:#F44336}
 .skill-hidden{display:none!important}
+/* ═══ SETTINGS PAGE ═══ */
+#tab-settings{max-width:680px}
+.set-row{margin-bottom:18px}
+.set-label{display:block;font-size:13px;font-weight:600;color:var(--ts);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;font-family:var(--sf)}
+.set-desc{font-size:13px;color:var(--tm);line-height:1.55;margin:0}
+.set-option-group{display:flex;gap:8px;flex-wrap:wrap}
+.set-toggles{display:flex;flex-direction:column;gap:10px}
+.set-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;color:var(--ts);line-height:1.4}
+.set-toggle input{display:none}
+.set-toggle-track{position:relative;width:38px;height:20px;background:var(--be);border:1px solid var(--bd);border-radius:10px;flex-shrink:0;transition:all .2s}
+.set-toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--tm);transition:all .2s}
+.set-toggle input:checked~.set-toggle-track{background:var(--ac);border-color:var(--ac)}
+.set-toggle input:checked~.set-toggle-track::after{left:20px;background:#fff}
+.set-toggle-label{font-size:14px;color:var(--ts);user-select:none}
+html.light .set-toggle-track{background:#eae5dd;border-color:#d0cbc3}
+html.light .set-toggle-track::after{background:#aaa}
 /* ═══ SIDEBAR NAVIGATION ═══ */
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:50px;background:#1e1b2e;border-right:1px solid var(--brd);display:flex;flex-direction:column;z-index:1000;transition:width 200ms ease;overflow:hidden}
 .sidebar:hover,.sidebar.expanded{width:220px;box-shadow:4px 0 16px rgba(0,0,0,.25)}
+.sidebar.sb-no-hover:not(.expanded):hover{width:50px;box-shadow:none}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-hdr{opacity:0;height:0}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-label{opacity:0}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-logo-full{opacity:0}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-divider{display:block}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-links{opacity:0;height:0;padding:0 16px}
+.sidebar.sb-no-hover:not(.expanded):hover .sb-toggle{opacity:0}
 .sb-top{display:flex;align-items:center;min-height:50px;border-bottom:1px solid var(--brd);flex-shrink:0;position:relative}
 .sb-logo{display:flex;align-items:center;overflow:hidden;white-space:nowrap}
 .sb-logo-m{display:flex;align-items:center;justify-content:center;width:50px;flex-shrink:0;font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--ac),#D4A04A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:var(--sf)}
