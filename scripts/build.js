@@ -24,7 +24,6 @@ const FILES = [
   "meridian-repro.js",
   "meridian-session.js",
   "meridian-studydesign.js",
-  "meridian-supabase.js",
   "manifest.json",
   "sw.js",
   "_headers",
