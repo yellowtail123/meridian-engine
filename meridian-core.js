@@ -733,29 +733,17 @@ $$('.tab').forEach(t=>t.addEventListener('click',()=>goTab(t.dataset.tab)));
 // All auth/admin/sync code lives here in core.js — no separate script files.
 // Supabase SDK loaded from CDN in <head>, available as window.supabase.
 
-// ─── Supabase Client Singleton ───
-const SUPA_URL='https://wgqfxgxnanvckgqkuqas.supabase.co';
-const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg';
-let _supaClientInstance=null;
-function _supaGetClient(){
-  if(!_supaClientInstance&&typeof window.supabase!=='undefined'){
-    try{
-      _supaClientInstance=window.supabase.createClient(SUPA_URL,SUPA_ANON,{
-        auth:{
-          persistSession:true,
-          storageKey:'meridian-auth',
-          storage:window.localStorage,
-          autoRefreshToken:true,
-          detectSessionInUrl:true
-        }
-      });
-    }catch(e){console.warn('Supabase client creation failed:',e)}
-  }
-  return _supaClientInstance;
-}
+// ─── Supabase Client — created immediately at top level ───
+let _supa=null;
+try{
+  _supa=window.__supabase=window.supabase.createClient(
+    'https://wgqfxgxnanvckgqkuqas.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg',
+    {auth:{persistSession:true,storageKey:'meridian-auth',autoRefreshToken:true,detectSessionInUrl:true}}
+  );
+}catch(e){console.warn('Supabase client creation failed:',e)}
 
 // ─── Auth State ───
-let _supa=null;
 let _supaUser=null;
 let _supaIsAdmin=false;
 let _syncInProgress=false;
@@ -765,7 +753,6 @@ function _supaInit(){
   const btn=$('#auth-btn');
   if(btn)btn.onclick=_showAuthModal;
 
-  _supa=_supaGetClient();
   if(!_supa){console.warn('Supabase client unavailable');_maybeAutoShowModal();return}
 
   // Listen for auth state changes (SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED).
@@ -937,11 +924,22 @@ async function _supaEmailAuth(){
 
   if(btn){btn.disabled=true;btn.textContent='...';}
 
-  const{data,error}=_authMode==='login'
-    ?await _supa.auth.signInWithPassword({email,password:pass})
-    :await _supa.auth.signUp({email,password:pass});
+  let data,error;
+  try{
+    const result=_authMode==='login'
+      ?await _supa.auth.signInWithPassword({email,password:pass})
+      :await _supa.auth.signUp({email,password:pass});
+    data=result.data;error=result.error;
+    console.log('Auth result:',{mode:_authMode,data,error});
+  }catch(e){
+    console.error('Auth call threw:',e);
+    _showAuthError('Connection error — please try again');
+    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
+    return;
+  }
 
   if(error){
+    console.warn('Auth error:',error.message,error.status);
     _showAuthError(error.message);
     if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
     return;
@@ -1187,8 +1185,7 @@ let _admSort={col:'created_at',asc:false};
 function showAdminDashboard(){
   try{
   if(!_supaIsAdmin){toast('Admin access required','err');return}
-  const supa=_supaGetClient();
-  if(!supa)return;
+  if(!_supa)return;
 
   if(!_admOverlay){
   _admOverlay=document.createElement('div');
@@ -1298,7 +1295,7 @@ function showAdminDashboard(){
   // Show
   _admOverlay.style.display='';
   document.body.style.overflow='hidden';
-  _admLoadAll(supa);
+  _admLoadAll(_supa);
   }catch(e){console.error('Admin dashboard error:',e);toast('Admin dashboard failed','err')}
 }
 
@@ -1475,7 +1472,7 @@ function _admTimeAgo(date){
 
 async function _admChangeRole(userId,newRole){
   try{
-  const supa=_supaGetClient();if(!supa)return;
+  if(!_supa)return;const supa=_supa;
   const action=newRole==='banned'?'ban':'set role to '+newRole+' for';
   if(!confirm('Are you sure you want to '+action+' this user?'))return _admLoadUsers(supa);
   const{error}=await supa.rpc('admin_set_user_role',{target_user_id:userId,new_role:newRole});
@@ -1486,7 +1483,7 @@ async function _admChangeRole(userId,newRole){
 
 async function _admDeleteUser(userId,email){
   try{
-  const supa=_supaGetClient();if(!supa)return;
+  if(!_supa)return;const supa=_supa;
   if(!confirm('Permanently delete user '+email+'? This removes all their data and cannot be undone.'))return;
   if(!confirm('Final confirmation: DELETE '+email+'?'))return;
   const{error}=await supa.rpc('admin_delete_user',{target_user_id:userId});
@@ -1497,7 +1494,7 @@ async function _admDeleteUser(userId,email){
 
 async function _admViewLibrary(userId,email){
   try{
-  const supa=_supaGetClient();if(!supa)return;
+  if(!_supa)return;const supa=_supa;
   const modal=document.getElementById('adm-library-modal');
   const content=document.getElementById('adm-library-content');
   const title=document.getElementById('adm-library-title');
