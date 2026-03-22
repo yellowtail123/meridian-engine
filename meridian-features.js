@@ -1222,8 +1222,10 @@ window.alert=function(msg){
 document.addEventListener('keydown',e=>{
   // Ctrl/Cmd+1-6 for tab switching
   if((e.ctrlKey||e.metaKey)&&e.key>='1'&&e.key<='8'){
-    e.preventDefault();const tabs=['lit','library','species','env','workshop','graph','gaps','ai'];const idx=parseInt(e.key)-1;
+    e.preventDefault();const tabs=['lit','species','env','library','publications','archive','fielddata','workshop'];const idx=parseInt(e.key)-1;
     if(tabs[idx])goTab(tabs[idx]);if(tabs[idx]==='env')requestAnimationFrame(initEnvMap)}
+  // Ctrl+B toggle sidebar
+  if((e.ctrlKey||e.metaKey)&&e.key==='b'&&!e.shiftKey&&!e.altKey){e.preventDefault();const sb=document.getElementById('sidebar');if(sb){if(window.innerWidth<768){sb.classList.toggle('mobile-open');document.getElementById('sidebar-backdrop')?.classList.toggle('show')}else{sb.classList.toggle('expanded')}}}
   // Ctrl/Cmd+Enter to trigger search on active tab
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
     e.preventDefault();
@@ -1249,7 +1251,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ═══ TAB-AWARE MAP INIT ═══
-$$('.tab').forEach(t=>t.addEventListener('click',()=>{if(t.dataset.tab==='env')requestAnimationFrame(initEnvMap)}));
+$$('.sb-item').forEach(t=>t.addEventListener('click',()=>{if(t.dataset.tab==='env')requestAnimationFrame(initEnvMap)}));
 
 openDB().then(loadLib).then(async()=>{S.cols=await loadCols();renderLib();
   // Load persisted chat
@@ -2827,10 +2829,10 @@ setTimeout(enhanceLitTab,100);
 // ═══ UPDATE TAB NAVIGATION ═══
 // (goTab extensions consolidated into single patch below at breadcrumb section)
 // Update keyboard shortcuts for new tabs
-const tabsList=['lit','library','species','env','workshop','graph','gaps','ai'];
+const tabsList=['lit','species','env','library','publications','archive','fielddata','workshop','graph','gaps','ecostats','studydesign','ai'];
 
 // Keyboard hint
-const kbHint=document.createElement('div');kbHint.className='kbd-hint';kbHint.innerHTML='Ctrl+1-8 tabs · Ctrl+Enter search · Ctrl+Z undo · Y/N/M screening · Esc close modal';document.body.appendChild(kbHint);
+const kbHint=document.createElement('div');kbHint.className='kbd-hint';kbHint.innerHTML='Ctrl+1-8 tabs · Ctrl+B sidebar · Ctrl+Enter search · Ctrl+Z undo · Ctrl+Shift+E errors';document.body.appendChild(kbHint);
 
 // ═══ PHASE 3a: ONBOARDING OVERLAY ═══
 function showOnboarding(){
@@ -3015,7 +3017,7 @@ bcStrip.innerHTML=['lit','library','workshop'].map((id,i)=>{
   const labels={lit:'Search',library:'Library',workshop:'Analysis'};
   return `<span class="bc-step" data-bc="${id}" style="cursor:pointer;padding:2px 8px;border-radius:3px;transition:all .2s" onclick="goTab('${id}')">${labels[id]}</span>${i<2?'<span style="margin:0 4px;opacity:.4">→</span>':''}`;
 }).join('');
-document.querySelector('.hdr-tabwrap').after(bcStrip);
+const _hdrEl=document.querySelector('.hdr');if(_hdrEl)_hdrEl.after(bcStrip);
 // Consolidated goTab extension — single patch for graph seed, library panels, and breadcrumb
 const _origGoTabBase=goTab;
 goTab=function(id){_origGoTabBase(id);

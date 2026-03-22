@@ -66,7 +66,7 @@ const _errPipeline=(function(){
       return;
     }
     _lastErrKey=key;_lastErrT=now;
-    const activeTab=document.querySelector('.tab.on')?.dataset?.tab||'unknown';
+    const activeTab=document.querySelector('.sb-item.active')?.dataset?.tab||'unknown';
     const err={
       id:'e_'+now+'_'+Math.random().toString(36).slice(2,6),
       ts:new Date(now).toISOString(),
@@ -447,7 +447,7 @@ function hi(e){if(typeof e==='string')e=$(e);if(e)e.style.display='none'}
 const mkL=()=>'<div class="ld">'+[0,1,2,3].map(i=>`<div class="ld-d" style="animation:glow 1.4s ease ${i*.15}s infinite"></div>`).join('')+'</div>';
 function dl(c,f,t){const b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function recAbs(inv){if(!inv)return null;const w=[];for(const[word,pos]of Object.entries(inv))for(const p of pos)w[p]=word;return w.join(' ').slice(0,500)}
-function goTab(id){const _prev=document.querySelector('.tab.on')?.dataset?.tab;if(_prev==='ai'&&id!=='ai'&&typeof _clearApiKey==='function')_clearApiKey(true);_errPipeline.crumb('nav','Tab → '+id);$$('.tab').forEach(x=>x.classList.remove('on'));$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn)tabBtn.classList.add('on');if(tabPane)tabPane.classList.add('on');if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign()}
+function goTab(id){const _prev=document.querySelector('.sb-item.active')?.dataset?.tab;if(_prev==='ai'&&id!=='ai'&&typeof _clearApiKey==='function')_clearApiKey(true);_errPipeline.crumb('nav','Tab → '+id);$$('.sb-item').forEach(x=>x.classList.remove('active'));$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`.sb-item[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn)tabBtn.classList.add('active');if(tabPane)tabPane.classList.add('on');if(window.innerWidth<768){const _sb=$('#sidebar');const _bd=$('#sidebar-backdrop');if(_sb)_sb.classList.remove('mobile-open');if(_bd)_bd.classList.remove('show')}if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign()}
 function fetchT(url,ms=15000,externalSignal){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);if(externalSignal){externalSignal.addEventListener('abort',()=>c.abort(),{once:true});if(externalSignal.aborted)c.abort()}return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t))}
 function envFetchT(url,ms=15000){
   if(_envAbort?.signal.aborted)return Promise.reject(new DOMException('','AbortError'));
@@ -725,9 +725,9 @@ function formatCoordDMS(lat,lon){
   return toDMS(lat)+(lat>=0?'N':'S')+', '+toDMS(lon)+(lon>=0?'E':'W')}
 const now=new Date(),d30=new Date(now);d30.setDate(d30.getDate()-30);
 setTimeout(()=>{const f=d=>d.toISOString().split('T')[0];if($('#edf'))$('#edf').value=f(d30);if($('#edt'))$('#edt').value=f(now)},0);
-$$('.tab').forEach(t=>t.addEventListener('click',()=>goTab(t.dataset.tab)));
-// Tab scroll indicator
-(function(){const tw=document.querySelector('.hdr-tabwrap');const tabs=tw?.querySelector('.tabs');if(tw&&tabs){const updateScroll=()=>{tw.classList.toggle('scroll-left',tabs.scrollLeft>8)};tabs.addEventListener('scroll',updateScroll,{passive:true});updateScroll()}})();
+$$('.sb-item').forEach(t=>t.addEventListener('click',()=>goTab(t.dataset.tab)));
+// Sidebar toggle
+(function(){const sb=$('#sidebar'),tog=$('#sidebarToggle'),ham=$('#sb-hamburger'),bd=$('#sidebar-backdrop');if(tog)tog.addEventListener('click',()=>{if(window.innerWidth<768){sb.classList.toggle('mobile-open');bd.classList.toggle('show')}else{sb.classList.toggle('expanded')}});if(ham)ham.addEventListener('click',()=>{sb.classList.add('mobile-open');bd.classList.add('show')});if(bd)bd.addEventListener('click',()=>{sb.classList.remove('mobile-open');bd.classList.remove('show')})})();
 
 // ═══ SUPABASE CLIENT — global, created at top level ═══
 const SB = window.SB = supabase.createClient(
@@ -792,14 +792,18 @@ function updateUISignedIn(user){
   if(el){
     const email=user.email||'';
     const short=email.length>20?email.slice(0,17)+'...':email;
-    el.textContent=short;
+    const av=el.querySelector('.sb-avatar-circle');
+    if(av)av.innerHTML='<span class="sb-avatar-letter">'+(email[0]||'U').toUpperCase()+'</span>';
+    const lb=el.querySelector('.sb-label');
+    if(lb)lb.textContent=short;
     el.title='Signed in as '+email+' — click to manage';
     el.onclick=_showAccountMenu;
   }
   _checkAdminRole().then(()=>{
     _renderAdminLink();
     if(_supaIsAdmin&&el){
-      el.textContent='\u{1F6E1}\uFE0F '+el.textContent;
+      const _lb=el.querySelector('.sb-label');
+      if(_lb)_lb.textContent='\u{1F6E1}\uFE0F '+_lb.textContent;
       el.title='[Admin] '+el.title;
     }
   });
@@ -813,7 +817,10 @@ function updateUISignedOut(){
   _supaIsAdmin=false;
   const el=$('#auth-btn');
   if(el){
-    el.textContent='Sign In';
+    const av=el.querySelector('.sb-avatar-circle');
+    if(av)av.innerHTML='<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="3"/><path d="M2.5 15c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/></svg>';
+    const lb=el.querySelector('.sb-label');
+    if(lb)lb.textContent='Sign In';
     el.title='Sign in for cross-device sync';
     el.onclick=showAuthModal;
   }
@@ -834,7 +841,7 @@ async function _checkAdminRole(){
 
 function _renderAdminLink(){
   const el=$('#admin-link');if(!el)return;
-  el.style.display=_supaIsAdmin?'inline-flex':'none';
+  el.style.display=_supaIsAdmin?'flex':'none';
   el.onclick=function(){try{showAdminDashboard()}catch(e){console.error('Admin:',e);toast('Admin dashboard failed','err')}};
 }
 
@@ -842,7 +849,7 @@ function _renderAdminLink(){
 function _showAccountMenu(){
   const existing=$('#supa-account-menu');if(existing){existing.remove();return}
   const m=document.createElement('div');m.id='supa-account-menu';
-  m.style.cssText='position:fixed;top:60px;right:20px;z-index:10005;background:var(--bs);border:1px solid var(--ab);border-radius:10px;padding:16px;min-width:220px;animation:fadeIn .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+  m.style.cssText='position:fixed;bottom:80px;left:55px;z-index:10005;background:var(--bs);border:1px solid var(--ab);border-radius:10px;padding:16px;min-width:220px;animation:fadeIn .2s;box-shadow:0 8px 24px rgba(0,0,0,.4)';
   m.innerHTML=`
     <div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px">Signed in as</div>
     <div style="font-size:13px;color:var(--ac);font-family:var(--mf);word-break:break-all;margin-bottom:14px">${_supaUser.email}</div>

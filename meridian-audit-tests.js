@@ -33,7 +33,7 @@ const MeridianAudit = (function() {
     assert(dupes.length === 0, `No duplicate IDs (found ${dupes.length}: ${dupes.slice(0, 5).join(', ')})`);
 
     // All tab buttons have matching panels
-    document.querySelectorAll('.tab[data-tab]').forEach(tab => {
+    document.querySelectorAll('.sb-item[data-tab]').forEach(tab => {
       const pane = document.getElementById('tab-' + tab.dataset.tab);
       assert(pane !== null, `Tab "${tab.dataset.tab}" has matching panel #tab-${tab.dataset.tab}`);
     });
@@ -190,7 +190,7 @@ const MeridianAudit = (function() {
     section('6. Event Listeners');
 
     // Tab click listeners
-    const tabs = document.querySelectorAll('.tab');
+    const tabs = document.querySelectorAll('.sb-item');
     assert(tabs.length >= 10, `${tabs.length} tab buttons found (expected ~11)`);
 
     // Search button listeners
@@ -384,7 +384,7 @@ const MeridianAudit = (function() {
     assert(noName < 3, `Buttons with accessible names (${noName} missing)`, 'warn');
 
     // Tab key navigation — tabs should be focusable
-    const focusableTabs = document.querySelectorAll('.tab[tabindex], .tab:not([tabindex])');
+    const focusableTabs = document.querySelectorAll('.sb-item[tabindex], .sb-item:not([tabindex])');
     assert(focusableTabs.length > 0, 'Tab buttons are focusable', 'warn');
   }
 

@@ -115,6 +115,49 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <body>
 <div id="padi-bar"><div class="pb-track"><div class="pb-fill"></div></div><span class="pb-label"></span></div>
 <div id="app">
+<!-- ═══ SIDEBAR NAVIGATION ═══ -->
+<nav id="sidebar" class="sidebar">
+<div class="sb-top">
+<div class="sb-logo"><span class="sb-logo-m">M</span><span class="sb-logo-full">Meridian</span></div>
+<button class="sb-toggle" id="sidebarToggle" title="Toggle sidebar (Ctrl+B)" aria-label="Toggle sidebar"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="10" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
+</div>
+<div class="sb-nav">
+<div class="sb-group">
+<div class="sb-hdr">Discover</div><div class="sb-divider"></div>
+<button class="sb-item active" data-tab="lit" title="Literature"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Literature</span></button>
+<button class="sb-item" data-tab="species" title="Species"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" style="fill:currentColor" stroke="none"/><path d="M2 8L0 5.5M2 8L0 10.5"/></svg></span><span class="sb-label">Species</span></button>
+<button class="sb-item" data-tab="env" title="Environmental Data"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.5" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/><path d="M2.5 5h11M2.5 11h11"/></svg></span><span class="sb-label">Environmental Data</span></button>
+</div>
+<div class="sb-group">
+<div class="sb-hdr">My Work</div><div class="sb-divider"></div>
+<button class="sb-item" data-tab="library" title="Library"><span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="4" height="11" rx="0.5"/><rect x="7" y="2" width="3.5" height="12" rx="0.5"/><path d="M12 14l2-12" stroke-width="1.5"/></svg></span><span class="sb-label">Library</span><span class="tc sb-badge" id="libc" style="display:none">0</span></button>
+<button class="sb-item" data-tab="publications" title="Publications"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3z" fill="none"/><path d="M10 1v3h3"/><path d="M5 7h6M5 9.5h6M5 12h4"/></svg></span><span class="sb-label">Publications</span></button>
+<button class="sb-item" data-tab="archive" title="Archived Data"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M1 4h14v2H1z"/><path d="M2 6v7h12V6"/><path d="M6 9h4"/></svg></span><span class="sb-label">Archived Data</span></button>
+<button class="sb-item" data-tab="fielddata" title="Field Data"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M4 2h8v12H4z" fill="none"/><path d="M6 5h4M6 7.5h4M6 10h3"/></svg></span><span class="sb-label">Field Data</span></button>
+</div>
+<div class="sb-group">
+<div class="sb-hdr">Analysis</div><div class="sb-divider"></div>
+<button class="sb-item" data-tab="workshop" title="Analysis"><span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg></span><span class="sb-label">Analysis</span></button>
+<button class="sb-item" data-tab="graph" title="Citations"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="3" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.8"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/><line x1="4.3" y1="3.7" x2="6.5" y2="7"/><line x1="11.7" y1="3.7" x2="9.5" y2="7"/><line x1="6.5" y1="9" x2="4.3" y2="12"/><line x1="9.5" y1="9" x2="11.7" y2="12"/></svg></span><span class="sb-label">Citations</span></button>
+<button class="sb-item" data-tab="gaps" title="Gap Analysis"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 2h4l1.5 2L10 2h3v4l-2 1.5L13 9v4h-4l-1 -2-1 2H3V9l2-1.5L3 6z"/></svg></span><span class="sb-label">Gap Analysis</span></button>
+<button class="sb-item" data-tab="ecostats" title="Eco Stats"><span class="sb-icon"><svg viewBox="0 0 16 16"><text x="3" y="13" font-size="14" font-weight="700" fill="currentColor" stroke="none">Σ</text></svg></span><span class="sb-label">Eco Stats</span></button>
+<button class="sb-item" data-tab="studydesign" title="Study Design"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 2h10v12H3z" fill="none"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span><span class="sb-label">Study Design</span></button>
+</div>
+<div class="sb-group">
+<div class="sb-hdr">Tools</div><div class="sb-divider"></div>
+<button class="sb-item" data-tab="ai" title="AI Assistant"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M8 1l1.5 3.5L13 5.5l-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-1z"/><path d="M12 10l.8 1.8 1.8.5-1.3 1.3.3 1.8-1.6-.8-1.6.8.3-1.8L9.5 12.3l1.8-.5z" stroke-width="1"/></svg></span><span class="sb-label">AI Assistant</span></button>
+</div>
+</div>
+<div class="sb-bottom">
+<button class="sb-bottom-btn" id="auth-btn" title="Sign in for cross-device sync"><span class="sb-avatar-circle"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="3"/><path d="M2.5 15c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5"/></svg></span><span class="sb-label">Sign In</span></button>
+<button class="sb-bottom-btn" id="sb-settings" title="Settings" onclick="showWorkflows()"><span class="sb-bicon"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"/></svg></span><span class="sb-label">Settings</span></button>
+<button class="sb-bottom-btn" id="admin-link" title="Admin Dashboard" style="display:none" onclick="try{showAdminDashboard()}catch(e){console.error('Admin:',e)}"><span class="sb-bicon"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1.5l5.5 2.5v3.5c0 3-2.2 5.5-5.5 7-3.3-1.5-5.5-4-5.5-7V4z"/></svg></span><span class="sb-label">Admin</span></button>
+<button class="sb-bottom-btn" id="themeToggle" title="Toggle light/dark theme" onclick="toggleTheme()"><span class="sb-bicon"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13.5 8.5a6 6 0 01-6 6 6 6 0 01-5.8-4.5 5 5 0 006.3-6.3A6 6 0 0113.5 8.5z"/></svg></span><span class="sb-label">Theme</span></button>
+<div class="sb-links"><a href="/privacy" onclick="event.preventDefault();showPrivacyPolicy()">Privacy</a><span>·</span><a href="/terms" onclick="event.preventDefault();showTerms()">Terms</a></div>
+</div>
+</nav>
+<div id="main-wrap">
+<button class="sb-hamburger" id="sb-hamburger" aria-label="Open menu"><svg viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
 <header class="hdr">
 <div class="hdr-title">
 <div class="hdr-stars">
@@ -317,24 +360,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </svg>
 <div class="hdr-top">
 <div><h1 class="logo" style="font-family:var(--sf)">Meridian <span style="font-size:18px;font-family:var(--mf);letter-spacing:6px;text-transform:uppercase;-webkit-text-fill-color:#C27878;text-shadow:0 0 7px rgba(194,120,120,.6),0 0 20px rgba(194,120,120,.35),0 0 40px rgba(194,120,120,.15);background:none;-webkit-background-clip:unset;animation:none;margin-left:18px">THE WORLD IS YOURS</span></h1></div>
-<div style="display:flex;align-items:center;gap:10px"><button id="admin-link" class="bt sm" onclick="try{showAdminDashboard()}catch(e){console.error('Admin:',e)}" style="display:none;padding:4px 10px;font-size:11px;color:var(--wa);border-color:rgba(212,160,74,.3);flex-shrink:0;align-items:center;gap:5px" title="Admin Dashboard"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Admin</button><button id="auth-btn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--ac);border-color:var(--ab);flex-shrink:0;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sign In</button><button id="themeToggle" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:15px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="toggleTheme()" title="Toggle light/dark theme">&#9789;</button><button id="workflowBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--sg);border-color:var(--sb);flex-shrink:0" onclick="showWorkflows()" title="Guided analysis workflows">Workflows</button><button id="glossaryBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--lv);border-color:rgba(155,142,196,.3);flex-shrink:0" onclick="showGlossary()" title="Glossary of scientific terms">Glossary</button><button id="reproBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="exportReproZipBundle()" title="Export reproducibility bundle (ZIP)">Export Bundle</button><button id="helpBtn" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:14px;font-weight:700;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="localStorage.removeItem('meridian_onboarded');showOnboarding()">?</button><div class="meta"><div>WoRMS+GBIF+OBIS · Plotly</div><div class="tc" style="margin:4px 0 0;display:inline-block">Free</div></div></div>
-</div>
-</div>
-<div class="hdr-tabwrap">
-<div class="tabs">
-<button class="tab on" role="tab" data-tab="lit" aria-label="Literature search"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="tab-lbl">Literature</span></button>
-<button class="tab" role="tab" data-tab="library" aria-label="Paper library"><span class="tab-icon"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="4" height="11" rx="0.5"/><rect x="7" y="2" width="3.5" height="12" rx="0.5"/><path d="M12 14l2-12" stroke-width="1.5"/></svg></span><span class="tab-lbl">Library</span><span class="tc" id="libc" style="display:none">0</span></button>
-<button class="tab" role="tab" data-tab="species" aria-label="Species lookup"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" style="fill:currentColor" stroke="none"/><path d="M2 8L0 5.5M2 8L0 10.5"/></svg></span><span class="tab-lbl">Species</span></button>
-<button class="tab" role="tab" data-tab="env" aria-label="Environmental data explorer"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.5" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/><path d="M2.5 5h11M2.5 11h11"/></svg></span><span class="tab-lbl">Environmental Data</span></button>
-<button class="tab" role="tab" data-tab="workshop" aria-label="Data analysis workshop"><span class="tab-icon"><svg viewBox="0 0 16 16"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg></span><span class="tab-lbl">Analysis</span></button>
-<button class="tab" role="tab" data-tab="graph" aria-label="Citation network graph"><span class="tab-icon"><svg viewBox="0 0 16 16"><circle cx="3" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.8"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/><line x1="4.3" y1="3.7" x2="6.5" y2="7"/><line x1="11.7" y1="3.7" x2="9.5" y2="7"/><line x1="6.5" y1="9" x2="4.3" y2="12"/><line x1="9.5" y1="9" x2="11.7" y2="12"/></svg></span><span class="tab-lbl">Citations</span></button>
-<button class="tab" role="tab" data-tab="gaps" aria-label="Research gap analysis"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M3 2h4l1.5 2L10 2h3v4l-2 1.5L13 9v4h-4l-1 -2-1 2H3V9l2-1.5L3 6z"/></svg></span><span class="tab-lbl">Gap Analysis</span></button>
-<button class="tab" role="tab" data-tab="publications" aria-label="Publications"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3z" fill="none"/><path d="M10 1v3h3"/><path d="M5 7h6M5 9.5h6M5 12h4"/></svg></span><span class="tab-lbl">Publications</span></button>
-<button class="tab" role="tab" data-tab="archive" aria-label="Archived datasets"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M1 4h14v2H1z"/><path d="M2 6v7h12V6"/><path d="M6 9h4"/></svg></span><span class="tab-lbl">Archived Data</span></button>
-<button class="tab" role="tab" data-tab="fielddata" aria-label="Field data upload"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M8 1v9M4 6l4 4 4-4"/><path d="M2 12h12v2H2z"/></svg></span><span class="tab-lbl">Field Data</span></button>
-<button class="tab" role="tab" data-tab="ecostats" aria-label="Ecological statistics"><span class="tab-icon"><svg viewBox="0 0 16 16"><text x="3" y="13" font-size="14" font-weight="700" fill="currentColor" stroke="none">Σ</text></svg></span><span class="tab-lbl">Eco Stats</span></button>
-<button class="tab" role="tab" data-tab="studydesign" aria-label="Study design calculators"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M3 2h10v12H3z" fill="none"/><path d="M5 5h6M5 8h6M5 11h4"/></svg></span><span class="tab-lbl">Study Design</span></button>
-<button class="tab" role="tab" data-tab="ai" aria-label="AI research assistant"><span class="tab-icon"><svg viewBox="0 0 16 16"><path d="M8 1l1.5 3.5L13 5.5l-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-1z"/><path d="M12 10l.8 1.8 1.8.5-1.3 1.3.3 1.8-1.6-.8-1.6.8.3-1.8L9.5 12.3l1.8-.5z" stroke-width="1"/></svg></span><span class="tab-lbl">AI Assistant</span></button>
+<div style="display:flex;align-items:center;gap:10px"><button id="workflowBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--sg);border-color:var(--sb);flex-shrink:0" onclick="showWorkflows()" title="Guided analysis workflows">Workflows</button><button id="glossaryBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--lv);border-color:rgba(155,142,196,.3);flex-shrink:0" onclick="showGlossary()" title="Glossary of scientific terms">Glossary</button><button id="reproBtn" class="bt sm" style="padding:4px 10px;font-size:11px;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="exportReproZipBundle()" title="Export reproducibility bundle (ZIP)">Export Bundle</button><button id="helpBtn" class="bt sm" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:14px;font-weight:700;color:var(--ac);border-color:var(--ab);flex-shrink:0" onclick="localStorage.removeItem('meridian_onboarded');showOnboarding()">?</button><div class="meta"><div>WoRMS+GBIF+OBIS · Plotly</div><div class="tc" style="margin:4px 0 0;display:inline-block">Free</div></div></div>
 </div>
 </div>
 </header>
@@ -622,17 +648,8 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </details>
 <div class="cc"><div class="cm" id="cmsg"></div><div style="display:flex;gap:8px;flex-shrink:0"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div></div>
 </main>
-<footer style="padding:12px 30px;text-align:center;font-size:11px;color:var(--tm);font-family:var(--mf);border-top:1px solid var(--bd)">
-<span>Meridian Engine</span>
-<span style="margin:0 6px">·</span>
-<a href="/privacy" style="color:var(--tm);text-decoration:underline">Privacy</a>
-<span style="margin:0 6px">·</span>
-<a href="/terms" style="color:var(--tm);text-decoration:underline">Terms</a>
-<span style="margin:0 6px">·</span>
-<a href="#" onclick="event.preventDefault();_errPipeline.showConsole()" style="color:var(--tm);text-decoration:none" title="Error Console (Ctrl+Shift+E)">
-<svg viewBox="0 0 16 16" width="12" height="12" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" style="vertical-align:-2px"><path d="M2 12c1-2 3-3 6-3s5 1 6 3"/><circle cx="5" cy="5" r="1.5"/><circle cx="11" cy="5" r="1.5"/><path d="M4 1L5 3M12 1l-1 2M1 6h2M13 6h2"/></svg>
-</a>
-</footer>
+</div>
+<div id="sidebar-backdrop" class="sidebar-backdrop"></div>
 </div>
 <script src="meridian-core.js"></script>
 <script src="meridian-data.js"></script>

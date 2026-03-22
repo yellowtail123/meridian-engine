@@ -1500,7 +1500,7 @@ function saveSession(){
     workshop:{data:S.wsD,columns:S.wsC,types:S.wsCT},
     envData:{lat:$('#elat')?.value||'',lon:$('#elon')?.value||'',selected:S.envSel instanceof Set?[...S.envSel]:(S.envSel||[]),timeSeries:S.envTS||{}},
     speciesQuery:$('#sq')?.value||'',
-    activeTab:document.querySelector('.tab.on')?.dataset?.tab||'lit'
+    activeTab:document.querySelector('.sb-item.active')?.dataset?.tab||'lit'
   };
   const blob=new Blob([JSON.stringify(session)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);
