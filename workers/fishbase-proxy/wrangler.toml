@@ -1,0 +1,12 @@
+name = "fishbase-proxy"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "meridian-engine.com/api/fishbase/*", zone_name = "meridian-engine.com" },
+  { pattern = "www.meridian-engine.com/api/fishbase/*", zone_name = "meridian-engine.com" }
+]
+
+[[kv_namespaces]]
+binding = "FISHBASE_DATA"
+id = "2ecbbbb5c21f47768e9fc042cd2ea59d"

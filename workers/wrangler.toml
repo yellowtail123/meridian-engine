@@ -2,9 +2,14 @@ name = "meridian-errors"
 main = "error-reporter.js"
 compatibility_date = "2024-01-01"
 
+routes = [
+  { pattern = "meridian-engine.com/api/errors/*", zone_name = "meridian-engine.com" },
+  { pattern = "www.meridian-engine.com/api/errors/*", zone_name = "meridian-engine.com" }
+]
+
 [vars]
 ADMIN_KEY = "CHANGE_ME_TO_A_SECURE_KEY"
 
 [[kv_namespaces]]
 binding = "ERROR_STORE"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "96644d7a068b47498bf1e2a455cc1473"

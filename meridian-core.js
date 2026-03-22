@@ -32,7 +32,7 @@ const _errPipeline=(function(){
   const MAX_CRUMBS=30,MAX_ERRORS=100,DEDUP_MS=5000,REPORT_INTERVAL=60000,REPORT_MAX_PER_MIN=10;
   const _crumbs=[],_errors=[];
   let _errDB=null,_lastReportT=0,_reportCount=0,_reportTimer=null;
-  const _ERROR_ENDPOINT='https://meridian-errors.jemala546.workers.dev/api/errors';
+  const _ERROR_ENDPOINT='/api/errors';
 
   // ── Browser/OS detection ──
   function _env(){
