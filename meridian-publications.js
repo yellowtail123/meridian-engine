@@ -19,13 +19,20 @@ function initPublications(){
 
 function _renderPubUI(){
   H('#pub-content',`
-    <div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Publications.</b> Browse community-submitted marine research publications. Endorse quality work, flag issues, and link datasets. All submissions must follow the Meridian Publication Template.<button class="dx" onclick="this.closest('.tip').style.display='none'">&times;</button></div></div>
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:22px;font-weight:700;color:var(--ac);font-family:var(--sf);margin:0 0 4px">Meridian Publications</h2>
+      <p style="font-size:13px;color:var(--tm);font-family:var(--sf);margin:0">A platform for researchers to share and discover non-journal scientific work</p>
+    </div>
+    <div style="margin-bottom:14px;padding:12px 16px;background:linear-gradient(135deg,var(--am),rgba(123,158,135,.06));border:1px solid var(--ab);border-radius:var(--rd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span style="font-size:12px;color:var(--ts)">All submissions must follow the Meridian Publication Template format.</span>
+      <a href="/template/Meridian_Publication_Template.docx" download class="bt sm on" style="text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0"><path d="M8 1v9M4 6l4 4 4-4"/><path d="M2 12h12v2H2z"/></svg> Download Publication Template</a>
+    </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-      <div class="si-wrap" style="flex:1;min-width:240px"><input class="si" id="pub-search" placeholder="Search publications — title, authors, species, keywords..." oninput="_pubApplySearch()" style="font-size:14px"/><button class="si-clear" type="button" onclick="$('#pub-search').value='';_pubApplySearch()" aria-label="Clear">&times;</button></div>
+      <div class="si-wrap" style="flex:1;min-width:240px"><input class="si" id="pub-search" placeholder="Search publications by title, author, species, keyword..." oninput="_pubApplySearch()" style="font-size:14px"/><button class="si-clear" type="button" onclick="$('#pub-search').value='';_pubApplySearch()" aria-label="Clear">&times;</button></div>
       <select class="fs" id="pub-sort" onchange="_pubFilters.sort=this.value;_pubRenderCards()" style="min-width:150px">
         <option value="newest">Newest first</option>
         <option value="endorsed">Most endorsed</option>
-        <option value="category_az">Category A–Z</option>
+        <option value="category_az">Category A-Z</option>
       </select>
       <select class="fs" id="pub-cat-filter" onchange="_pubFilterCat(this.value)" style="min-width:140px">
         <option value="">All categories</option>
@@ -33,9 +40,9 @@ function _renderPubUI(){
         <option>Review</option><option>Dataset Description</option><option>Monitoring Report</option>
         <option>Methodology</option><option>Policy Brief</option><option>Preprint</option><option>Other</option>
       </select>
-      ${_supaUser?'<button class="bt sm on" onclick="_pubShowSubmit()">+ Submit Publication</button>':''}
+      ${_supaUser?'<button class="bt sm on" onclick="_pubShowSubmit()">+ Submit Publication</button>':'<button class="bt sm" onclick="showAuthModal()" style="color:var(--tm)">Sign in to submit</button>'}
     </div>
-    <div id="pub-cards">${mkL()}</div>
+    <div id="pub-cards"></div>
     <div id="pub-detail" style="display:none"></div>
     <div id="pub-submit" style="display:none"></div>
   `);
@@ -46,11 +53,11 @@ async function _pubLoadList(){
     const{data,error}=await SB.from('publications').select('*').order('created_at',{ascending:false});
     if(error)throw error;
     _pubList=data||[];
-    _pubRenderCards();
   }catch(e){
     console.warn('Pub load:',e);
-    H('#pub-cards','<div style="text-align:center;padding:30px;color:var(--co);font-size:13px">Failed to load publications. '+e.message+'</div>');
+    _pubList=[];
   }
+  _pubRenderCards();
 }
 
 function _pubApplySearch(){
@@ -80,7 +87,12 @@ function _pubRenderCards(){
   else if(s==='category_az')list.sort((a,b)=>(a.category||'').localeCompare(b.category||''));
 
   if(!list.length){
-    H('#pub-cards','<div style="text-align:center;padding:40px 20px;color:var(--tm);font-size:13px"><div style="font-size:24px;margin-bottom:10px;opacity:.3">&#x1F4D1;</div>No publications found.'+(_supaUser?' <button class="bt sm on" onclick="_pubShowSubmit()" style="margin-top:12px">Submit the first publication</button>':'')+'</div>');
+    H('#pub-cards',`<div style="text-align:center;padding:50px 20px">
+      <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="var(--ab)" stroke-width="1.5" style="margin-bottom:16px;opacity:.5"><rect x="12" y="4" width="40" height="56" rx="4"/><path d="M20 16h24M20 24h24M20 32h16"/><path d="M36 36l8 8M44 36l-8 8" stroke="var(--ac)" stroke-width="2"/></svg>
+      <div style="font-size:15px;color:var(--ts);font-family:var(--sf);font-weight:500;margin-bottom:6px">No publications yet</div>
+      <div style="font-size:13px;color:var(--tm);font-family:var(--sf);margin-bottom:16px">Be the first to share your research with the Meridian community</div>
+      ${_supaUser?'<button class="bt on" onclick="_pubShowSubmit()" style="font-size:14px;padding:10px 24px">Submit a Publication</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to submit</button>'}
+    </div>`);
     return;
   }
   H('#pub-cards',list.map(p=>_pubCard(p)).join(''));

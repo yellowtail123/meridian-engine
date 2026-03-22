@@ -20,20 +20,23 @@ function initArchive(){
 
 function _renderArchiveUI(){
   H('#arch-content',`
-    <div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Archived Data.</b> Browse, search, and download community-shared datasets. Logged-in users can upload their own datasets for archiving and sharing.<button class="dx" onclick="this.closest('.tip').style.display='none'">&times;</button></div></div>
+    <div style="margin-bottom:20px">
+      <h2 style="font-size:22px;font-weight:700;color:var(--ac);font-family:var(--sf);margin:0 0 4px">Archived Data</h2>
+      <p style="font-size:13px;color:var(--tm);font-family:var(--sf);margin:0">Open research datasets contributed by the Meridian community</p>
+    </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
-      <div class="si-wrap" style="flex:1;min-width:240px"><input class="si" id="arch-search" placeholder="Search datasets — title, species, variables, authors..." oninput="_archApplyFilters()" style="font-size:14px"/><button class="si-clear" type="button" onclick="$('#arch-search').value='';_archApplyFilters()" aria-label="Clear">&times;</button></div>
+      <div class="si-wrap" style="flex:1;min-width:240px"><input class="si" id="arch-search" placeholder="Search datasets by title, species, variable, region..." oninput="_archApplyFilters()" style="font-size:14px"/><button class="si-clear" type="button" onclick="$('#arch-search').value='';_archApplyFilters()" aria-label="Clear">&times;</button></div>
       <select class="fs" id="arch-sort" onchange="_archFilters.sort=this.value;_archRenderCards()" style="min-width:150px">
         <option value="newest">Newest first</option>
         <option value="downloads">Most downloaded</option>
         <option value="largest">Largest files</option>
-        <option value="species_az">Species A–Z</option>
+        <option value="species_az">Species A-Z</option>
       </select>
       <button class="bt sm" onclick="_archToggleFilters()" id="arch-filter-btn" style="position:relative">Filters <span id="arch-filter-count" style="display:none;background:var(--ac);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px"></span></button>
-      ${_supaUser?'<button class="bt sm on" onclick="_archShowUpload()">+ Upload Dataset</button>':''}
+      ${_supaUser?'<button class="bt sm on" onclick="_archShowUpload()">+ Upload Dataset</button>':'<button class="bt sm" onclick="showAuthModal()" style="color:var(--tm)">Sign in to upload</button>'}
     </div>
     <div id="arch-filters" style="display:none;margin-bottom:16px;padding:16px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)"></div>
-    <div id="arch-cards">${mkL()}</div>
+    <div id="arch-cards"></div>
     <div id="arch-detail" style="display:none"></div>
     <div id="arch-upload" style="display:none"></div>
   `);
@@ -46,12 +49,12 @@ async function _archLoadDatasets(){
       .order('created_at',{ascending:false});
     if(error)throw error;
     _archDatasets=data||[];
-    _archBuildFilterOptions();
-    _archRenderCards();
   }catch(e){
     console.warn('Archive load:',e);
-    H('#arch-cards','<div style="text-align:center;padding:30px;color:var(--co);font-size:13px">Failed to load datasets. '+e.message+'</div>');
+    _archDatasets=[];
   }
+  _archBuildFilterOptions();
+  _archRenderCards();
 }
 
 function _archBuildFilterOptions(){
@@ -172,7 +175,13 @@ function _archRenderCards(){
   });
 
   if(!filtered.length){
-    H('#arch-cards','<div style="text-align:center;padding:40px 20px;color:var(--tm);font-size:13px"><div style="font-size:24px;margin-bottom:10px;opacity:.3">&#x1F4C2;</div>No datasets found'+((_archFilters.search||_archFilters.region.length)?' matching your filters':'')+'.<br>'+ (_supaUser?'<button class="bt sm on" onclick="_archShowUpload()" style="margin-top:12px">Upload the first dataset</button>':'Sign in to upload datasets.')+'</div>');
+    const hasFilters=_archFilters.search||_archFilters.region.length||_archFilters.species.length||_archFilters.dataType.length;
+    H('#arch-cards',`<div style="text-align:center;padding:50px 20px">
+      <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="var(--ab)" stroke-width="1.5" style="margin-bottom:16px;opacity:.5"><rect x="8" y="16" width="48" height="8" rx="3"/><path d="M12 24v24h40V24"/><path d="M24 36h16"/></svg>
+      <div style="font-size:15px;color:var(--ts);font-family:var(--sf);font-weight:500;margin-bottom:6px">${hasFilters?'No datasets matching your filters':'No datasets uploaded yet'}</div>
+      <div style="font-size:13px;color:var(--tm);font-family:var(--sf);margin-bottom:16px">${hasFilters?'Try adjusting your search or filters':'Contribute your data to the Meridian community'}</div>
+      ${hasFilters?'<button class="bt sm" onclick="_archClearFilters()" style="font-size:13px">Clear filters</button>':(_supaUser?'<button class="bt on" onclick="_archShowUpload()" style="font-size:14px;padding:10px 24px">Upload Dataset</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to upload</button>')}
+    </div>`);
     return;
   }
   H('#arch-cards',filtered.map(d=>_archCard(d)).join(''));
