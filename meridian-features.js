@@ -3081,10 +3081,15 @@ style.textContent=`.bt.tog.on{border-left:3px solid var(--ac)}.page-nav{position
 document.head.appendChild(style)})();
 
 // ═══ PHASE 6d: UNDO FOR PAPER DELETION (stack-based) ═══
+function _removeTombstone(id){
+  const key='meridian_deleted_ids';
+  try{const ts=JSON.parse(localStorage.getItem(key)||'[]');const idx=ts.indexOf(id);if(idx>=0){ts.splice(idx,1);localStorage.setItem(key,JSON.stringify(ts))}}catch(e){}
+}
 let _undoStack=[],_undoTimer=null;
 function undoDelete(){
   if(!_undoStack.length)return;
   const paper=_undoStack.pop();
+  _removeTombstone(paper.id);
   dbPut(paper).then(loadLib).then(renderLib).then(()=>toast('Paper restored'+(paper.title?' — '+paper.title.slice(0,40):''),'ok'));
   _refreshUndoBar();
 }
@@ -3103,6 +3108,7 @@ function _refreshUndoBar(){
 function undoDeleteAll(){
   if(!_undoStack.length)return;
   const count=_undoStack.length;
+  _undoStack.forEach(p=>_removeTombstone(p.id));
   Promise.all(_undoStack.map(p=>dbPut(p))).then(()=>{_undoStack=[];return loadLib()}).then(renderLib).then(()=>toast(count+' papers restored','ok'));
   _refreshUndoBar();
 }

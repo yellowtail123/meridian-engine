@@ -1020,11 +1020,19 @@ async function _syncOnLogin(){
       localById[p.id]=p;
     }
 
-    let imported=0;
+    // Flush any pending cloud deletions FIRST so they don't get re-imported
+    await _flushQueue();
+
+    let imported=0;let cloudDeleted=0;
     for(const cp of cloudPapers){
       const doi=cp.doi?.toLowerCase();
       if(doi&&localByDoi[doi])continue;
       if(cp.local_id&&localById[cp.local_id])continue;
+      // Skip if paper was locally deleted (tombstone check)
+      if(cp.local_id&&_isDeletedTombstone(cp.local_id)){
+        try{await _supaDeletePaper(cp.local_id);cloudDeleted++}catch(e){_warn('sync-tombstone-delete',e)}
+        continue;
+      }
       const lp={
         id:cp.local_id||('m'+Date.now()+Math.random()),
         title:cp.title||'',
@@ -1044,6 +1052,7 @@ async function _syncOnLogin(){
       await dbPut(lp);
       imported++;
     }
+    if(cloudDeleted>0)console.log('[Meridian Sync] Cleaned '+cloudDeleted+' tombstoned papers from cloud');
 
     const cloudByDoi={};const cloudByLocalId={};
     for(const cp of cloudPapers){
@@ -1078,6 +1087,23 @@ async function _syncOnLogin(){
     console.warn('Sync error:',e);
   }
   _syncInProgress=false;
+}
+
+// ═══ DELETION TOMBSTONES — prevent re-sync of deleted papers ═══
+const _TOMBSTONE_KEY='meridian_deleted_ids';
+const _TOMBSTONE_MAX=500;
+
+function _trackDeletion(localId){
+  const ts=safeParse(_TOMBSTONE_KEY,[]);
+  if(!ts.includes(localId)){ts.push(localId);if(ts.length>_TOMBSTONE_MAX)ts.splice(0,ts.length-_TOMBSTONE_MAX);safeStore(_TOMBSTONE_KEY,ts)}
+}
+
+function _isDeletedTombstone(localId){
+  return safeParse(_TOMBSTONE_KEY,[]).includes(localId);
+}
+
+function _clearTombstones(){
+  safeStore(_TOMBSTONE_KEY,[]);
 }
 
 // ═══ OFFLINE QUEUE ═══
@@ -1122,9 +1148,13 @@ function _hookDataLayer(){
   const _origDbDel=dbDel;
   dbDel=async function(id){
     await _origDbDel(id);
+    _trackDeletion(id);
     if(_supaUser){
-      if(navigator.onLine)_supaDeletePaper(id).catch(e=>console.warn('Cloud delete:',e));
-      else _queuePush({type:'delete_paper',localId:id});
+      if(navigator.onLine){
+        try{await _supaDeletePaper(id)}catch(e){console.warn('Cloud delete failed, queuing:',e);_queuePush({type:'delete_paper',localId:id})}
+      }else{
+        _queuePush({type:'delete_paper',localId:id});
+      }
     }
   };
 
