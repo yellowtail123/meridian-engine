@@ -729,109 +729,103 @@ $$('.tab').forEach(t=>t.addEventListener('click',()=>goTab(t.dataset.tab)));
 // Tab scroll indicator
 (function(){const tw=document.querySelector('.hdr-tabwrap');const tabs=tw?.querySelector('.tabs');if(tw&&tabs){const updateScroll=()=>{tw.classList.toggle('scroll-left',tabs.scrollLeft>8)};tabs.addEventListener('scroll',updateScroll,{passive:true});updateScroll()}})();
 
-// ═══ MERIDIAN AUTH — Supabase Client, Authentication, Cloud Sync & Admin ═══
-// All auth/admin/sync code lives here in core.js — no separate script files.
-// Supabase SDK loaded from CDN in <head>, available as window.supabase.
+// ═══ SUPABASE CLIENT — global, created at top level ═══
+const SB = window.SB = supabase.createClient(
+  'https://wgqfxgxnanvckgqkuqas.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg',
+  {auth:{persistSession:true,storageKey:'meridian-auth',autoRefreshToken:true,detectSessionInUrl:true}}
+);
 
-// ─── Supabase Client — created immediately at top level ───
-let _supa=null;
-try{
-  _supa=window.__supabase=window.supabase.createClient(
-    'https://wgqfxgxnanvckgqkuqas.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg',
-    {auth:{persistSession:true,storageKey:'meridian-auth',autoRefreshToken:true,detectSessionInUrl:true}}
-  );
-}catch(e){console.warn('Supabase client creation failed:',e)}
-
-// ─── Auth State ───
 let _supaUser=null;
 let _supaIsAdmin=false;
 let _syncInProgress=false;
 
-// ═══ AUTH INIT ═══
-function _supaInit(){
-  const btn=$('#auth-btn');
-  if(btn)btn.onclick=_showAuthModal;
+// ═══ AUTH STATE LISTENER ═══
+SB.auth.onAuthStateChange((event,session)=>{
+  console.log('Auth event:',event);
+  if(event==='SIGNED_IN'&&session){
+    closeAuthModal();
+    updateUISignedIn(session.user);
+  }
+  if(event==='SIGNED_OUT'){
+    updateUISignedOut();
+    showAuthModal();
+  }
+});
 
-  if(!_supa){console.warn('Supabase client unavailable');_maybeAutoShowModal();return}
-
-  // Listen for auth state changes (SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED).
-  // INITIAL_SESSION is skipped — getSession() below handles startup.
-  _supa.auth.onAuthStateChange(async(event,session)=>{
-    if(event==='INITIAL_SESSION')return;
-    try{
-      if(event==='SIGNED_IN'&&session){
-        _supaUser=session.user;
-        _dismissAuthModal(false);
-        await _checkAdminRole();
-        _renderAuthUI();
-        _renderAdminLink();
-        toast('Signed in as '+_supaUser.email,'ok');
-        await _syncOnLogin();
-        _flushQueue();
-      }
-      if(event==='SIGNED_OUT'){
-        _supaUser=null;
-        _supaIsAdmin=false;
-        _renderAuthUI();
-        _renderAdminLink();
-        toast('Signed out','info');
-      }
-      if(event==='TOKEN_REFRESHED'&&session){
-        _supaUser=session.user;
-      }
-    }catch(e){console.warn('Auth state change error:',e)}
-  });
-
-  // Restore existing session from localStorage on startup.
-  _supa.auth.getSession().then(async({data})=>{
-    if(data.session){
-      _supaUser=data.session.user;
-      await _checkAdminRole();
-      _renderAuthUI();
-      _renderAdminLink();
-    }else{
-      _renderAuthUI();
-      _maybeAutoShowModal();
-    }
-  }).catch(e=>{
-    console.warn('getSession error:',e);
-    _maybeAutoShowModal();
-  });
-}
-
-function _maybeAutoShowModal(){
-  if(_supaUser)return;
-  if(sessionStorage.getItem('meridian_modal_dismissed'))return;
-  _showAuthModal();
-}
-
-function _dismissAuthModal(remember){
-  const m=$('#supa-auth-modal');if(m)m.remove();
-  if(remember)sessionStorage.setItem('meridian_modal_dismissed','1');
-}
-
-// ═══ AUTH UI ═══
-function _renderAuthUI(){
-  const el=$('#auth-btn');if(!el)return;
-  if(_supaUser){
-    const email=_supaUser.email||'';
-    const short=email.length>20?email.slice(0,17)+'...':email;
-    const prefix=_supaIsAdmin?'\u{1F6E1}\uFE0F ':'';
-    el.textContent=prefix+short;
-    el.title=(_supaIsAdmin?'[Admin] ':'')+'Signed in as '+email+' — click to manage';
-    el.onclick=_showAccountMenu;
+// ═══ CHECK EXISTING SESSION ON LOAD ═══
+SB.auth.getSession().then(({data:{session}})=>{
+  console.log('Session restore:',session?session.user.email:'none');
+  if(session){
+    closeAuthModal();
+    updateUISignedIn(session.user);
   }else{
+    showAuthModal();
+  }
+}).catch(e=>{
+  console.warn('getSession error:',e);
+});
+
+// ═══ SIGN IN / SIGN UP / SIGN OUT ═══
+async function doSignIn(email,password){
+  const{data,error}=await SB.auth.signInWithPassword({email,password});
+  console.log('Sign in:',data,error);
+  if(error){_showAuthError(error.message);return}
+}
+
+async function doSignUp(email,password){
+  const{data,error}=await SB.auth.signUp({email,password});
+  console.log('Sign up:',data,error);
+  if(error){_showAuthError(error.message);return}
+  if(!data.session){_showAuthError('Check your email for a confirmation link')}
+}
+
+async function doSignOut(){
+  await SB.auth.signOut();
+}
+
+// ═══ UI STATE ═══
+function updateUISignedIn(user){
+  _supaUser=user;
+  closeAuthModal();
+  const el=$('#auth-btn');
+  if(el){
+    const email=user.email||'';
+    const short=email.length>20?email.slice(0,17)+'...':email;
+    el.textContent=short;
+    el.title='Signed in as '+email+' — click to manage';
+    el.onclick=_showAccountMenu;
+  }
+  _checkAdminRole().then(()=>{
+    _renderAdminLink();
+    if(_supaIsAdmin&&el){
+      el.textContent='\u{1F6E1}\uFE0F '+el.textContent;
+      el.title='[Admin] '+el.title;
+    }
+  });
+  toast('Signed in as '+(user.email||''),'ok');
+  _syncOnLogin().catch(e=>console.warn('Sync:',e));
+  _flushQueue();
+}
+
+function updateUISignedOut(){
+  _supaUser=null;
+  _supaIsAdmin=false;
+  const el=$('#auth-btn');
+  if(el){
     el.textContent='Sign In';
     el.title='Sign in for cross-device sync';
-    el.onclick=_showAuthModal;
+    el.onclick=showAuthModal;
   }
+  _renderAdminLink();
+  toast('Signed out','info');
 }
 
+// ═══ ADMIN ROLE CHECK ═══
 async function _checkAdminRole(){
-  if(!_supa||!_supaUser){_supaIsAdmin=false;return}
+  if(!_supaUser){_supaIsAdmin=false;return}
   try{
-    const{data,error}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).single();
+    const{data,error}=await SB.from('user_roles').select('role').eq('user_id',_supaUser.id).single();
     _supaIsAdmin=!error&&data?.role==='admin';
   }catch(e){
     _supaIsAdmin=false;
@@ -841,9 +835,10 @@ async function _checkAdminRole(){
 function _renderAdminLink(){
   const el=$('#admin-link');if(!el)return;
   el.style.display=_supaIsAdmin?'inline-flex':'none';
-  el.onclick=function(){try{showAdminDashboard()}catch(e){console.error('Admin dashboard error:',e);toast('Admin dashboard failed to load','err')}};
+  el.onclick=function(){try{showAdminDashboard()}catch(e){console.error('Admin:',e);toast('Admin dashboard failed','err')}};
 }
 
+// ═══ ACCOUNT MENU ═══
 function _showAccountMenu(){
   const existing=$('#supa-account-menu');if(existing){existing.remove();return}
   const m=document.createElement('div');m.id='supa-account-menu';
@@ -853,18 +848,20 @@ function _showAccountMenu(){
     <div style="font-size:13px;color:var(--ac);font-family:var(--mf);word-break:break-all;margin-bottom:14px">${_supaUser.email}</div>
     ${_supaIsAdmin?'<button class="bt sm" style="display:block;width:100%;text-align:center;color:var(--wa);border-color:rgba(212,160,74,.3);margin-bottom:8px;font-size:12px;box-sizing:border-box" onclick="document.getElementById(\'supa-account-menu\')?.remove();try{showAdminDashboard()}catch(e){console.error(e)}">\u{1F6E1}\uFE0F Admin Dashboard</button>':''}
     <button class="bt sm" style="width:100%;color:var(--sg);border-color:var(--sb);margin-bottom:8px;font-size:12px" onclick="$('#supa-account-menu').remove();_syncOnLogin().then(()=>toast('Sync complete','ok'))">Sync Now</button>
-    <button class="bt sm" style="width:100%;color:var(--co);border-color:rgba(194,120,120,.3);font-size:12px" onclick="$('#supa-account-menu').remove();_supaSignOut()">Sign Out</button>`;
+    <button class="bt sm" style="width:100%;color:var(--co);border-color:rgba(194,120,120,.3);font-size:12px" onclick="$('#supa-account-menu').remove();doSignOut()">Sign Out</button>`;
   m.addEventListener('click',e=>{if(e.target===m)m.remove()});
   document.addEventListener('click',function _dismiss(e){if(!m.contains(e.target)&&e.target!==$('#auth-btn')){m.remove();document.removeEventListener('click',_dismiss)}},{capture:true,once:false});
   document.body.appendChild(m);
 }
 
-function _showAuthModal(){
-  const existing=$('#supa-auth-modal');if(existing)existing.remove();
+// ═══ AUTH MODAL ═══
+function showAuthModal(){
+  if(_supaUser)return;
+  const existing=$('#supa-auth-modal');if(existing)return;
   const m=document.createElement('div');m.id='supa-auth-modal';
   m.style.cssText='position:fixed;inset:0;z-index:10006;background:rgba(6,5,14,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
   m.innerHTML=`<div style="background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:32px 30px 24px;max-width:380px;width:100%;animation:fadeIn .3s;position:relative">
-    <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1" onclick="_dismissAuthModal(true)">&times;</button>
+    <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1" onclick="closeAuthModal()">&times;</button>
     <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:28px;font-family:var(--sf);color:var(--ac);font-weight:700;letter-spacing:.5px">Meridian</div>
       <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px;letter-spacing:1px;text-transform:uppercase">Marine Research Engine</div>
@@ -872,93 +869,68 @@ function _showAuthModal(){
     <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5;text-align:center">Sign in to sync your library and settings across devices.</p>
     <div id="supa-auth-error" style="display:none;padding:8px 12px;background:var(--cm);border:1px solid rgba(194,120,120,.3);border-radius:6px;font-size:12px;color:var(--co);margin-bottom:12px"></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-      <button type="button" class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('google')">
+      <button type="button" class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_doOAuth('google')">
         <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
         Sign in with Google
       </button>
-      <button type="button" class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_supaOAuth('github')">
+      <button type="button" class="bt sm" style="width:100%;padding:10px;font-size:12px;color:var(--tx);border-color:var(--ab);display:flex;align-items:center;justify-content:center;gap:8px" onclick="_doOAuth('github')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         Sign in with GitHub
       </button>
     </div>
     <div style="position:relative;text-align:center;margin-bottom:16px"><div style="border-top:1px solid var(--bd);position:absolute;top:50%;left:0;right:0"></div><span style="background:var(--bs);padding:0 10px;position:relative;font-size:11px;color:var(--tm);font-family:var(--mf)">or use email</span></div>
     <div id="supa-auth-tabs" style="display:flex;gap:0;margin-bottom:14px">
-      <button type="button" class="bt sm" id="supa-tab-login" style="flex:1;border-radius:6px 0 0 6px;font-size:12px;color:var(--ac);border-color:var(--ab);background:var(--am)" onclick="_supaAuthTab('login')">Sign In</button>
-      <button type="button" class="bt sm" id="supa-tab-signup" style="flex:1;border-radius:0 6px 6px 0;font-size:12px;color:var(--tm);border-color:var(--ab)" onclick="_supaAuthTab('signup')">Sign Up</button>
+      <button type="button" class="bt sm" id="supa-tab-login" style="flex:1;border-radius:6px 0 0 6px;font-size:12px;color:var(--ac);border-color:var(--ab);background:var(--am)" onclick="_authTabSwitch('login')">Sign In</button>
+      <button type="button" class="bt sm" id="supa-tab-signup" style="flex:1;border-radius:0 6px 6px 0;font-size:12px;color:var(--tm);border-color:var(--ab)" onclick="_authTabSwitch('signup')">Sign Up</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <input class="si" id="supa-email" type="email" placeholder="Email" style="font-size:13px;padding:10px 12px">
       <input class="si" id="supa-pass" type="password" placeholder="Password" style="font-size:13px;padding:10px 12px">
-      <button type="button" class="bt on" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_supaEmailAuth()">Sign In</button>
+      <button type="button" class="bt on" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_handleAuthSubmit()">Sign In</button>
     </div>
     <div style="text-align:center;margin-top:16px">
-      <a href="#" onclick="event.preventDefault();_dismissAuthModal(true)" style="font-size:12px;color:var(--tm);text-decoration:none;opacity:.8">Continue without account</a>
+      <a href="#" onclick="event.preventDefault();closeAuthModal()" style="font-size:12px;color:var(--tm);text-decoration:none;opacity:.8">Continue without account</a>
     </div>
   </div>`;
-  m.addEventListener('click',e=>{if(e.target===m)_dismissAuthModal(true)});
+  m.addEventListener('click',e=>{if(e.target===m)closeAuthModal()});
   document.body.appendChild(m);
 }
 
+function closeAuthModal(){
+  const m=$('#supa-auth-modal');if(m)m.remove();
+}
+
+// ═══ AUTH FORM HELPERS ═══
 let _authMode='login';
-function _supaAuthTab(mode){
+
+function _authTabSwitch(mode){
   _authMode=mode;
   const l=$('#supa-tab-login'),s=$('#supa-tab-signup'),b=$('#supa-submit');
   if(mode==='login'){
-    l.style.color='var(--ac)';l.style.background='var(--am)';
-    s.style.color='var(--tm)';s.style.background='';
-    b.textContent='Sign In';
+    if(l){l.style.color='var(--ac)';l.style.background='var(--am)'}
+    if(s){s.style.color='var(--tm)';s.style.background=''}
+    if(b)b.textContent='Sign In';
   }else{
-    s.style.color='var(--ac)';s.style.background='var(--am)';
-    l.style.color='var(--tm)';l.style.background='';
-    b.textContent='Sign Up';
+    if(s){s.style.color='var(--ac)';s.style.background='var(--am)'}
+    if(l){l.style.color='var(--tm)';l.style.background=''}
+    if(b)b.textContent='Sign Up';
   }
 }
 
-async function _supaEmailAuth(){
+async function _handleAuthSubmit(){
   const btn=$('#supa-submit');
   const email=$('#supa-email')?.value?.trim();
   const pass=$('#supa-pass')?.value;
-
   if(!email||!pass){_showAuthError('Enter email and password');return}
-  if(!_supa){_showAuthError('Connection error — please reload the page');return}
-
-  if(btn){btn.disabled=true;btn.textContent='...';}
-
-  let data,error;
+  if(btn){btn.disabled=true;btn.textContent='...'}
   try{
-    const result=_authMode==='login'
-      ?await _supa.auth.signInWithPassword({email,password:pass})
-      :await _supa.auth.signUp({email,password:pass});
-    data=result.data;error=result.error;
-    console.log('Auth result:',{mode:_authMode,data,error});
+    if(_authMode==='login') await doSignIn(email,pass);
+    else await doSignUp(email,pass);
   }catch(e){
-    console.error('Auth call threw:',e);
-    _showAuthError('Connection error — please try again');
-    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
-    return;
+    console.error('Auth error:',e);
+    _showAuthError('Connection error — try again');
   }
-
-  if(error){
-    console.warn('Auth error:',error.message,error.status);
-    _showAuthError(error.message);
-    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
-    return;
-  }
-
-  if(_authMode==='signup'&&!data.session){
-    _showAuthError('Check your email for a confirmation link');
-    if(btn){btn.disabled=false;btn.textContent='Sign Up';}
-    return;
-  }
-
-  // Session acquired — close modal and update UI immediately.
-  // onAuthStateChange SIGNED_IN will also fire for sync/admin check.
-  if(data.session){
-    _supaUser=data.session.user;
-    _dismissAuthModal(false);
-    _renderAuthUI();
-    _renderAdminLink();
-  }
+  if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up'}
 }
 
 function _showAuthError(msg){
@@ -966,21 +938,14 @@ function _showAuthError(msg){
   el.textContent=msg;el.style.display='block';
 }
 
-async function _supaOAuth(provider){
-  if(!_supa)return;
-  const{error}=await _supa.auth.signInWithOAuth({provider,options:{redirectTo:'https://meridian-engine.com'}});
+async function _doOAuth(provider){
+  const{error}=await SB.auth.signInWithOAuth({provider,options:{redirectTo:'https://meridian-engine.com'}});
   if(error)_showAuthError(error.message);
-}
-
-async function _supaSignOut(){
-  if(!_supa)return;
-  await _supa.auth.signOut();
-  // onAuthStateChange SIGNED_OUT handler clears state and updates UI
 }
 
 // ═══ CLOUD CRUD ═══
 async function _supaUpsertPaper(paper){
-  if(!_supa||!_supaUser)return;
+  if(!SB||!_supaUser)return;
   const row={
     user_id:_supaUser.id,
     title:paper.title||null,
@@ -998,28 +963,28 @@ async function _supaUpsertPaper(paper){
     local_id:paper.id,
     saved_at:paper.savedAt||new Date().toISOString()
   };
-  const{data:existing}=await _supa.from('library_papers').select('id').eq('user_id',_supaUser.id).eq('local_id',paper.id).maybeSingle();
+  const{data:existing}=await SB.from('library_papers').select('id').eq('user_id',_supaUser.id).eq('local_id',paper.id).maybeSingle();
   if(existing){
-    await _supa.from('library_papers').update(row).eq('id',existing.id);
+    await SB.from('library_papers').update(row).eq('id',existing.id);
   }else{
-    await _supa.from('library_papers').insert(row);
+    await SB.from('library_papers').insert(row);
   }
 }
 
 async function _supaDeletePaper(localId){
-  if(!_supa||!_supaUser)return;
-  await _supa.from('library_papers').delete().eq('user_id',_supaUser.id).eq('local_id',localId);
+  if(!SB||!_supaUser)return;
+  await SB.from('library_papers').delete().eq('user_id',_supaUser.id).eq('local_id',localId);
 }
 
 async function _supaFetchPapers(){
-  if(!_supa||!_supaUser)return[];
-  const{data,error}=await _supa.from('library_papers').select('*').eq('user_id',_supaUser.id);
+  if(!SB||!_supaUser)return[];
+  const{data,error}=await SB.from('library_papers').select('*').eq('user_id',_supaUser.id);
   if(error){console.warn('Supabase fetch papers:',error);return[]}
   return data||[];
 }
 
 async function _supaSaveSettings(){
-  if(!_supa||!_supaUser)return;
+  if(!SB||!_supaUser)return;
   const row={
     user_id:_supaUser.id,
     ai_provider:S.aiProvider||'anthropic',
@@ -1030,20 +995,20 @@ async function _supaSaveSettings(){
       activeProject:S.activeProject
     }
   };
-  const{data:existing}=await _supa.from('user_settings').select('id').eq('user_id',_supaUser.id).maybeSingle();
-  if(existing)await _supa.from('user_settings').update(row).eq('id',existing.id);
-  else await _supa.from('user_settings').insert(row);
+  const{data:existing}=await SB.from('user_settings').select('id').eq('user_id',_supaUser.id).maybeSingle();
+  if(existing)await SB.from('user_settings').update(row).eq('id',existing.id);
+  else await SB.from('user_settings').insert(row);
 }
 
 async function _supaLoadSettings(){
-  if(!_supa||!_supaUser)return null;
-  const{data}=await _supa.from('user_settings').select('*').eq('user_id',_supaUser.id).maybeSingle();
+  if(!SB||!_supaUser)return null;
+  const{data}=await SB.from('user_settings').select('*').eq('user_id',_supaUser.id).maybeSingle();
   return data;
 }
 
 // ═══ SYNC ON LOGIN ═══
 async function _syncOnLogin(){
-  if(!_supa||!_supaUser||_syncInProgress)return;
+  if(!SB||!_supaUser||_syncInProgress)return;
   _syncInProgress=true;
   try{
     const cloudPapers=await _supaFetchPapers();
@@ -1126,7 +1091,7 @@ function _queuePush(op){
 }
 
 async function _flushQueue(){
-  if(!_supa||!_supaUser)return;
+  if(!SB||!_supaUser)return;
   const q=safeParse(_QUEUE_KEY,[]);
   if(!q.length)return;
   safeStore(_QUEUE_KEY,[]);
@@ -1185,7 +1150,7 @@ let _admSort={col:'created_at',asc:false};
 function showAdminDashboard(){
   try{
   if(!_supaIsAdmin){toast('Admin access required','err');return}
-  if(!_supa)return;
+  if(!SB)return;
 
   if(!_admOverlay){
   _admOverlay=document.createElement('div');
@@ -1295,7 +1260,7 @@ function showAdminDashboard(){
   // Show
   _admOverlay.style.display='';
   document.body.style.overflow='hidden';
-  _admLoadAll(_supa);
+  _admLoadAll(SB);
   }catch(e){console.error('Admin dashboard error:',e);toast('Admin dashboard failed','err')}
 }
 
@@ -1472,7 +1437,7 @@ function _admTimeAgo(date){
 
 async function _admChangeRole(userId,newRole){
   try{
-  if(!_supa)return;const supa=_supa;
+  if(!SB)return;const supa=SB;
   const action=newRole==='banned'?'ban':'set role to '+newRole+' for';
   if(!confirm('Are you sure you want to '+action+' this user?'))return _admLoadUsers(supa);
   const{error}=await supa.rpc('admin_set_user_role',{target_user_id:userId,new_role:newRole});
@@ -1483,7 +1448,7 @@ async function _admChangeRole(userId,newRole){
 
 async function _admDeleteUser(userId,email){
   try{
-  if(!_supa)return;const supa=_supa;
+  if(!SB)return;const supa=SB;
   if(!confirm('Permanently delete user '+email+'? This removes all their data and cannot be undone.'))return;
   if(!confirm('Final confirmation: DELETE '+email+'?'))return;
   const{error}=await supa.rpc('admin_delete_user',{target_user_id:userId});
@@ -1494,7 +1459,7 @@ async function _admDeleteUser(userId,email){
 
 async function _admViewLibrary(userId,email){
   try{
-  if(!_supa)return;const supa=_supa;
+  if(!SB)return;const supa=SB;
   const modal=document.getElementById('adm-library-modal');
   const content=document.getElementById('adm-library-content');
   const title=document.getElementById('adm-library-title');
@@ -1548,7 +1513,6 @@ function _admFormatAction(log){
   }
 }
 
-// ═══ AUTH INIT — runs immediately (script is at bottom of body, DOM is ready) ═══
-_supaInit();
-// Hook data layer after all scripts loaded (needs dbPut/dbDel from meridian-data.js)
+// ═══ INIT — hook data layer after all scripts loaded ═══
+const _ab=$('#auth-btn');if(_ab)_ab.onclick=showAuthModal;
 document.addEventListener('DOMContentLoaded',()=>{_hookDataLayer()});
