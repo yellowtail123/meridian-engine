@@ -648,13 +648,13 @@ function clusterOcc(points,gridSize){
   return Object.values(grid).map(c=>({lat:c.lat/c.n,lon:c.lon/c.n,n:c.n}));
 }
 const _speciesCache=new Map();
-// ═══ SPECIES — WoRMS primary, GBIF+OBIS parallel, FishBase bonus ═══
+// ═══ SPECIES — WoRMS primary, GBIF+OBIS parallel ═══
 async function speciesSearch(){const q=$('#sq').value.trim();if(!q)return;_errPipeline.crumb('search','Species: '+q.slice(0,40));
 const cacheKey=q.toLowerCase().trim();if(_speciesCache.has(cacheKey)){window._sp=_speciesCache.get(cacheKey);renderSpeciesResult();return}
 H('#sres','');H('#sload',mkL());sh('#sload');
-let genus='',species='',sciName='',worms=null,gbifTax=null,gbifOcc=[],obisOcc=[],fb={},gbifKey=null,rank='';
-// 1: WoRMS (CORS-safe) — try fuzzy name match
-try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByName/${encodeURIComponent(q)}?like=true&marine_only=true`,12000);if(r.ok){const d=await r.json();if(d.length){worms=d[0];genus=worms.genus||'';species=worms.species||'';sciName=worms.scientificname||q;rank=worms.rank||''}}}catch{}
+let genus='',species='',sciName='',worms=null,gbifTax=null,gbifOcc=[],obisOcc=[],gbifKey=null,rank='';
+// 1: WoRMS (CORS-safe) — fuzzy name match
+try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByMatchNames?scientificnames[]=${encodeURIComponent(q)}&marine_only=false`,12000);if(r.ok){const d=await r.json();if(d?.[0]?.length){worms=d[0][0];genus=worms.genus||'';species=worms.species||'';sciName=worms.scientificname||q;rank=worms.rank||''}}}catch{}
 // 2: No scientific match — search by common name (WoRMS vernacular + GBIF suggest)
 if(!worms){
 let candidates=[];const seen=new Set();
@@ -684,51 +684,26 @@ if(!worms){sciName=c.sciName;genus=c.genus||'';rank=c.rank||''}}
 try{const r=await fetchT(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(sciName||q)}&verbose=true`,10000);if(r.ok){gbifTax=await r.json();gbifKey=gbifTax.usageKey;if(!genus&&gbifTax.genus){genus=gbifTax.genus;species=gbifTax.species||'';sciName=gbifTax.scientificName||sciName||q}if(!sciName)sciName=gbifTax.scientificName||q;if(!rank)rank=gbifTax.rank||''}}catch{}
 // If we have neither WoRMS nor GBIF key, fail
 if(!worms&&!gbifKey){hi('#sload');H('#sres','<p style="color:var(--tm);text-align:center;padding:40px">Not found. Try a scientific name (e.g. "Carcharodon carcharias") or common name (e.g. "humpback whale").</p>');return}
-// 2: Parallel GBIF occ + OBIS + FishBase
+// 2: Parallel GBIF occ + OBIS
 await Promise.all([
-(async()=>{try{let k=gbifKey;if(!k){const r=await fetchT(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(sciName)}`,8000);if(r.ok){const d=await r.json();k=d.usageKey}}if(k){const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?taxonKey=${k}&hasCoordinate=true&limit=300`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}}catch{}})(),
-(async()=>{try{const aid=worms?.AphiaID;const searchName=genus&&species?`${genus} ${species}`:sciName;let url;if(aid){url=`https://api.obis.org/v3/occurrence?taxonid=${aid}&size=300`}else{url=`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(searchName)}&size=300`}const r=await fetchT(url,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})(),
-(async()=>{if(!genus)return;try{
-  const fishClasses=['Actinopteri','Elasmobranchii','Holocephali','Cladistii','Coelacanthiformes','Dipnoi','Myxini','Petromyzonti'];
-  const taxClass=worms?.class||gbifTax?.class||'';
-  const isFish=fishClasses.some(c=>taxClass.toLowerCase()===c.toLowerCase());
-  const bioHost=isFish?'fishbase.ropensci.org':'sealifebase.ropensci.org';
-  const bioSrc=isFish?'FishBase':'SeaLifeBase';
-  const r=await fetchT(`https://${bioHost}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=3`,8000);
-  if(r.ok){const d=await r.json();fb=(d.data||[])[0]||{};fb._bioSrc=bioSrc;
-    if(fb.SpecCode){
-      try{const er=await fetchT(`https://${bioHost}/ecology?SpecCode=${fb.SpecCode}&limit=1`,6000);
-      if(er.ok){const ed=await er.json();fb._eco=(ed.data||[])[0]||{}}}catch{}
-    }
-  }
-}catch{}})(),
+(async()=>{try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(sciName)}&limit=300&hasCoordinate=true`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}catch{}})(),
+(async()=>{try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sciName)}&size=300`,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})(),
 (async()=>{if(!gbifKey&&!gbifTax?.usageKey)return;const k=gbifKey||gbifTax.usageKey;try{const r=await fetchT(`https://api.gbif.org/v1/species/${k}`,8000);if(r.ok){const d=await r.json();window._spIUCN=d.threatStatus||null}}catch{window._spIUCN=null}})(),
 (async()=>{try{const nm=sciName||q;const r=await fetchT(`https://www.boldsystems.org/index.php/API_Public/combined?taxon=${encodeURIComponent(nm)}&format=json`,10000);if(r.ok){const txt=await r.text();try{const d=JSON.parse(txt);const recs=d.bold_records?.records;window._spBOLD=recs?Object.keys(recs).length:0}catch{window._spBOLD=0}}else window._spBOLD=0}catch{window._spBOLD=0}})(),
 (async()=>{try{const nm=sciName||q;const r=await fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term=${encodeURIComponent(nm)}[Organism]&retmode=json`,8000);if(r.ok){const d=await r.json();window._spGenBank=parseInt(d.esearchresult?.count||'0')}else window._spGenBank=0}catch{window._spGenBank=0}})()
 ]);
 hi('#sload');
-window._sp={genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey,_bioSrc:fb._bioSrc||'FishBase/SeaLifeBase'};
+window._sp={genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,rank,gbifKey};
 _speciesCache.set(cacheKey,window._sp);if(_speciesCache.size>10){const oldest=[..._speciesCache.keys()];_speciesCache.delete(oldest[0])}
 renderSpeciesResult()}
 function renderSpeciesResult(){
-const{genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey}=window._sp;
+const{genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,rank,gbifKey}=window._sp;
 const tot=gbifOcc.length+obisOcc.length;
 // Render
 let h=`<div class="sec"><div class="sh"><h4 style="color:var(--ac);font-style:italic;font-size:16px;letter-spacing:0">${sciName}${rank&&rank!=='Species'?' <span style="font-style:normal;font-size:11px;color:var(--tm);text-transform:uppercase">('+rank+')</span>':''}</h4></div><div class="sb"><div class="sp-info">`;
 // Taxonomy
 const tax=[];if(worms){['kingdom','phylum','class','order','family','genus','species'].forEach(k=>{if(worms[k])tax.push([k[0].toUpperCase()+k.slice(1),worms[k]])})}else if(gbifTax){['kingdom','phylum','class','order','family','genus','species'].forEach(k=>{if(gbifTax[k])tax.push([k[0].toUpperCase()+k.slice(1),gbifTax[k]])})}
 if(tax.length)h+=`<div class="sp-card"><div class="lbl">Taxonomy ${worms?'(WoRMS #'+worms.AphiaID+')':'(GBIF)'}</div><div class="val">${tax.map(([k,v])=>`<span style="color:var(--tm)">${k}:</span> ${v}`).join('<br>')}</div></div>`;
-// Biology
-const bio=[];if(fb.FBname)bio.push(['Common',fb.FBname]);if(fb.DepthRangeShallow!=null)bio.push(['Depth',`${fb.DepthRangeShallow}–${fb.DepthRangeDeep||'?'}m`]);if(fb.LongevityWild)bio.push(['Longevity',fb.LongevityWild+'yr']);if(fb.Length)bio.push(['Max Length',fb.Length+'cm']);if(fb.Weight)bio.push(['Max Weight',fb.Weight+'g']);if(fb.Vulnerability)bio.push(['Vulnerability',fb.Vulnerability+'/100']);
-if(fb._eco){
-  if(fb._eco.FoodTroph)bio.push(['Trophic Lvl',fb._eco.FoodTroph.toFixed(2)]);
-  if(fb._eco.DietTroph)bio.push(['Diet Troph',fb._eco.DietTroph.toFixed(2)]);
-  if(fb._eco.Benthic!=null&&fb._eco.Benthic)bio.push(['Habitat','Benthic']);
-  else if(fb._eco.Pelagic!=null&&fb._eco.Pelagic)bio.push(['Habitat','Pelagic']);
-  else if(fb._eco.Reef!=null&&fb._eco.Reef)bio.push(['Habitat','Reef-associated']);
-}
-if(bio.length)h+=`<div class="sp-card"><div class="lbl">Biology (${window._sp._bioSrc||'FishBase/SeaLifeBase'})</div><div class="val">${bio.map(([k,v])=>`<span style="color:var(--tm)">${k}:</span> ${v}`).join('<br>')}</div></div>`;
-else h+=`<div class="sp-card"><div class="lbl">Biology</div><div class="val" style="color:var(--tm);font-size:12px">${window._sp._bioSrc||'FishBase/SeaLifeBase'} may be unavailable (CORS). Taxonomy from ${worms?'WoRMS':'GBIF'}.</div></div>`;
 // WoRMS
 if(worms){const wi=[];if(worms.status)wi.push(['Status',worms.status]);if(worms.isMarine!=null)wi.push(['Marine',worms.isMarine?'Yes':'No']);if(wi.length)h+=`<div class="sp-card"><div class="lbl">WoRMS</div><div class="val">${wi.map(([k,v])=>`<span style="color:var(--tm)">${k}:</span> ${v}`).join('<br>')}</div></div>`}
 // IUCN / Conservation Status
@@ -762,7 +737,7 @@ h+=`<div class="sec"><div class="sh" onclick="this.nextElementSibling.style.disp
 h+=`<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">${tot?`<button class="bt sm on" onclick="sendOccWS()">Occurrences → Workshop</button>`:''}<button class="bt sm" onclick="sendProfWS()">Profile → Workshop</button>${tot?`<button class="bt sm" onclick="dlSpCSV()">Download CSV</button>`:''}<button class="bt sm" onclick="searchSpeciesLit()">Search Literature</button>${tot?`<button class="bt sm" onclick="exportChart('spmap')">📷 Map</button>`:''}${(gbifOcc.length>=300||obisOcc.length>=300)?`<button class="bt sm" onclick="loadMoreOcc()" id="loadMoreOccBtn" style="color:var(--sg)">Load More Occurrences</button>`:''}<button class="bt sm" onclick="fetchEnvAtCentroid()">Env at Centroid</button><button class="bt sm" onclick="searchSpeciesGaps()">Find Gaps</button>${tot?`<button class="bt sm" onclick="dlDarwinCore()">Darwin Core</button><button class="bt sm" onclick="dlGeoJSON()">GeoJSON</button>`:''}</div>`;
 h+=`<div id="sp-imgs" style="margin-top:12px"></div>`;
 h+=`</div></div>`;
-H('#sres',h);try{sessionStorage.setItem('meridian_sp',JSON.stringify({sciName:window._sp.sciName,gbifOcc:window._sp.gbifOcc.slice(0,50),obisOcc:window._sp.obisOcc.slice(0,50),worms:window._sp.worms,gbifTax:window._sp.gbifTax,fb:window._sp.fb,rank:window._sp.rank,genus:window._sp.genus,species:window._sp.species}));}catch{}
+H('#sres',h);try{sessionStorage.setItem('meridian_sp',JSON.stringify({sciName:window._sp.sciName,gbifOcc:window._sp.gbifOcc.slice(0,50),obisOcc:window._sp.obisOcc.slice(0,50),worms:window._sp.worms,gbifTax:window._sp.gbifTax,rank:window._sp.rank,genus:window._sp.genus,species:window._sp.species}));}catch{}
 setTimeout(()=>{
 if($('#spmap')&&tot){const gL=gbifOcc.filter(o=>o.decimalLatitude),oL=obisOcc.filter(o=>o.decimalLatitude);
 const gC=clusterOcc(gL.map(o=>({lat:o.decimalLatitude,lon:o.decimalLongitude})));
@@ -790,15 +765,14 @@ if(gbifKey){
 }
 },200)}
 function sendOccWS(){const d=window._sp;if(!d)return;S.wsC=['Src','Species','Lat','Lon','Depth','Year','Country'];S.wsD=[...d.gbifOcc.map(o=>({Src:'GBIF',Species:d.sciName,Lat:o.decimalLatitude,Lon:o.decimalLongitude,Depth:o.depth,Year:o.year,Country:o.country||''})),...d.obisOcc.map(o=>({Src:'OBIS',Species:d.sciName,Lat:o.decimalLatitude,Lon:o.decimalLongitude,Depth:o.depth,Year:o.date_year,Country:o.country||''}))];autoTypes();initWS();goTab('workshop')}
-function sendProfWS(){const d=window._sp;if(!d)return;S.wsC=['Field','Value'];S.wsD=[{Field:'Name',Value:d.sciName},{Field:'Family',Value:d.worms?.family||d.gbifTax?.family||d.fb?.Family||''},{Field:'MaxLength',Value:d.fb?.Length||''},{Field:'MaxDepth',Value:d.fb?.DepthRangeDeep||''},{Field:'GBIF',Value:d.gbifOcc.length},{Field:'OBIS',Value:d.obisOcc.length}];autoTypes();initWS();goTab('workshop')}
+function sendProfWS(){const d=window._sp;if(!d)return;S.wsC=['Field','Value'];S.wsD=[{Field:'Name',Value:d.sciName},{Field:'Family',Value:d.worms?.family||d.gbifTax?.family||''},{Field:'GBIF',Value:d.gbifOcc.length},{Field:'OBIS',Value:d.obisOcc.length}];autoTypes();initWS();goTab('workshop')}
 function dlSpCSV(){const d=window._sp;if(!d)return;dl(['Source,Species,Lat,Lon,Depth,Year,Country',...d.gbifOcc.map(o=>`GBIF,"${d.sciName}",${o.decimalLatitude||''},${o.decimalLongitude||''},${o.depth||''},${o.year||''},${o.country||''}`),...d.obisOcc.map(o=>`OBIS,"${d.sciName}",${o.decimalLatitude||''},${o.decimalLongitude||''},${o.depth||''},${o.date_year||''},${o.country||''}`)].join('\n'),d.sciName.replace(/ /g,'_')+'.csv','text/csv')}
 async function loadMoreOcc(){
   if(!window._sp)return;const d=window._sp;const btn=$('#loadMoreOccBtn');if(btn)btn.textContent='Loading...';
-  try{if(d.gbifKey){const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?taxonKey=${d.gbifKey}&hasCoordinate=true&limit=300&offset=${d.gbifOcc.length}`,12000);
-    if(r.ok){const rd=await r.json();d.gbifOcc=[...d.gbifOcc,...(rd.results||[])]}}}catch{}
-  try{const aid=d.worms?.AphiaID;const nm=d.genus&&d.species?`${d.genus} ${d.species}`:d.sciName;
-    let url=aid?`https://api.obis.org/v3/occurrence?taxonid=${aid}&size=300&after=${d.obisOcc.length}`:`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(nm)}&size=300&after=${d.obisOcc.length}`;
-    const r=await fetchT(url,12000);if(r.ok){const rd=await r.json();d.obisOcc=[...d.obisOcc,...(rd.results||[])]}}catch{}
+  try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(d.sciName)}&limit=300&hasCoordinate=true&offset=${d.gbifOcc.length}`,12000);
+    if(r.ok){const rd=await r.json();d.gbifOcc=[...d.gbifOcc,...(rd.results||[])]}}catch{}
+  try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(d.sciName)}&size=300&after=${d.obisOcc.length}`,12000);
+    if(r.ok){const rd=await r.json();d.obisOcc=[...d.obisOcc,...(rd.results||[])]}}catch{}
   toast(`Now ${d.gbifOcc.length} GBIF + ${d.obisOcc.length} OBIS occurrences`,'ok');renderSpeciesResult()}
 $('#ssb').addEventListener('click',speciesSearch);$('#sq').addEventListener('keydown',e=>{if(e.key==='Enter')speciesSearch()});
 function pickSpecies(name){$('#sq').value=name;speciesSearch()}
@@ -1069,16 +1043,15 @@ async function openSpeciesCompare(){
   toast('Fetching data for '+_compareSpecies.length+' species...','info');
   const results=[];
   for(const name of _compareSpecies){
-    let data={name,sciName:name,gbifOcc:[],obisOcc:[],fb:{},worms:null,gbifTax:null,depths:[],years:[]};
-    try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByName/${encodeURIComponent(name)}?like=true&marine_only=true`,10000);
-      if(r.ok){const d=await r.json();if(d.length){data.worms=d[0];data.sciName=d[0].scientificname||name}}}catch{}
+    let data={name,sciName:name,gbifOcc:[],obisOcc:[],worms:null,gbifTax:null,depths:[],years:[]};
+    try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByMatchNames?scientificnames[]=${encodeURIComponent(name)}&marine_only=false`,10000);
+      if(r.ok){const d=await r.json();if(d?.[0]?.length){data.worms=d[0][0];data.sciName=d[0][0].scientificname||name}}}catch{}
     try{const r=await fetchT(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(data.sciName)}&verbose=true`,8000);
-      if(r.ok){data.gbifTax=await r.json();if(data.gbifTax.usageKey){
-        const or=await fetchT(`https://api.gbif.org/v1/occurrence/search?taxonKey=${data.gbifTax.usageKey}&hasCoordinate=true&limit=100`,10000);
-        if(or.ok){const od=await or.json();data.gbifOcc=od.results||[]}}}}catch{}
-    try{const aid=data.worms?.AphiaID;const sn=data.sciName;
-      const url=aid?`https://api.obis.org/v3/occurrence?taxonid=${aid}&size=100`:`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sn)}&size=100`;
-      const r=await fetchT(url,10000);if(r.ok){const d=await r.json();data.obisOcc=d.results||[]}}catch{}
+      if(r.ok){data.gbifTax=await r.json()}}catch{}
+    try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(data.sciName)}&limit=300&hasCoordinate=true`,10000);
+      if(r.ok){const d=await r.json();data.gbifOcc=d.results||[]}}catch{}
+    try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(data.sciName)}&size=300`,10000);
+      if(r.ok){const d=await r.json();data.obisOcc=d.results||[]}}catch{}
     data.depths=[...data.gbifOcc.filter(o=>o.depth!=null).map(o=>o.depth),...data.obisOcc.filter(o=>o.depth!=null).map(o=>o.depth)];
     data.years=[...data.gbifOcc.filter(o=>o.year).map(o=>o.year),...data.obisOcc.filter(o=>o.date_year).map(o=>o.date_year)];
     results.push(data);await new Promise(r=>setTimeout(r,200))}

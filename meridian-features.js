@@ -136,7 +136,7 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
 const AGENT_TOOLS=[
   {name:'search_literature',description:'Search academic databases (OpenAlex, Semantic Scholar, CrossRef, PubMed) for papers. Returns titles, authors, year, journal, citations, OA status, abstracts. Use when the user asks about published research.',input_schema:{type:'object',properties:{query:{type:'string',description:'Search query'},year_from:{type:'integer',description:'Earliest publication year'},year_to:{type:'integer',description:'Latest publication year'},open_access_only:{type:'boolean',description:'Only OA papers'}},required:['query']}},
   {name:'search_grey_literature',description:'Search grey literature: FAO/UNEP documents, theses/dissertations, and marine agency reports (ICES, IUCN, NOAA, CSIRO). Use for non-journal sources and technical reports.',input_schema:{type:'object',properties:{query:{type:'string',description:'Search query'}},required:['query']}},
-  {name:'lookup_species',description:'Look up a marine species. Returns taxonomy (WoRMS), GBIF+OBIS occurrence counts, biology (FishBase/SeaLifeBase), depth range, and year range of observations. Use when the user asks about a species.',input_schema:{type:'object',properties:{name:{type:'string',description:'Scientific name (e.g. Tursiops truncatus) or common name (e.g. blue whale)'}},required:['name']}},
+  {name:'lookup_species',description:'Look up a marine species. Returns taxonomy (WoRMS), GBIF+OBIS occurrence counts, depth range, and year range of observations. Use when the user asks about a species.',input_schema:{type:'object',properties:{name:{type:'string',description:'Scientific name (e.g. Tursiops truncatus) or common name (e.g. blue whale)'}},required:['name']}},
   {name:'search_library',description:"Search the user's saved paper library. Returns matching papers with title, authors, year, journal, citations, tags, notes, and extracted findings. Use when the user refers to 'my papers' or 'my library'.",input_schema:{type:'object',properties:{query:{type:'string',description:'Search terms (matched against titles, abstracts, authors, concepts, tags). Empty string returns all.'}},required:['query']}},
   {name:'get_library_stats',description:"Get summary statistics about the user's library: total papers, year range, top journals, species mentioned, regions covered, methods used, and research gaps.",input_schema:{type:'object',properties:{},required:[]}},
   {name:'get_workshop_data',description:'Get the current Workshop dataset: columns, types, row count, and descriptive stats (mean, median, min, max, SD) for numeric columns. Optionally includes sample rows.',input_schema:{type:'object',properties:{include_sample_rows:{type:'boolean',description:'Include first 5 rows for context'}},required:[]}},
@@ -254,35 +254,23 @@ async function executeAgentTool(name,input){
     }
     case 'lookup_species':{
       const q=input.name;
-      let genus='',species='',sciName='',worms=null,gbifTax=null,gbifOcc=[],obisOcc=[],fb={},gbifKey=null,rank='';
+      let genus='',species='',sciName='',worms=null,gbifTax=null,gbifOcc=[],obisOcc=[],gbifKey=null,rank='';
       // WoRMS name match
-      try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByName/${encodeURIComponent(q)}?like=true&marine_only=true`,12000);if(r.ok){const d=await r.json();if(d.length){worms=d[0];genus=worms.genus||'';species=worms.species||'';sciName=worms.scientificname||q;rank=worms.rank||''}}}catch{}
+      try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByMatchNames?scientificnames[]=${encodeURIComponent(q)}&marine_only=false`,12000);if(r.ok){const d=await r.json();if(d?.[0]?.length){worms=d[0][0];genus=worms.genus||'';species=worms.species||'';sciName=worms.scientificname||q;rank=worms.rank||''}}}catch{}
       // WoRMS vernacular fallback
       if(!worms){try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaRecordsByVernacular/${encodeURIComponent(q)}?like=true`,10000);if(r.ok){const d=await r.json();if(d.length){worms=d[0];genus=worms.genus||'';species=worms.species||'';sciName=worms.scientificname||q;rank=worms.rank||''}}}catch{}}
       // GBIF species match
       try{const r=await fetchT(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(sciName||q)}&verbose=true`,10000);if(r.ok){gbifTax=await r.json();gbifKey=gbifTax.usageKey;if(!genus&&gbifTax.genus){genus=gbifTax.genus;species=gbifTax.species||'';sciName=gbifTax.scientificName||sciName||q}if(!sciName)sciName=gbifTax.scientificName||q;if(!rank)rank=gbifTax.rank||''}}catch{}
       if(!worms&&!gbifKey)return{error:'Species not found. Try a scientific name or common name.'};
-      // Parallel: GBIF occ + OBIS + FishBase
+      // Parallel: GBIF occ + OBIS
       await Promise.all([
-        (async()=>{try{let k=gbifKey;if(k){const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?taxonKey=${k}&hasCoordinate=true&limit=100`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}}catch{}})(),
-        (async()=>{try{const aid=worms?.AphiaID;const sn=genus&&species?`${genus} ${species}`:sciName;let url=aid?`https://api.obis.org/v3/occurrence?taxonid=${aid}&size=100`:`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sn)}&size=100`;const r=await fetchT(url,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})(),
-        (async()=>{if(!genus)return;try{
-          const fishClasses=['Actinopteri','Elasmobranchii','Holocephali','Cladistii','Coelacanthiformes','Dipnoi','Myxini','Petromyzonti'];
-          const taxClass=worms?.class||gbifTax?.class||'';
-          const isFish=fishClasses.some(c=>taxClass.toLowerCase()===c.toLowerCase());
-          const bioHost=isFish?'fishbase.ropensci.org':'sealifebase.ropensci.org';
-          const bioSrc=isFish?'FishBase':'SeaLifeBase';
-          const r=await fetchT(`https://${bioHost}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=3`,8000);
-          if(r.ok){const d=await r.json();fb=(d.data||[])[0]||{};fb._bioSrc=bioSrc;
-            if(fb.SpecCode){try{const er=await fetchT(`https://${bioHost}/ecology?SpecCode=${fb.SpecCode}&limit=1`,6000);if(er.ok){const ed=await er.json();fb._eco=(ed.data||[])[0]||{}}}catch{}}
-          }}catch{}})()
+        (async()=>{try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(sciName)}&limit=300&hasCoordinate=true`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}catch{}})(),
+        (async()=>{try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sciName)}&size=300`,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})()
       ]);
       // Compute summary stats
       const allOcc=[...gbifOcc.map(o=>({lat:o.decimalLatitude,lon:o.decimalLongitude,yr:o.year,depth:o.depth})),...obisOcc.map(o=>({lat:o.decimalLatitude,lon:o.decimalLongitude,yr:o.date_year,depth:o.depth}))];
       const years=allOcc.map(o=>o.yr).filter(Boolean);const depths=allOcc.map(o=>o.depth).filter(d=>d!=null&&!isNaN(d));
       const result={scientificName:sciName,rank,taxonomy:{kingdom:worms?.kingdom||gbifTax?.kingdom,phylum:worms?.phylum||gbifTax?.phylum,class:worms?.class||gbifTax?.class,order:worms?.order||gbifTax?.order,family:worms?.family||gbifTax?.family,genus},gbifOccurrences:gbifOcc.length,obisOccurrences:obisOcc.length,yearRange:years.length?{min:Math.min(...years),max:Math.max(...years)}:null,depthRange:depths.length?{min:Math.min(...depths).toFixed(1),max:Math.max(...depths).toFixed(1)}:null};
-      if(fb.FBname||fb.Body)result.biology={commonName:fb.FBname,bodyShape:fb.Body,maxLength:fb.Length?fb.Length+' cm':null,habitat:fb.DemersPelag,importance:fb.Importance,source:fb._bioSrc};
-      if(fb._eco)result.ecology={feedingType:fb._eco.FeedingType,climate:fb._eco.Climate};
       return result;
     }
     case 'search_library':{
@@ -2840,7 +2828,7 @@ const kbHint=document.createElement('div');kbHint.className='kbd-hint';kbHint.in
 function showOnboarding(){
   const features=[
     {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--ac)" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg>',title:'Literature',desc:'Search OpenAlex, Semantic Scholar, CrossRef & PubMed simultaneously. PRISMA-compliant screening workflow.'},
-    {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--sg)" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" fill="var(--sg)" stroke="none"/></svg>',title:'Species',desc:'Taxonomy from WoRMS, occurrences from GBIF & OBIS, biology from FishBase. Mapped and exportable.'},
+    {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--sg)" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" fill="var(--sg)" stroke="none"/></svg>',title:'Species',desc:'Taxonomy from WoRMS, occurrences from GBIF & OBIS. Mapped and exportable.'},
     {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--lv)" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.5" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/></svg>',title:'Environmental Data',desc:'30+ NOAA ERDDAP variables — SST, chlorophyll, currents, nutrients. Time series from 1955 to present.'},
     {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--wa)" fill="none" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg>',title:'Analysis',desc:'10+ chart types, statistical tests, growth models, diversity indices. Export to R, Python, or CSV.'},
     {icon:'<svg viewBox="0 0 16 16" width="28" height="28" stroke="var(--co)" fill="none" stroke-width="1.5" stroke-linecap="round"><path d="M8 1l1.5 3.5L13 5.5l-2.5 2.5.5 3.5L8 10l-3 1.5.5-3.5L3 5.5l3.5-1z"/></svg>',title:'AI Assistant',desc:'Claude, GPT, or Gemini as your research buddy — with tool use for search, species lookup, and analysis.'},
@@ -2932,7 +2920,7 @@ function showPrivacyPolicy(){
     <p>When you use Meridian's features, your search queries and coordinates are sent to these public academic APIs:</p>
     <ul style="margin:8px 0 8px 20px">
       <li><b>Literature:</b> OpenAlex, Semantic Scholar, CrossRef, PubMed (NCBI)</li>
-      <li><b>Species:</b> WoRMS, GBIF, OBIS, FishBase, BOLD Systems</li>
+      <li><b>Species:</b> WoRMS, GBIF, OBIS, BOLD Systems</li>
       <li><b>Environmental:</b> NOAA ERDDAP, Open-Meteo, NOAA Mauna Loa</li>
       <li><b>Maps:</b> OpenStreetMap tiles, Nominatim geocoding</li>
     </ul>
