@@ -1185,13 +1185,15 @@ let _admAllUsers=[];
 let _admSort={col:'created_at',asc:false};
 
 function showAdminDashboard(){
-  if(_admOverlay)return;
+  try{
   if(!_supaIsAdmin){toast('Admin access required','err');return}
   const supa=_supaGetClient();
   if(!supa)return;
 
+  if(!_admOverlay){
   _admOverlay=document.createElement('div');
   _admOverlay.id='admin-overlay';
+  _admOverlay.style.display='none';
 
   _admOverlay.innerHTML=`<style>
 #admin-overlay{position:fixed;inset:0;z-index:10003;background:var(--bg);overflow-y:auto;animation:fadeIn .3s}
@@ -1284,40 +1286,58 @@ function showAdminDashboard(){
 </div>`;
 
   document.body.appendChild(_admOverlay);
+  }
+  // Reset to loading state each time
+  const _ld=document.getElementById('adm-loading');
+  const _ct=document.getElementById('adm-content');
+  if(_ld)_ld.style.display='';
+  if(_ct)_ct.style.display='none';
+  // Update email display (may have changed)
+  const _em=_admOverlay.querySelector('.adm-hdr span');
+  if(_em)_em.textContent=_supaUser?.email||'';
+  // Show
+  _admOverlay.style.display='';
   document.body.style.overflow='hidden';
-  document.addEventListener('keydown',_admEscHandler);
   _admLoadAll(supa);
+  }catch(e){console.error('Admin dashboard error:',e);toast('Admin dashboard failed','err')}
 }
 
 function closeAdminDashboard(){
-  if(!_admOverlay)return;
-  _admOverlay.remove();
-  _admOverlay=null;
-  _admAllUsers=[];
-  document.body.style.overflow='';
-  document.removeEventListener('keydown',_admEscHandler);
+  try{
+    if(_admOverlay)_admOverlay.style.display='none';
+    document.body.style.overflow='';
+    const lib=document.getElementById('adm-library-modal');
+    if(lib)lib.style.display='none';
+  }catch(e){console.error('Admin close error:',e)}
 }
 
 function _admEscHandler(e){
-  if(e.key==='Escape'){
+  if(e.key==='Escape'&&_admOverlay&&_admOverlay.style.display!=='none'){
     const lib=document.getElementById('adm-library-modal');
     if(lib&&lib.style.display!=='none'){lib.style.display='none';return}
     closeAdminDashboard();
   }
 }
+document.addEventListener('keydown',_admEscHandler);
 
 function _admEsc(s){return s?s.replace(/'/g,"\\'").replace(/"/g,'&quot;').replace(/</g,'&lt;'):''}
 
 async function _admLoadAll(supa){
-  const{data:{session}}=await supa.auth.getSession();
-  if(!session){toast('Session expired','err');closeAdminDashboard();return}
+  try{
+  const{data}=await supa.auth.getSession();
+  if(!data?.session){toast('Session expired','err');closeAdminDashboard();return}
+  const session=data.session;
   const{data:role}=await supa.from('user_roles').select('role').eq('user_id',session.user.id).maybeSingle();
   if(!role||role.role!=='admin'){toast('Admin access denied','err');closeAdminDashboard();return}
   const loading=document.getElementById('adm-loading');
   const content=document.getElementById('adm-content');
   if(loading)loading.style.display='none';
   if(content)content.style.display='block';
-  _admLoadStats(supa);_admLoadUsers(supa);_admLoadChart(supa);_admLoadLogs(supa);
+  _admLoadStats(supa).catch(e=>console.warn('Admin stats:',e));
+  _admLoadUsers(supa).catch(e=>console.warn('Admin users:',e));
+  _admLoadChart(supa).catch(e=>console.warn('Admin chart:',e));
+  _admLoadLogs(supa).catch(e=>console.warn('Admin logs:',e));
+  }catch(e){console.error('Admin load error:',e);toast('Admin data failed to load','err')}
 }
 
 async function _admLoadStats(supa){
@@ -1363,6 +1383,7 @@ async function _admLoadUsers(supa){
 }
 
 function _admFilterUsers(){
+  try{
   const q=(document.getElementById('adm-filter-email')?.value||'').toLowerCase().trim();
   const role=document.getElementById('adm-filter-role')?.value||'';
   const provider=document.getElementById('adm-filter-provider')?.value||'';
@@ -1374,12 +1395,15 @@ function _admFilterUsers(){
   }
   if(provider)filtered=filtered.filter(u=>u.provider===provider);
   _admRenderUsers(filtered);
+  }catch(e){console.error('Admin filter error:',e)}
 }
 
 function _admSortUsers(col){
+  try{
   if(_admSort.col===col)_admSort.asc=!_admSort.asc;
   else{_admSort.col=col;_admSort.asc=true}
   _admFilterUsers();
+  }catch(e){console.error('Admin sort error:',e)}
 }
 
 function _admRenderUsers(users){
@@ -1450,24 +1474,29 @@ function _admTimeAgo(date){
 }
 
 async function _admChangeRole(userId,newRole){
+  try{
   const supa=_supaGetClient();if(!supa)return;
   const action=newRole==='banned'?'ban':'set role to '+newRole+' for';
   if(!confirm('Are you sure you want to '+action+' this user?'))return _admLoadUsers(supa);
   const{error}=await supa.rpc('admin_set_user_role',{target_user_id:userId,new_role:newRole});
   if(error){alert('Error: '+error.message);return}
-  _admLoadUsers(supa);_admLoadLogs(supa);
+  _admLoadUsers(supa).catch(()=>{});_admLoadLogs(supa).catch(()=>{});
+  }catch(e){console.error('Admin role change error:',e)}
 }
 
 async function _admDeleteUser(userId,email){
+  try{
   const supa=_supaGetClient();if(!supa)return;
   if(!confirm('Permanently delete user '+email+'? This removes all their data and cannot be undone.'))return;
   if(!confirm('Final confirmation: DELETE '+email+'?'))return;
   const{error}=await supa.rpc('admin_delete_user',{target_user_id:userId});
   if(error){alert('Error: '+error.message);return}
-  _admLoadUsers(supa);_admLoadStats(supa);_admLoadLogs(supa);
+  _admLoadUsers(supa).catch(()=>{});_admLoadStats(supa).catch(()=>{});_admLoadLogs(supa).catch(()=>{});
+  }catch(e){console.error('Admin delete error:',e)}
 }
 
 async function _admViewLibrary(userId,email){
+  try{
   const supa=_supaGetClient();if(!supa)return;
   const modal=document.getElementById('adm-library-modal');
   const content=document.getElementById('adm-library-content');
@@ -1486,6 +1515,7 @@ async function _admViewLibrary(userId,email){
   }
   html+='</tbody></table>';
   content.innerHTML=html;
+  }catch(e){console.error('Admin view library error:',e)}
 }
 
 async function _admLoadLogs(supa){
