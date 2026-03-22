@@ -136,7 +136,7 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
 const AGENT_TOOLS=[
   {name:'search_literature',description:'Search academic databases (OpenAlex, Semantic Scholar, CrossRef, PubMed) for papers. Returns titles, authors, year, journal, citations, OA status, abstracts. Use when the user asks about published research.',input_schema:{type:'object',properties:{query:{type:'string',description:'Search query'},year_from:{type:'integer',description:'Earliest publication year'},year_to:{type:'integer',description:'Latest publication year'},open_access_only:{type:'boolean',description:'Only OA papers'}},required:['query']}},
   {name:'search_grey_literature',description:'Search grey literature: FAO/UNEP documents, theses/dissertations, and marine agency reports (ICES, IUCN, NOAA, CSIRO). Use for non-journal sources and technical reports.',input_schema:{type:'object',properties:{query:{type:'string',description:'Search query'}},required:['query']}},
-  {name:'lookup_species',description:'Look up a marine species. Returns taxonomy (WoRMS), GBIF+OBIS occurrence counts, biology (FishBase via proxy), depth range, and year range of observations. Use when the user asks about a species.',input_schema:{type:'object',properties:{name:{type:'string',description:'Scientific name (e.g. Tursiops truncatus) or common name (e.g. blue whale)'}},required:['name']}},
+  {name:'lookup_species',description:'Look up a marine species. Returns taxonomy (WoRMS), GBIF+OBIS occurrence counts, biology (FishBase via proxy), vernacular names, ecological attributes, distribution localities, depth range, and year range of observations. Use when the user asks about a species.',input_schema:{type:'object',properties:{name:{type:'string',description:'Scientific name (e.g. Tursiops truncatus) or common name (e.g. blue whale)'}},required:['name']}},
   {name:'search_library',description:"Search the user's saved paper library. Returns matching papers with title, authors, year, journal, citations, tags, notes, and extracted findings. Use when the user refers to 'my papers' or 'my library'.",input_schema:{type:'object',properties:{query:{type:'string',description:'Search terms (matched against titles, abstracts, authors, concepts, tags). Empty string returns all.'}},required:['query']}},
   {name:'get_library_stats',description:"Get summary statistics about the user's library: total papers, year range, top journals, species mentioned, regions covered, methods used, and research gaps.",input_schema:{type:'object',properties:{},required:[]}},
   {name:'get_workshop_data',description:'Get the current Workshop dataset: columns, types, row count, and descriptive stats (mean, median, min, max, SD) for numeric columns. Optionally includes sample rows.',input_schema:{type:'object',properties:{include_sample_rows:{type:'boolean',description:'Include first 5 rows for context'}},required:[]}},
@@ -262,17 +262,23 @@ async function executeAgentTool(name,input){
       // GBIF species match
       try{const r=await fetchT(`https://api.gbif.org/v1/species/match?name=${encodeURIComponent(sciName||q)}&verbose=true`,10000);if(r.ok){gbifTax=await r.json();gbifKey=gbifTax.usageKey;if(!genus&&gbifTax.genus){genus=gbifTax.genus;species=gbifTax.species||'';sciName=gbifTax.scientificName||sciName||q}if(!sciName)sciName=gbifTax.scientificName||q;if(!rank)rank=gbifTax.rank||''}}catch{}
       if(!worms&&!gbifKey)return{error:'Species not found. Try a scientific name or common name.'};
-      // Parallel: GBIF occ + OBIS + FishBase (via proxy)
+      // Parallel: GBIF occ + OBIS + FishBase + WoRMS extras
+      let aiVernaculars=[],aiDistributions=[];
       await Promise.all([
         (async()=>{try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(sciName)}&limit=300&hasCoordinate=true`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}catch{}})(),
         (async()=>{try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sciName)}&size=300`,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})(),
-        (async()=>{if(!genus)return;try{const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=3`,8000);if(r.ok){const d=await r.json();fb=(d.data||[])[0]||{}}}catch{}})()
+        (async()=>{if(!genus)return;try{const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=3`,8000);if(r.ok){const d=await r.json();fb=(d.data||[])[0]||{}}}catch{}})(),
+        (async()=>{if(!worms?.AphiaID)return;try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaVernacularsByAphiaID/${worms.AphiaID}`,8000);if(r.ok)aiVernaculars=await r.json()||[]}catch{}})(),
+        (async()=>{if(!worms?.AphiaID)return;try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaDistributionsByAphiaID/${worms.AphiaID}`,8000);if(r.ok)aiDistributions=await r.json()||[]}catch{}})()
       ]);
       // Compute summary stats
       const allOcc=[...gbifOcc.map(o=>({lat:o.decimalLatitude,lon:o.decimalLongitude,yr:o.year,depth:o.depth})),...obisOcc.map(o=>({lat:o.decimalLatitude,lon:o.decimalLongitude,yr:o.date_year,depth:o.depth}))];
       const years=allOcc.map(o=>o.yr).filter(Boolean);const depths=allOcc.map(o=>o.depth).filter(d=>d!=null&&!isNaN(d));
       const result={scientificName:sciName,rank,taxonomy:{kingdom:worms?.kingdom||gbifTax?.kingdom,phylum:worms?.phylum||gbifTax?.phylum,class:worms?.class||gbifTax?.class,order:worms?.order||gbifTax?.order,family:worms?.family||gbifTax?.family,genus},gbifOccurrences:gbifOcc.length,obisOccurrences:obisOcc.length,yearRange:years.length?{min:Math.min(...years),max:Math.max(...years)}:null,depthRange:depths.length?{min:Math.min(...depths).toFixed(1),max:Math.max(...depths).toFixed(1)}:null};
       if(fb.FBname||fb.Length)result.biology={commonName:fb.FBname,maxLength:fb.Length?fb.Length+'cm':null,depthRange:fb.DepthRangeShallow!=null?`${fb.DepthRangeShallow}–${fb.DepthRangeDeep||'?'}m`:null,longevity:fb.LongevityWild?fb.LongevityWild+'yr':null,vulnerability:fb.Vulnerability};
+      if(aiVernaculars.length)result.vernacularNames=aiVernaculars.slice(0,5).map(v=>({name:v.vernacular,lang:v.language_code}));
+      if(aiDistributions.length)result.distributions=aiDistributions.slice(0,10).map(d=>d.locality);
+      if(gbifTax?.iucnRedListCategory)result.conservationStatus=gbifTax.iucnRedListCategory;
       return result;
     }
     case 'search_library':{
