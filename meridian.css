@@ -330,14 +330,14 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .skill-hidden{display:none!important}
 /* ═══ SIDEBAR NAVIGATION ═══ */
 .sidebar{position:fixed;left:0;top:0;bottom:0;width:50px;background:#1e1b2e;border-right:1px solid var(--brd);display:flex;flex-direction:column;z-index:1000;transition:width 200ms ease;overflow:hidden}
-.sidebar.expanded{width:220px}
+.sidebar:hover,.sidebar.expanded{width:220px;box-shadow:4px 0 16px rgba(0,0,0,.25)}
 .sb-top{display:flex;align-items:center;min-height:50px;border-bottom:1px solid var(--brd);flex-shrink:0;position:relative}
 .sb-logo{display:flex;align-items:center;overflow:hidden;white-space:nowrap}
 .sb-logo-m{display:flex;align-items:center;justify-content:center;width:50px;flex-shrink:0;font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--ac),#D4A04A);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:var(--sf)}
 .sb-logo-full{font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--ac),#D4A04A,#E8C49B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:var(--sf);opacity:0;transition:opacity 200ms ease;white-space:nowrap;pointer-events:none}
-.sidebar.expanded .sb-logo-full{opacity:1;pointer-events:auto}
+.sidebar:hover .sb-logo-full,.sidebar.expanded .sb-logo-full{opacity:1;pointer-events:auto}
 .sb-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:28px;height:28px;background:0;border:1px solid transparent;border-radius:6px;color:var(--tm);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;opacity:0}
-.sidebar.expanded .sb-toggle{opacity:1}
+.sidebar:hover .sb-toggle,.sidebar.expanded .sb-toggle{opacity:1}
 .sidebar:hover .sb-toggle{opacity:1}
 .sb-toggle:hover{color:var(--ac);border-color:var(--brd);background:rgba(201,149,107,.06)}
 .sb-nav{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 0;scrollbar-width:thin;scrollbar-color:var(--ab) transparent}
@@ -345,9 +345,9 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .sb-nav::-webkit-scrollbar-thumb{background:var(--ab);border-radius:2px}
 .sb-group{margin-bottom:4px}
 .sb-hdr{font-size:10px;color:var(--tm);font-family:var(--sf);font-weight:600;letter-spacing:0.1em;text-transform:uppercase;padding:8px 16px 4px;white-space:nowrap;opacity:0;height:0;overflow:hidden;transition:opacity 200ms ease}
-.sidebar.expanded .sb-hdr{opacity:1;height:auto}
+.sidebar:hover .sb-hdr,.sidebar.expanded .sb-hdr{opacity:1;height:auto}
 .sb-divider{height:1px;background:var(--brd);margin:4px 12px}
-.sidebar.expanded .sb-divider{display:none}
+.sidebar:hover .sb-divider,.sidebar.expanded .sb-divider{display:none}
 .sb-item{display:flex;align-items:center;width:100%;padding:8px 0;border:none;background:0;cursor:pointer;color:var(--tm);font-family:var(--sf);font-size:13px;font-weight:400;transition:all .15s;position:relative;white-space:nowrap;border-left:3px solid transparent}
 .sb-item:hover{color:var(--ts);background:rgba(201,149,107,.06)}
 .sb-item.active{color:var(--ac);border-left-color:var(--ac)}
@@ -355,9 +355,8 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .sb-icon{display:flex;align-items:center;justify-content:center;width:47px;flex-shrink:0;color:var(--tm)}
 .sb-icon svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .sb-label{opacity:0;transition:opacity 200ms ease;overflow:hidden}
-.sidebar.expanded .sb-label{opacity:1}
+.sidebar:hover .sb-label,.sidebar.expanded .sb-label{opacity:1}
 .sb-badge{margin-left:auto;margin-right:12px}
-.sidebar:not(.expanded) .sb-item:hover::after{content:attr(title);position:absolute;left:54px;top:50%;transform:translateY(-50%);background:var(--bs);border:1px solid var(--brd);border-radius:6px;padding:4px 10px;font-size:12px;font-family:var(--sf);color:var(--ts);white-space:nowrap;z-index:1001;box-shadow:0 2px 8px rgba(0,0,0,.3);pointer-events:none}
 .sb-bottom{border-top:1px solid var(--brd);padding:8px 0;flex-shrink:0}
 .sb-bottom-btn{display:flex;align-items:center;width:100%;padding:6px 0;border:none;background:0;cursor:pointer;color:var(--tm);font-family:var(--sf);font-size:12px;transition:all .15s;white-space:nowrap;position:relative}
 .sb-bottom-btn:hover{color:var(--ts);background:rgba(201,149,107,.06)}
@@ -368,13 +367,11 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .sb-bicon svg{width:16px;height:16px}
 .sb-bottom-btn .sb-label{font-size:12px}
 .sb-links{padding:0 16px;font-size:10px;color:var(--tm);font-family:var(--mf);opacity:0;transition:opacity 200ms ease;white-space:nowrap;overflow:hidden;height:0}
-.sidebar.expanded .sb-links{opacity:1;height:auto;padding:6px 16px}
+.sidebar:hover .sb-links,.sidebar.expanded .sb-links{opacity:1;height:auto;padding:6px 16px}
 .sb-links a{color:var(--tm);text-decoration:underline}
 .sb-links span{margin:0 4px}
-.sidebar:not(.expanded) .sb-bottom-btn:hover::after{content:attr(title);position:absolute;left:54px;top:50%;transform:translateY(-50%);background:var(--bs);border:1px solid var(--brd);border-radius:6px;padding:4px 10px;font-size:12px;font-family:var(--sf);color:var(--ts);white-space:nowrap;z-index:1001;box-shadow:0 2px 8px rgba(0,0,0,.3);pointer-events:none}
 /* Main wrap */
-#main-wrap{margin-left:50px;transition:margin-left 200ms ease;min-height:100vh}
-.sidebar.expanded~#main-wrap{margin-left:220px}
+#main-wrap{margin-left:50px;min-height:100vh}
 /* Mobile hamburger */
 .sb-hamburger{display:none;position:fixed;top:12px;left:12px;z-index:999;width:36px;height:36px;border-radius:8px;border:1px solid var(--brd);background:var(--bs);color:var(--tm);cursor:pointer;align-items:center;justify-content:center}
 .sb-hamburger:hover{color:var(--ac);border-color:var(--ab)}
@@ -403,5 +400,4 @@ html.light .sb-item:hover{background:rgba(139,105,20,.06)}
 html.light .sb-item.active{color:var(--ac);border-left-color:var(--ac)}
 html.light .sb-bottom-btn:hover{background:rgba(139,105,20,.06)}
 html.light .sb-divider{background:#d0cbc3}
-html.light .sidebar:not(.expanded) .sb-item:hover::after,html.light .sidebar:not(.expanded) .sb-bottom-btn:hover::after{background:#fff;border-color:#d0cbc3}
 html.light .sb-toggle:hover{background:rgba(139,105,20,.06)}
