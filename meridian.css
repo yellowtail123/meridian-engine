@@ -67,14 +67,13 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
 @keyframes drift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 .hdr{padding:0;border-bottom:none;position:relative;overflow:hidden}
-.hdr-title{padding:10px 24px 8px;position:relative;overflow:hidden;background:linear-gradient(160deg,#06050e 0%,#0a0918 30%,#0d0c1e 60%,#080a14 100%);border-bottom:1px solid rgba(42,90,140,.2);min-height:70px}
+.hdr-title{padding:10px 24px 8px;position:relative;overflow:hidden;background:linear-gradient(160deg,#06050e 0%,#0a0918 30%,#0d0c1e 60%,#080a14 100%);border-bottom:1px solid rgba(42,90,140,.2);min-height:50px}
 .hdr-title::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(20,50,90,.15) 0%,transparent 55%);pointer-events:none}
-.hdr-globe{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 0 20px rgba(40,100,180,.12));width:90px;height:90px}
 .hdr-stars{position:absolute;inset:0;pointer-events:none}
 .hdr-stars span{position:absolute;width:2px;height:2px;border-radius:50%;background:#c8c0b8;opacity:.35}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
 .logo{font-size:35px;font-weight:700;font-family:var(--sf);background:linear-gradient(135deg,var(--ac),#D4A04A,#E8C49B,var(--ac));background-size:300% 300%;animation:drift 8s ease infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent}.meta{font-size:14px;color:var(--tm);text-align:right;font-family:var(--sf);line-height:1.6}
-.daily-quote{font-size:14px;font-family:var(--mf);letter-spacing:1px;-webkit-text-fill-color:#C27878;text-shadow:0 0 7px rgba(194,120,120,.6),0 0 20px rgba(194,120,120,.35),0 0 40px rgba(194,120,120,.15);background:none;-webkit-background-clip:unset;animation:none;margin-left:18px;font-weight:400;text-transform:none;white-space:nowrap}
+.daily-quote{font-size:14px;font-family:var(--mf);letter-spacing:1px;-webkit-text-fill-color:#C27878;text-shadow:0 0 7px rgba(194,120,120,.6),0 0 20px rgba(194,120,120,.35),0 0 40px rgba(194,120,120,.15);background:none;-webkit-background-clip:unset;animation:none;margin-left:18px;font-weight:400;text-transform:none;white-space:normal;max-width:calc(100% - 380px);display:inline-block;line-height:1.4;vertical-align:middle}
 .daily-quote .dq-text{font-style:italic}
 .daily-quote .dq-author{font-style:normal;opacity:.85}
 .daily-quote.dq-long{font-size:12px}
