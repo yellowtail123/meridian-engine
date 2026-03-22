@@ -3041,13 +3041,14 @@ goTab=function(id){_origGoTabBase(id);
 // ═══ PHASE 5a: SEARCH HISTORY INDICATOR ═══
 (function(){
   const row=$('#litSearchRow');if(!row)return;
+  const wrap=row.querySelector('.si-wrap');if(!wrap)return;
   const badge=document.createElement('span');
   badge.id='search-hist-badge';
-  badge.style.cssText='position:absolute;right:70px;top:50%;transform:translateY(-50%);font-size:11px;font-family:var(--mf);color:var(--tm);cursor:pointer;display:none;opacity:.6;transition:opacity .2s';
+  badge.style.cssText='position:absolute;right:34px;top:50%;transform:translateY(-50%);font-size:11px;font-family:var(--mf);color:var(--tm);cursor:pointer;display:none;opacity:.6;transition:opacity .2s;z-index:1';
   badge.onmouseenter=()=>badge.style.opacity='1';
   badge.onmouseleave=()=>badge.style.opacity='.6';
   badge.onclick=()=>{const lq=$('#lq');if(lq){lq.focus();showSearchHist()}};
-  row.appendChild(badge);
+  wrap.appendChild(badge);
   // Update badge on search
   const _origSaveHist=window.saveSearchHist;
   window.saveSearchHist=function(q){_origSaveHist(q);updateHistBadge()};
