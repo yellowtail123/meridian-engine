@@ -953,7 +953,14 @@ async function _supaEmailAuth(){
     return;
   }
 
-  // Session acquired — onAuthStateChange SIGNED_IN handles the rest
+  // Session acquired — close modal and update UI immediately.
+  // onAuthStateChange SIGNED_IN will also fire for sync/admin check.
+  if(data.session){
+    _supaUser=data.session.user;
+    _dismissAuthModal(false);
+    _renderAuthUI();
+    _renderAdminLink();
+  }
 }
 
 function _showAuthError(msg){
@@ -1514,5 +1521,7 @@ function _admFormatAction(log){
   }
 }
 
-// ═══ AUTH + SYNC INIT — deferred until all scripts loaded ═══
-document.addEventListener('DOMContentLoaded',()=>{_supaInit();_hookDataLayer()});
+// ═══ AUTH INIT — runs immediately (script is at bottom of body, DOM is ready) ═══
+_supaInit();
+// Hook data layer after all scripts loaded (needs dbPut/dbDel from meridian-data.js)
+document.addEventListener('DOMContentLoaded',()=>{_hookDataLayer()});

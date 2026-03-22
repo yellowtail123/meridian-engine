@@ -90,6 +90,11 @@ html = html.replace(
   '<script>if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(r=>r.forEach(w=>w.unregister()))}</script>\n<script src="meridian-core.js">'
 );
 
+// Cache-busting: add ?v=timestamp to local script/CSS references
+const buildVersion = Date.now();
+html = html.replace(/src="(meridian-[^"]+\.js)"/g, `src="$1?v=${buildVersion}"`);
+html = html.replace(/href="(meridian[^"]*\.css)"/g, `href="$1?v=${buildVersion}"`);
+
 // Write as both index.html and meridian.html
 fs.writeFileSync(path.join(DIST, "index.html"), html);
 fs.writeFileSync(path.join(DIST, "meridian.html"), html);
