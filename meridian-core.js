@@ -10,6 +10,23 @@ if (!_DEBUG) {
   // Keep console.warn and console.error visible in production
 }
 
+// ═══ API KEY SCRUBBER — strip keys from any string before logging/reporting ═══
+function _scrubApiKeys(s){
+  if(typeof s!=='string')return s;
+  return s.replace(/sk-ant-[a-zA-Z0-9_-]+/g,'[REDACTED_API_KEY]')
+          .replace(/sk-[a-zA-Z0-9_-]{20,}/g,'[REDACTED_API_KEY]')
+          .replace(/AIza[a-zA-Z0-9_-]{30,}/g,'[REDACTED_API_KEY]')
+          .replace(/gsk_[a-zA-Z0-9_-]+/g,'[REDACTED_API_KEY]')
+          .replace(/dsk_[a-zA-Z0-9_-]+/g,'[REDACTED_API_KEY]')
+          .replace(/key-[a-zA-Z0-9_-]{20,}/g,'[REDACTED_API_KEY]');
+}
+function _deepScrubKeys(obj){
+  if(!obj||typeof obj!=='object')return typeof obj==='string'?_scrubApiKeys(obj):obj;
+  if(Array.isArray(obj))return obj.map(_deepScrubKeys);
+  const out={};for(const[k,v]of Object.entries(obj))out[k]=typeof v==='string'?_scrubApiKeys(v):(v&&typeof v==='object')?_deepScrubKeys(v):v;
+  return out;
+}
+
 // ═══ MERIDIAN ERROR PIPELINE ═══
 const _errPipeline=(function(){
   const MAX_CRUMBS=30,MAX_ERRORS=100,DEDUP_MS=5000,REPORT_INTERVAL=60000,REPORT_MAX_PER_MIN=10;
@@ -35,7 +52,7 @@ const _errPipeline=(function(){
 
   // ── Breadcrumbs ──
   function crumb(type,msg,data){
-    _crumbs.push({t:Date.now(),type,msg,data:data||null});
+    _crumbs.push({t:Date.now(),type,msg:_scrubApiKeys(msg),data:data?_deepScrubKeys(data):null});
     if(_crumbs.length>MAX_CRUMBS)_crumbs.shift();
   }
 
@@ -53,9 +70,9 @@ const _errPipeline=(function(){
     const err={
       id:'e_'+now+'_'+Math.random().toString(36).slice(2,6),
       ts:new Date(now).toISOString(),
-      msg:String(msg).slice(0,500),
-      source:source||null,
-      stack:stack?String(stack).slice(0,2000):null,
+      msg:_scrubApiKeys(String(msg).slice(0,500)),
+      source:source?_scrubApiKeys(String(source)):null,
+      stack:stack?_scrubApiKeys(String(stack).slice(0,2000)):null,
       tab:activeTab,
       env:_env(),
       crumbs:_crumbs.slice(-15),// last 15 breadcrumbs for context
@@ -119,11 +136,7 @@ const _errPipeline=(function(){
   // ── Fetch interception ──
   const _origFetch=window.fetch;
   function _stripKeys(url){
-    // Remove API keys from logged URLs
-    return String(url).replace(/([?&])(key|api_key|x-api-key|apikey|token)=[^&]*/gi,'$1$2=[REDACTED]')
-                      .replace(/(sk-ant-[a-zA-Z0-9-]{8})[a-zA-Z0-9-]*/g,'$1...')
-                      .replace(/(sk-[a-zA-Z0-9]{8})[a-zA-Z0-9]*/g,'$1...')
-                      .replace(/(AIza[a-zA-Z0-9]{8})[a-zA-Z0-9]*/g,'$1...');
+    return _scrubApiKeys(String(url).replace(/([?&])(key|api_key|x-api-key|apikey|token)=[^&]*/gi,'$1$2=[REDACTED]'));
   }
   window.fetch=function(input,init){
     const url=typeof input==='string'?input:input?.url||'';
@@ -145,12 +158,12 @@ const _errPipeline=(function(){
 
   // ── Global error handlers ──
   window.onerror=function(msg,src,line,col,err){
-    console.error('Meridian error:',msg,src,line,err);
+    console.error('Meridian error:',_scrubApiKeys(String(msg)));
     capture(msg,src+':'+line+':'+col,err?.stack,{type:'runtime'});
     return false;
   };
   window.addEventListener('unhandledrejection',e=>{
-    console.error('Unhandled promise:',e.reason);
+    console.error('Unhandled promise:',_scrubApiKeys(e.reason?.message||String(e.reason)));
     const reason=e.reason;
     const msg=reason?.message||String(reason).slice(0,300);
     const stack=reason?.stack||null;
@@ -175,7 +188,7 @@ const _errPipeline=(function(){
     if(!unsent.length)return;
     const batch=unsent.slice(0,20);
     try{
-      const body=JSON.stringify({errors:batch,ts:new Date().toISOString()});
+      const body=JSON.stringify({errors:batch.map(e=>_deepScrubKeys(e)),ts:new Date().toISOString()});
       if(navigator.sendBeacon){navigator.sendBeacon(_ERROR_ENDPOINT,body)}
       else{_origFetch(_ERROR_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).catch(()=>{})}
       batch.forEach(e=>e._sent=true);
@@ -434,7 +447,7 @@ function hi(e){if(typeof e==='string')e=$(e);if(e)e.style.display='none'}
 const mkL=()=>'<div class="ld">'+[0,1,2,3].map(i=>`<div class="ld-d" style="animation:glow 1.4s ease ${i*.15}s infinite"></div>`).join('')+'</div>';
 function dl(c,f,t){const b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function recAbs(inv){if(!inv)return null;const w=[];for(const[word,pos]of Object.entries(inv))for(const p of pos)w[p]=word;return w.join(' ').slice(0,500)}
-function goTab(id){_errPipeline.crumb('nav','Tab → '+id);$$('.tab').forEach(x=>x.classList.remove('on'));$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn)tabBtn.classList.add('on');if(tabPane)tabPane.classList.add('on');if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign()}
+function goTab(id){const _prev=document.querySelector('.tab.on')?.dataset?.tab;if(_prev==='ai'&&id!=='ai'&&typeof _clearApiKey==='function')_clearApiKey(true);_errPipeline.crumb('nav','Tab → '+id);$$('.tab').forEach(x=>x.classList.remove('on'));$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn)tabBtn.classList.add('on');if(tabPane)tabPane.classList.add('on');if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign()}
 function fetchT(url,ms=15000,externalSignal){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);if(externalSignal){externalSignal.addEventListener('abort',()=>c.abort(),{once:true});if(externalSignal.aborted)c.abort()}return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t))}
 function envFetchT(url,ms=15000){
   if(_envAbort?.signal.aborted)return Promise.reject(new DOMException('','AbortError'));

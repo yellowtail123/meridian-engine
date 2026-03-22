@@ -35,7 +35,7 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     const body={model,max_tokens:maxTokens,messages};
     if(system)body.system=system;if(tools?.length)body.tools=tools;
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body),signal});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     return await r.json();
   }
   if(prov==='google'){
@@ -56,7 +56,7 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     if(system)body.systemInstruction={parts:[{text:system}]};
     if(tools?.length)body.tools=[{functionDeclarations:tools.map(t=>({name:t.name,description:t.description,parameters:t.input_schema}))}];
     const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const data=await r.json();if(!data.candidates?.length)throw new Error('No response from Gemini');
     const parts=data.candidates[0].content?.parts||[],content=[];
     for(const p of parts){if(p.text)content.push({type:'text',text:p.text});if(p.functionCall)content.push({type:'tool_use',id:'gem_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name:p.functionCall.name,input:p.functionCall.args||{}})}
@@ -84,7 +84,7 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     const body={model,max_tokens:maxTokens,messages:oaiMsgs};
     if(tools?.length)body.tools=tools.map(t=>({type:'function',function:{name:t.name,description:t.description,parameters:t.input_schema}}));
     const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const data=await r.json();if(!data.choices?.[0])throw new Error('No response from '+AI_PROVIDERS[prov].name);
     const ch=data.choices[0],content=[];
     if(ch.message.content)content.push({type:'text',text:ch.message.content});
@@ -98,7 +98,7 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
   if(prov==='anthropic'){
     const body={model,max_tokens:maxTokens,stream:true,messages};if(system)body.system=system;
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(body)});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const reader=r.body.getReader(),dec=new TextDecoder();let text='';
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;
@@ -109,7 +109,7 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
     const gc=messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
     const body={contents:gc,generationConfig:{maxOutputTokens:maxTokens}};if(system)body.systemInstruction={parts:[{text:system}]};
     const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const reader=r.body.getReader(),dec=new TextDecoder();let text='';
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();
@@ -122,7 +122,7 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
     const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
     messages.forEach(m=>oaiMsgs.push({role:m.role,content:m.content}));
     const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,stream:true,messages:oaiMsgs})});
-    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(em)}
+    if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const reader=r.body.getReader(),dec=new TextDecoder();let text='';
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
       for(const line of chunk.split('\n')){if(!line.startsWith('data:'))continue;const d=line.slice(5).trim();if(d==='[DONE]')continue;
@@ -529,6 +529,19 @@ $('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.
 $('#aki').addEventListener('keydown',e=>{if(e.key==='Enter')$('#akb').click()});
 $('#aip').addEventListener('change',()=>{updateAIProvider($('#aip').value)});
 $('#aimodel').addEventListener('change',()=>{S.aiModel=$('#aimodel').value;safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#aim').textContent='Model: '+S.aiModel});
+// ═══ API KEY SECURITY ═══
+const _KEY_TIMEOUT_MS=15*60*1000;
+let _keyInactivityTimer=null;
+function _resetKeyTimer(){clearTimeout(_keyInactivityTimer);if(!S.apiK)return;_keyInactivityTimer=setTimeout(_onKeyTimeout,_KEY_TIMEOUT_MS)}
+function _onKeyTimeout(){_clearApiKey(true);S.aiProvider='anthropic';const aip=$('#aip');if(aip)aip.value='anthropic';_syncModelDropdown('anthropic');const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel+' \u2014 key required for AI features';_showKeyTimeoutNotice()}
+function _showKeyTimeoutNotice(){const existing=$('#key-timeout-notice');if(existing)existing.remove();const n=document.createElement('div');n.id='key-timeout-notice';n.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10010;padding:14px 20px;background:linear-gradient(135deg,rgba(194,120,120,.15),rgba(212,160,74,.1));border-bottom:1px solid rgba(194,120,120,.3);text-align:center;font-size:13px;color:var(--co);font-family:var(--mf);animation:fadeIn .3s';n.innerHTML='\uD83D\uDD12 Your API key was cleared for security due to inactivity. Please re-enter your key to continue. <button class="bt sm" style="margin-left:12px;font-size:11px;color:var(--ac);border-color:var(--ab)" onclick="goTab(\'ai\');this.parentElement.remove()">Go to AI Settings</button>';document.body.appendChild(n)}
+function _clearApiKey(silent){S.apiK='';const aki=$('#aki');if(aki)aki.value='';const aks=$('#aks');if(aks)aks.style.borderColor='var(--bd)';const akb=$('#akb');if(akb)akb.textContent='Save';const aim=$('#aim');if(aim)aim.textContent='Model: '+(S.aiModel||AI_PROVIDERS[S.aiProvider]?.defaultModel||'')+' \u2014 key required for AI features';clearTimeout(_keyInactivityTimer);_keyInactivityTimer=null;if(!silent)toast('Key cleared.','ok',2000)}
+['mousemove','keydown','scroll','touchstart'].forEach(ev=>document.addEventListener(ev,_resetKeyTimer,{passive:true}));
+$('#akb').addEventListener('click',()=>setTimeout(_resetKeyTimer,200));
+$('#aip').addEventListener('change',()=>setTimeout(_resetKeyTimer,200));
+$('#akcl')?.addEventListener('click',()=>{if(S.apiK)_clearApiKey();else toast('No key to clear','info',1500)});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&e.key==='K'){e.preventDefault();if(S.apiK){_clearApiKey();toast('API key cleared','ok',2000)}else{toast('No API key set','info',1500)}}});
+$('#aki')?.addEventListener('paste',()=>{if(sessionStorage.getItem('meridian_paste_warned'))return;sessionStorage.setItem('meridian_paste_warned','1');const inp=$('#aki');if(!inp)return;const rect=inp.getBoundingClientRect();const tip=document.createElement('div');tip.id='key-paste-tip';tip.style.cssText='position:fixed;z-index:10008;padding:10px 14px;background:var(--bs);border:1px solid var(--sb);border-radius:8px;font-size:12px;color:var(--ts);font-family:var(--mf);line-height:1.5;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:fadeIn .3s;opacity:1;transition:opacity .5s;pointer-events:none;left:'+Math.min(rect.left,window.innerWidth-360)+'px;top:'+(rect.bottom+8)+'px';tip.textContent='\uD83D\uDD12 Your key is stored in memory only \u2014 never saved to disk, never sent to our servers. It will be cleared when you close this tab or after 15 minutes of inactivity.';document.body.appendChild(tip);setTimeout(()=>{tip.style.opacity='0';setTimeout(()=>tip.remove(),500)},5000)});
 $('#csnd').addEventListener('click',sCh);$('#ci').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey)sCh()});
 // ═══ CHART EXPORT ═══
 function exportChart(id){const el=$('#'+id)||document.getElementById(id);if(!el)return;Plotly.downloadImage(el,{format:'png',width:1200,height:600,filename:'meridian_chart'}).then(()=>toast('Chart saved','ok')).catch(()=>toast('Chart export failed','err'))}

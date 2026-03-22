@@ -225,20 +225,27 @@ function formatIssueBody(err) {
 }
 
 function sanitizeError(err) {
-  const clean = { ...err };
-  // Remove any field that might contain an API key
-  const keyPattern = /sk-ant-|sk-[a-zA-Z0-9]{20}|AIza[a-zA-Z0-9]{30}/;
-  for (const [k, v] of Object.entries(clean)) {
-    if (typeof v === 'string' && keyPattern.test(v)) {
-      clean[k] = v.replace(keyPattern, '[REDACTED]');
+  const keyPatterns = [
+    /sk-ant-[a-zA-Z0-9_-]+/g,
+    /sk-[a-zA-Z0-9_-]{20,}/g,
+    /AIza[a-zA-Z0-9_-]{30,}/g,
+    /gsk_[a-zA-Z0-9_-]+/g,
+    /dsk_[a-zA-Z0-9_-]+/g,
+    /key-[a-zA-Z0-9_-]{20,}/g,
+  ];
+  function scrub(s) {
+    if (typeof s !== 'string') return s;
+    for (const p of keyPatterns) s = s.replace(p, '[REDACTED_API_KEY]');
+    return s;
+  }
+  function deepScrub(obj) {
+    if (!obj || typeof obj !== 'object') return typeof obj === 'string' ? scrub(obj) : obj;
+    if (Array.isArray(obj)) return obj.map(deepScrub);
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = typeof v === 'string' ? scrub(v) : (v && typeof v === 'object') ? deepScrub(v) : v;
     }
+    return out;
   }
-  // Sanitize breadcrumbs
-  if (clean.crumbs) {
-    clean.crumbs = clean.crumbs.map(c => ({
-      ...c,
-      msg: typeof c.msg === 'string' ? c.msg.replace(keyPattern, '[REDACTED]') : c.msg,
-    }));
-  }
-  return clean;
+  return deepScrub(err);
 }
