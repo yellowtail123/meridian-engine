@@ -24,7 +24,9 @@ const FILES = [
   "meridian-repro.js",
   "meridian-session.js",
   "meridian-studydesign.js",
+  "meridian-auth.js",
   "meridian-supabase.js",
+  "meridian-admin.js",
   "manifest.json",
   "sw.js",
   "_headers",
@@ -46,13 +48,16 @@ for (const f of FILES) {
   }
 }
 
-// Copy workers/ directory if it exists
+// Copy workers/ directory if it exists (skip subdirectories like .wrangler/)
 const workersDir = path.join(ROOT, "workers");
 if (fs.existsSync(workersDir)) {
   fs.mkdirSync(path.join(DIST, "workers"), { recursive: true });
   for (const f of fs.readdirSync(workersDir)) {
-    fs.copyFileSync(path.join(workersDir, f), path.join(DIST, "workers", f));
-    console.log("  copied workers/" + f);
+    const src = path.join(workersDir, f);
+    if (fs.statSync(src).isFile()) {
+      fs.copyFileSync(src, path.join(DIST, "workers", f));
+      console.log("  copied workers/" + f);
+    }
   }
 }
 

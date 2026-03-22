@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>/* Strip stale SRI hash from Cloudflare auto-injected beacon */
+new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i].addedNodes.length;j++){var n=m[i].addedNodes[j];if(n.tagName==='SCRIPT'&&n.src&&n.src.indexOf('cloudflareinsights.com')!==-1&&n.hasAttribute('integrity')){n.removeAttribute('integrity');o.disconnect()}}}).observe(document.documentElement,{childList:true,subtree:true});
+</script>
 <title>Meridian — Marine Research Platform</title>
 <meta name="description" content="Search 4 academic databases, explore species data from WoRMS/GBIF/OBIS, visualize NOAA environmental time series, and analyze everything in one tool. Free, open, runs in your browser.">
 <meta name="keywords" content="marine research, fisheries science, literature search, species data, environmental data, academic search, WoRMS, GBIF, OBIS, ERDDAP, research platform">
