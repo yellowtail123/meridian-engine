@@ -122,9 +122,10 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <button class="sb-toggle" id="sidebarToggle" title="Toggle sidebar (Ctrl+B)" aria-label="Toggle sidebar"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="10" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg></button>
 </div>
 <div class="sb-nav">
+<button class="sb-item active" data-tab="home" title="Home"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2.5 8.5V14h4v-4h3v4h4V8.5"/><path d="M1 9l7-7 7 7"/></svg></span><span class="sb-label">Home</span></button>
 <div class="sb-group">
 <div class="sb-hdr">Discover</div><div class="sb-divider"></div>
-<button class="sb-item active" data-tab="lit" title="Literature"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Literature</span></button>
+<button class="sb-item" data-tab="lit" title="Literature"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Literature</span></button>
 <button class="sb-item" data-tab="species" title="Species"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" style="fill:currentColor" stroke="none"/><path d="M2 8L0 5.5M2 8L0 10.5"/></svg></span><span class="sb-label">Species</span></button>
 <button class="sb-item" data-tab="env" title="Environmental Data"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><ellipse cx="8" cy="8" rx="2.5" ry="6"/><line x1="2" y1="8" x2="14" y2="8"/><path d="M2.5 5h11M2.5 11h11"/></svg></span><span class="sb-label">Environmental Data</span></button>
 </div>
@@ -365,7 +366,8 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 </header>
 <main class="mn">
-<div class="tp on" id="tab-lit">
+<div class="tp on" id="tab-home"><div id="home-content"></div></div>
+<div class="tp" id="tab-lit">
 <div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Literature Search.</b> Searches OpenAlex, Semantic Scholar, CrossRef & PubMed simultaneously. Click a result to see its abstract, then save to Library or compile all to Workshop for analysis. You can also import papers directly by DOI below.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>
 <div class="doi-row"><input class="fi" id="doi-input" placeholder="Paste a DOI to import directly (e.g. 10.1038/s41586-020-2649-2)" style="flex:1" onkeydown="if(event.key==='Enter')importDOI()"/><button class="bt sm" onclick="importDOI()">Import DOI</button><button class="bt sm" onclick="openBatchImport()" title="Import multiple DOIs at once">Batch Import</button></div>
 <div id="litSearchRow" style="display:flex;gap:8px;margin-bottom:12px;position:relative"><div class="si-wrap"><input class="si" id="lq" placeholder="Search academic databases... (try: coral bleaching, otolith, CPUE)" aria-label="Search academic databases" onfocus="showSearchHist()" oninput="filterSearchHist()"/><button class="si-clear" type="button" onclick="$('#lq').value='';$('#lq').focus();hi('#searchHist')" aria-label="Clear search" title="Clear">×</button></div><button class="bt on" id="lsb" aria-label="Search literature">Search</button><div class="search-hist" id="searchHist"></div></div>

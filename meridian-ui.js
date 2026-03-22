@@ -1,5 +1,144 @@
 // ═══ MERIDIAN UI — Interface Components Module ═══
-// Theme, glossary, workflows, onboarding, modals
+// Theme, glossary, workflows, onboarding, modals, home page
+
+// ═══ HOME PAGE ═══
+function _getRecentActivity(){
+  return JSON.parse(localStorage.getItem('meridian_activity')||'[]');
+}
+function _pushActivity(type,title,data){
+  const items=_getRecentActivity();
+  items.unshift({type,title,data,timestamp:new Date().toISOString()});
+  // deduplicate by type+title, keep max 20
+  const seen=new Set();
+  const deduped=items.filter(i=>{const k=i.type+':'+i.title;if(seen.has(k))return false;seen.add(k);return true}).slice(0,20);
+  localStorage.setItem('meridian_activity',JSON.stringify(deduped));
+}
+window._pushActivity=_pushActivity;
+
+function _escH(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function _timeAgo(iso){
+  const d=Date.now()-new Date(iso).getTime();
+  if(d<60000)return 'just now';
+  if(d<3600000)return Math.floor(d/60000)+'m ago';
+  if(d<86400000)return Math.floor(d/3600000)+'h ago';
+  if(d<604800000)return Math.floor(d/86400000)+'d ago';
+  return new Date(iso).toLocaleDateString();
+}
+
+async function initHome(){
+  const el=$('#home-content');if(!el)return;
+  const user=typeof _getAuthUser==='function'?await _getAuthUser():window._supaUser;
+  const signedIn=!!user;
+
+  // Welcome banner
+  let welcomeHtml;
+  if(signedIn){
+    let displayName=user.email;
+    let affiliation='';
+    try{
+      const{data:prof}=await SB.from('user_profiles').select('display_name,affiliation').eq('user_id',user.id).maybeSingle();
+      if(prof?.display_name)displayName=prof.display_name;
+      if(prof?.affiliation)affiliation=prof.affiliation;
+    }catch(e){}
+    welcomeHtml=`<div class="home-welcome"><h2>Welcome back, ${_escH(displayName)}</h2>${affiliation?'<div class="home-affil">'+_escH(affiliation)+'</div>':''}<p class="home-sub">What are you working on today?</p></div>`;
+  }else{
+    welcomeHtml=`<div class="home-welcome"><div class="home-title">Meridian Engine</div><p class="home-sub">Open Research Platform for Marine &amp; Environmental Science</p><div class="home-guest-actions"><button class="bt on" onclick="showAuthModal()">Sign In</button><span class="home-view-all" onclick="goTab('lit')">Browse as Guest</span></div></div>`;
+  }
+
+  // Quick actions
+  const qaHtml=`<div class="home-qa">
+<div class="home-qa-card" style="border-top-color:var(--ac)" onclick="goTab('lit')"><span class="qa-icon" style="color:var(--ac)">&#x25C9;</span><h4>Search Literature</h4><p>4 databases simultaneously</p></div>
+<div class="home-qa-card" style="border-top-color:var(--sg)" onclick="goTab('species')"><span class="qa-icon" style="color:var(--sg)">&#x27E1;</span><h4>Explore Species</h4><p>WoRMS · GBIF · OBIS · FishBase</p></div>
+<div class="home-qa-card" style="border-top-color:var(--lv)" onclick="goTab('env')"><span class="qa-icon" style="color:var(--lv)">&#x25C8;</span><h4>Environmental Data</h4><p>SST · Chlorophyll · Salinity · 20+ variables</p></div>
+<div class="home-qa-card" style="border-top-color:var(--wa)" onclick="${signedIn?"goTab('publications')":"showAuthModal()"}"><span class="qa-icon" style="color:var(--wa)">&#x1F4C4;</span><h4>Submit Publication</h4><p>Share your research with the community</p></div>
+</div>`;
+
+  // Recent activity (signed-in only, from localStorage)
+  let activityHtml='';
+  if(signedIn){
+    const items=_getRecentActivity().slice(0,5);
+    if(items.length){
+      const icons={paper:'&#x1F4D6;',species:'&#x1F41F;',env:'&#x1F30A;',publication:'&#x1F4C4;',dataset:'&#x1F4BE;'};
+      const rows=items.map(i=>{
+        const icon=icons[i.type]||'&#x25CF;';
+        return `<div class="home-activity-item" onclick="_activityClick('${_escH(i.type)}',${JSON.stringify(JSON.stringify(i.data))})"><span class="ha-icon">${icon}</span><div class="ha-body"><div class="ha-title">${_escH(i.title)}</div><div class="ha-meta">${_timeAgo(i.timestamp)}</div></div></div>`;
+      }).join('');
+      activityHtml=`<div class="home-section"><h3>Recent Activity</h3>${rows}</div>`;
+    }else{
+      activityHtml=`<div class="home-section"><h3>Recent Activity</h3><div class="home-comm-empty">No recent activity — start by searching for a paper or species</div></div>`;
+    }
+  }
+
+  // Community sections + stats (async, render placeholders first)
+  const communityId='home-community-'+Date.now();
+  const statsId='home-stats-'+Date.now();
+  const communityHtml=`<div class="home-section"><h3>Latest from the Community</h3><div class="home-community" id="${communityId}"><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Publications</h3><div class="home-comm-empty">Loading…</div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Datasets</h3><div class="home-comm-empty">Loading…</div></div></div></div>`;
+  const statsHtml=`<div class="home-stats" id="${statsId}"><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Papers Searchable</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Publications Submitted</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Datasets Archived</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Registered Researchers</div></div></div>`;
+
+  el.innerHTML=welcomeHtml+qaHtml+activityHtml+communityHtml+statsHtml;
+
+  // Load community data async
+  _loadCommunityData(communityId,statsId);
+}
+
+function _activityClick(type,dataStr){
+  try{const d=JSON.parse(dataStr);
+    if(type==='paper'){goTab('library')}
+    else if(type==='species'){$('#sq').value=d?.name||'';goTab('species')}
+    else if(type==='env'){goTab('env')}
+    else if(type==='publication'){goTab('publications')}
+    else if(type==='dataset'){goTab('archive')}
+    else goTab('lit');
+  }catch(e){goTab('lit')}
+}
+
+async function _loadCommunityData(commId,statsId){
+  const commEl=$('#'+commId);
+  const statsEl=$('#'+statsId);
+  if(!window.SB)return;
+
+  // Publications
+  let pubsHtml='';
+  try{
+    const{data:pubs}=await SB.from('publications').select('id,meridian_id,title,authors,category,created_at').eq('status','published').order('created_at',{ascending:false}).limit(5);
+    if(pubs&&pubs.length){
+      pubsHtml=pubs.map(p=>`<div class="home-comm-card" onclick="goTab('publications')"><h5>${_escH(p.title)}</h5><div class="hcc-meta"><span>${_escH(p.meridian_id||'')}</span><span class="bg oa" style="font-size:9px;padding:1px 6px;margin:0">${_escH(p.category||'Research')}</span><span>${p.authors?_escH(Array.isArray(p.authors)?p.authors.slice(0,2).join(', '):String(p.authors).slice(0,40)):''}</span><span>${new Date(p.created_at).toLocaleDateString()}</span></div></div>`).join('');
+    }else{
+      pubsHtml='<div class="home-comm-empty">No publications yet — be the first to share your research</div>';
+    }
+  }catch(e){pubsHtml='<div class="home-comm-empty">Could not load publications</div>'}
+
+  // Datasets
+  let datasetsHtml='';
+  try{
+    const{data:ds}=await SB.from('archived_datasets').select('id,meridian_data_id,title,data_type,file_format,download_count,created_at').eq('status','published').order('created_at',{ascending:false}).limit(5);
+    if(ds&&ds.length){
+      datasetsHtml=ds.map(d=>`<div class="home-comm-card" onclick="goTab('archive')"><h5>${_escH(d.title)}</h5><div class="hcc-meta"><span>${_escH(d.meridian_data_id||'')}</span><span class="bg oa" style="font-size:9px;padding:1px 6px;margin:0">${_escH(d.data_type||'Data')}</span><span>${_escH(d.file_format||'')}</span>${d.download_count?'<span>'+d.download_count+' downloads</span>':''}<span>${new Date(d.created_at).toLocaleDateString()}</span></div></div>`).join('');
+    }else{
+      datasetsHtml='<div class="home-comm-empty">No datasets yet — contribute your data</div>';
+    }
+  }catch(e){datasetsHtml='<div class="home-comm-empty">Could not load datasets</div>'}
+
+  if(commEl){
+    commEl.innerHTML=`<div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Publications</h3>${pubsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('publications')">View All Publications →</span></div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Datasets</h3>${datasetsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('archive')">View All Datasets →</span></div></div>`;
+  }
+
+  // Stats
+  if(!statsEl)return;
+  let pubCount=0,dsCount=0,userCount=0;
+  try{const{count}=await SB.from('publications').select('id',{count:'exact',head:true}).eq('status','published');pubCount=count||0}catch(e){}
+  try{const{count}=await SB.from('archived_datasets').select('id',{count:'exact',head:true}).eq('status','published');dsCount=count||0}catch(e){}
+  try{const{count}=await SB.from('user_profiles').select('id',{count:'exact',head:true});userCount=count||0}catch(e){}
+  const papersSearchable='250M+';// OpenAlex total
+  const cells=statsEl.querySelectorAll('.home-stat');
+  if(cells[0])cells[0].querySelector('.hs-num').textContent=papersSearchable;
+  if(cells[1])cells[1].querySelector('.hs-num').textContent=pubCount.toLocaleString();
+  if(cells[2])cells[2].querySelector('.hs-num').textContent=dsCount.toLocaleString();
+  if(cells[3])cells[3].querySelector('.hs-num').textContent=userCount.toLocaleString();
+}
+
+// Fire initHome on first load
+(function(){setTimeout(()=>{if(typeof initHome==='function'&&$('#tab-home.on'))initHome()},200)})();
 
 // ═══ THEME TOGGLE ═══
 function toggleTheme(){

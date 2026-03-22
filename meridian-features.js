@@ -3035,8 +3035,8 @@ goTab=function(id){_origGoTabBase(id);
     });
   }
 };
-// Initialize breadcrumb for lit tab without re-triggering goTab animation
-(function(){const bc=$('#workflow-bc');if(bc){bc.style.display='';$$('.bc-step').forEach(s=>{const isActive=s.dataset.bc==='lit';s.style.color=isActive?'var(--ac)':'var(--tm)';s.style.background=isActive?'var(--am)':'transparent';s.style.fontWeight=isActive?'600':'400'})}})();
+// Initialize breadcrumb — hidden on home (default landing)
+(function(){const bc=$('#workflow-bc');if(bc){bc.style.display='none'}})();
 
 // ═══ PHASE 5a: SEARCH HISTORY INDICATOR ═══
 (function(){

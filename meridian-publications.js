@@ -695,6 +695,7 @@ async function _pubSubmitPublication(){
     if(insertErr)throw insertErr;
 
     toast('Publication submitted for review!','ok');
+    if(typeof _pushActivity==='function')_pushActivity('publication',(title||'Untitled').slice(0,80),{id:newPub?.id,status:'pending_review'});
     _pubList.unshift(newPub);
     _pubBackToBrowse();
     _pubRenderCards();

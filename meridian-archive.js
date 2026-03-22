@@ -766,6 +766,7 @@ async function _archSubmitUpload(){
     if(insertErr)throw insertErr;
 
     toast('Dataset published!','ok');
+    if(typeof _pushActivity==='function')_pushActivity('dataset',(title||'Untitled').slice(0,80),{id:newDataset?.id,format:fileFormat});
     _archDatasets.unshift(newDataset);
     _archBuildFilterOptions();
     _archBackToBrowse();
