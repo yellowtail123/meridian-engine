@@ -24,6 +24,9 @@ const FILES = [
   "meridian-repro.js",
   "meridian-session.js",
   "meridian-studydesign.js",
+  "meridian-publications.js",
+  "meridian-archive.js",
+  "meridian-audit-tests.js",
   "manifest.json",
   "sw.js",
   "_headers",
@@ -54,6 +57,32 @@ if (fs.existsSync(workersDir)) {
     if (fs.statSync(src).isFile()) {
       fs.copyFileSync(src, path.join(DIST, "workers", f));
       console.log("  copied workers/" + f);
+    }
+  }
+}
+
+// Copy template/ directory if it exists
+const templateDir = path.join(ROOT, "template");
+if (fs.existsSync(templateDir)) {
+  fs.mkdirSync(path.join(DIST, "template"), { recursive: true });
+  for (const f of fs.readdirSync(templateDir)) {
+    const src = path.join(templateDir, f);
+    if (fs.statSync(src).isFile()) {
+      fs.copyFileSync(src, path.join(DIST, "template", f));
+      console.log("  copied template/" + f);
+    }
+  }
+}
+
+// Copy supabase/ directory if it exists
+const supabaseDir = path.join(ROOT, "supabase");
+if (fs.existsSync(supabaseDir)) {
+  fs.mkdirSync(path.join(DIST, "supabase"), { recursive: true });
+  for (const f of fs.readdirSync(supabaseDir)) {
+    const src = path.join(supabaseDir, f);
+    if (fs.statSync(src).isFile()) {
+      fs.copyFileSync(src, path.join(DIST, "supabase", f));
+      console.log("  copied supabase/" + f);
     }
   }
 }
