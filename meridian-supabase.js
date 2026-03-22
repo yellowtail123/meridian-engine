@@ -15,14 +15,17 @@ function _supaInit(){
   _supa=_supaGetClient();
   if(!_supa){console.warn('Supabase client unavailable');_maybeAutoShowModal();return}
 
+  // Listen for future auth state changes (SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED).
+  // INITIAL_SESSION is skipped — getSession() below handles startup.
   _supa.auth.onAuthStateChange(async(event,session)=>{
+    if(event==='INITIAL_SESSION')return;
     try{
-      _supaUser=session?.user||null;
-      if(_supaUser){_dismissAuthModal(false)}else{_supaIsAdmin=false}
-      _renderAuthUI();
-      _renderAdminLink();
-      if(_supaUser){await _checkAdminRole();_renderAuthUI();_renderAdminLink()}
-      if(event==='SIGNED_IN'&&_supaUser){
+      if(event==='SIGNED_IN'&&session){
+        _supaUser=session.user;
+        _dismissAuthModal(false);
+        await _checkAdminRole();
+        _renderAuthUI();
+        _renderAdminLink();
         toast('Signed in as '+_supaUser.email,'ok');
         await _syncOnLogin();
         _flushQueue();
@@ -30,18 +33,27 @@ function _supaInit(){
       if(event==='SIGNED_OUT'){
         _supaUser=null;
         _supaIsAdmin=false;
+        _renderAuthUI();
         _renderAdminLink();
         toast('Signed out','info');
+      }
+      if(event==='TOKEN_REFRESHED'&&session){
+        _supaUser=session.user;
       }
     }catch(e){console.warn('Auth state change error:',e)}
   });
 
+  // Restore existing session from localStorage on startup.
   _supa.auth.getSession().then(async({data})=>{
-    _supaUser=data.session?.user||null;
-    if(_supaUser)await _checkAdminRole();
-    _renderAuthUI();
-    _renderAdminLink();
-    if(!_supaUser)_maybeAutoShowModal();
+    if(data.session){
+      _supaUser=data.session.user;
+      await _checkAdminRole();
+      _renderAuthUI();
+      _renderAdminLink();
+    }else{
+      _renderAuthUI();
+      _maybeAutoShowModal();
+    }
   }).catch(e=>{
     console.warn('getSession error:',e);
     _maybeAutoShowModal();
@@ -77,32 +89,18 @@ function _renderAuthUI(){
 }
 
 async function _checkAdminRole(){
-  if(!_supa||!_supaUser){
-    _supaIsAdmin=false;
-    console.log('[Meridian Auth] admin check skipped — supa:',!!_supa,'user:',!!_supaUser);
-    return;
-  }
-  console.log('[Meridian Auth] querying user_roles for user_id:', _supaUser.id);
+  if(!_supa||!_supaUser){_supaIsAdmin=false;return}
   try{
     const{data,error}=await _supa.from('user_roles').select('role').eq('user_id',_supaUser.id).single();
-    if(error){
-      console.warn('[Meridian Auth] admin query error:', error.code, error.message, error.details);
-      _supaIsAdmin=false;
-    }else{
-      console.log('[Meridian Auth] admin query returned:', JSON.stringify(data));
-      _supaIsAdmin=data?.role==='admin';
-    }
+    _supaIsAdmin=!error&&data?.role==='admin';
   }catch(e){
-    console.warn('[Meridian Auth] admin check exception:', e);
     _supaIsAdmin=false;
   }
-  console.log('[Meridian Auth] _supaIsAdmin =', _supaIsAdmin);
 }
 
 function _renderAdminLink(){
   const el=$('#admin-link');if(!el)return;
   el.style.display=_supaIsAdmin?'inline-flex':'none';
-  console.log('[Meridian Auth] renderAdminLink — isAdmin:', _supaIsAdmin, 'element found:', !!el);
 }
 
 function _showAccountMenu(){
@@ -176,46 +174,38 @@ function _supaAuthTab(mode){
 }
 
 async function _supaEmailAuth(){
-  console.log('[Meridian Auth] _supaEmailAuth called');
   const btn=$('#supa-submit');
-  try{
-    const email=$('#supa-email')?.value?.trim();
-    const pass=$('#supa-pass')?.value;
-    console.log('[Meridian Auth] email:', email, 'pass length:', pass?.length||0);
+  const email=$('#supa-email')?.value?.trim();
+  const pass=$('#supa-pass')?.value;
 
-    if(!email||!pass){_showAuthError('Enter email and password');return}
+  if(!email||!pass){_showAuthError('Enter email and password');return}
+  if(!_supa){_showAuthError('Connection error — please reload the page');return}
 
-    if(!_supa){
-      console.error('[Meridian Auth] Supabase client is null — SDK may not have loaded');
-      _showAuthError('Connection error — please reload the page');
-      return;
-    }
+  if(btn){btn.disabled=true;btn.textContent='...';}
 
-    if(btn){btn.disabled=true;btn.textContent='...';}
+  const{data,error}=_authMode==='login'
+    ?await _supa.auth.signInWithPassword({email,password:pass})
+    :await _supa.auth.signUp({email,password:pass});
 
-    console.log('[Meridian Auth] calling signInWithPassword, mode:', _authMode);
-    let result;
-    if(_authMode==='login'){
-      result=await _supa.auth.signInWithPassword({email,password:pass});
-    }else{
-      result=await _supa.auth.signUp({email,password:pass});
-    }
-    console.log('[Meridian Auth] auth result:', result.error?'error: '+result.error.message:'success');
+  if(error){
+    _showAuthError(error.message);
+    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
+    return;
+  }
 
-    if(result.error)throw result.error;
-    if(_authMode==='signup'&&!result.data.session){
-      _showAuthError('Check your email for a confirmation link');
-      if(btn){btn.disabled=false;btn.textContent='Sign Up';}
-      return;
-    }
-    _supaUser=result.data.user||result.data.session?.user||null;
+  if(_authMode==='signup'&&!data.session){
+    _showAuthError('Check your email for a confirmation link');
+    if(btn){btn.disabled=false;btn.textContent='Sign Up';}
+    return;
+  }
+
+  // Session acquired — close modal and update UI immediately.
+  // onAuthStateChange SIGNED_IN will also fire for sync/admin check.
+  if(data.session){
+    _supaUser=data.session.user;
     _dismissAuthModal(false);
     _renderAuthUI();
     _renderAdminLink();
-  }catch(e){
-    console.error('[Meridian Auth] error:', e);
-    _showAuthError(e?.message||'Authentication failed');
-    if(btn){btn.disabled=false;btn.textContent=_authMode==='login'?'Sign In':'Sign Up';}
   }
 }
 
@@ -233,8 +223,7 @@ async function _supaOAuth(provider){
 async function _supaSignOut(){
   if(!_supa)return;
   await _supa.auth.signOut();
-  _supaUser=null;
-  _renderAuthUI();
+  // onAuthStateChange SIGNED_OUT handler clears _supaUser, _supaIsAdmin and updates UI
 }
 
 // ═══ 3. CLOUD CRUD ═══
