@@ -1,9 +1,6 @@
 // ═══ MERIDIAN SUPABASE — User Accounts & Cloud Sync ═══
 // Optional cloud persistence — app works fully without an account.
-// Loads after meridian-core.js (needs S, $, safeStore, safeParse, toast)
-
-const SUPA_URL='https://wgqfxgxnanvckgqkuqas.supabase.co';
-const SUPA_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndncWZ4Z3huYW52Y2tncWt1cWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDA0MzEsImV4cCI6MjA4OTYxNjQzMX0.PZ6ATWCJ_qyJVTXgFNmVKzBBxOQlEpa_vXLAhKVdgzg';
+// Loads after meridian-auth.js (shared client) and meridian-core.js (S, $, toast)
 
 let _supa=null;
 let _supaUser=null;
@@ -12,19 +9,11 @@ let _syncInProgress=false;
 
 // ═══ 1. INIT ═══
 function _supaInit(){
-  // Set onclick immediately so button always works, even if SDK fails
   const btn=$('#auth-btn');
   if(btn)btn.onclick=_showAuthModal;
 
-  if(typeof window.supabase==='undefined'){
-    console.warn('Supabase SDK not loaded');
-    _maybeAutoShowModal();
-    return;
-  }
-  try{
-    _supa=window.supabase.createClient(SUPA_URL,SUPA_ANON);
-    console.log('[Meridian Auth] Supabase client created:', !!_supa);
-  }catch(e){console.warn('Supabase init failed:',e);_maybeAutoShowModal();return}
+  _supa=_supaGetClient();
+  if(!_supa){console.warn('Supabase client unavailable');_maybeAutoShowModal();return}
 
   _supa.auth.onAuthStateChange(async(event,session)=>{
     try{
