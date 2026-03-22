@@ -74,6 +74,11 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .hdr-stars span{position:absolute;width:2px;height:2px;border-radius:50%;background:#c8c0b8;opacity:.35}
 .hdr-top{display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
 .logo{font-size:35px;font-weight:700;font-family:var(--sf);background:linear-gradient(135deg,var(--ac),#D4A04A,#E8C49B,var(--ac));background-size:300% 300%;animation:drift 8s ease infinite;-webkit-background-clip:text;-webkit-text-fill-color:transparent}.meta{font-size:14px;color:var(--tm);text-align:right;font-family:var(--sf);line-height:1.6}
+.daily-quote{font-size:14px;font-family:var(--mf);letter-spacing:1px;-webkit-text-fill-color:#C27878;text-shadow:0 0 7px rgba(194,120,120,.6),0 0 20px rgba(194,120,120,.35),0 0 40px rgba(194,120,120,.15);background:none;-webkit-background-clip:unset;animation:none;margin-left:18px;font-weight:400;text-transform:none;white-space:nowrap}
+.daily-quote .dq-text{font-style:italic}
+.daily-quote .dq-author{font-style:normal;opacity:.85}
+.daily-quote.dq-long{font-size:12px}
+@media(max-width:768px){.daily-quote{white-space:normal;font-size:11px;letter-spacing:.5px;margin-left:10px;line-height:1.4}.daily-quote.dq-long{font-size:10px}}
 .tc{margin-left:6px;font-size:10px;padding:2px 7px;border-radius:8px;background:var(--cm);color:var(--co)}
 .mn{padding:24px 30px;max-width:1200px;margin:0 auto}.tp{display:none;animation:fadeIn .35s}.tp.on{display:block}
 .si{flex:1;padding:13px 18px;background:var(--bi);border:1px solid var(--bd);border-radius:var(--rd);color:var(--tx);font-size:16px;outline:none;font-family:var(--sf);transition:border-color .2s}.si:focus{border-color:var(--ag);box-shadow:0 0 0 3px rgba(201,149,107,.15);outline:none}.si::placeholder{color:var(--tm)}
