@@ -29,9 +29,10 @@ function _supaInit(){
   _supa.auth.onAuthStateChange(async(event,session)=>{
     try{
       _supaUser=session?.user||null;
-      if(_supaUser){await _checkAdminRole();_dismissAuthModal(false)}else{_supaIsAdmin=false}
+      if(_supaUser){_dismissAuthModal(false)}else{_supaIsAdmin=false}
       _renderAuthUI();
       _renderAdminLink();
+      if(_supaUser){await _checkAdminRole();_renderAuthUI();_renderAdminLink()}
       if(event==='SIGNED_IN'&&_supaUser){
         toast('Signed in as '+_supaUser.email,'ok');
         await _syncOnLogin();
@@ -218,7 +219,10 @@ async function _supaEmailAuth(){
       if(btn){btn.disabled=false;btn.textContent='Sign Up';}
       return;
     }
+    _supaUser=result.data.user||result.data.session?.user||null;
     _dismissAuthModal(false);
+    _renderAuthUI();
+    _renderAdminLink();
   }catch(e){
     console.error('[Meridian Auth] error:', e);
     _showAuthError(e?.message||'Authentication failed');
