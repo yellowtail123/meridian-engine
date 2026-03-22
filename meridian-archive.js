@@ -287,9 +287,11 @@ async function _archShowDetail(id){
       const{data:pub}=await SB.from('publications').select('id,title,meridian_id,authors,status').eq('id',d.linked_publication_id).single();
       if(pub){
         const pubAuthors=(pub.authors||[]).map(a=>a.name).join(', ');
-        pubCard=`<div class="sec" style="margin-top:16px"><div class="sh"><h4>Related Publication</h4></div><div class="sb">
-          <div style="font-size:13px;font-weight:600;color:var(--ac)">${_esc(pub.meridian_id||'')} — ${_esc(pub.title)}</div>
+        pubCard=`<div class="sec" style="margin-top:16px;cursor:pointer" onclick="goTab('publications');setTimeout(()=>_pubShowDetail('${pub.id}'),300)"><div class="sh"><h4>Related Publication</h4></div><div class="sb">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px"><span style="font-size:10px;font-family:var(--mf);color:var(--ac);background:var(--am);padding:2px 6px;border-radius:3px;border:1px solid var(--ab)">${_esc(pub.meridian_id||'')}</span></div>
+          <div style="font-size:14px;font-weight:600;color:var(--tx)">${_esc(pub.title)}</div>
           <div style="font-size:12px;color:var(--tm);margin-top:4px">${_esc(pubAuthors)}</div>
+          <div style="font-size:11px;color:var(--ac);margin-top:6px">View publication &rarr;</div>
         </div></div>`;
       }
     }catch(e){console.warn('Related pub:',e)}

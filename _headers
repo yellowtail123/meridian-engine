@@ -10,6 +10,11 @@
 /*.css
   Cache-Control: public, max-age=3600
 
+/template/*.docx
+  Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
+  Content-Disposition: attachment
+  Cache-Control: public, max-age=86400
+
 /*
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
