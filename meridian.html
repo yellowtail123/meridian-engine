@@ -37,8 +37,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     api.anthropic.com
     api.openai.com
     generativelanguage.googleapis.com
-    api.mistral.ai
-    api.deepseek.com
     api.openalex.org
     api.semanticscholar.org
     api.crossref.org
@@ -471,19 +469,33 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <div class="tp" id="tab-studydesign"><div id="sd-content"></div></div>
 <div class="tp" id="tab-research"><div id="rp-content"></div></div>
 <div class="tp" id="tab-ai">
-<div style="margin-bottom:14px;padding:14px 18px;background:linear-gradient(135deg,var(--am),rgba(123,158,135,.06));border:1px solid var(--ab);border-radius:var(--rd);font-size:13px;color:var(--ts);line-height:1.65"><b style="color:var(--ac)">AI Research Assistant.</b> Ask questions about your library, request statistical advice, generate R/Python code for your data, or explore methods. The assistant has access to your saved papers, environmental data, and analysis results.</div>
-<div id="ai-session-ctx" style="margin-bottom:10px;padding:8px 12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);font-size:11px;color:var(--tm);font-family:var(--mf)">
-  <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleAiCtx()">
-    <span id="ai-ctx-summary">Session context: loading…</span>
-    <span id="ai-ctx-arrow" style="color:var(--ts)">▸</span>
+<div class="ai-tab-layout">
+<div class="ai-tab-main">
+<div class="ai-tab-topbar">
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1">
+    <select class="fs ai-provider-sel" id="aip" style="min-width:200px"></select>
+    <button class="bt sm" id="ai-clear-chat" onclick="_clearChat()" title="Clear conversation">Clear</button>
   </div>
-  <pre id="ai-ctx-detail" style="display:none;margin-top:8px;white-space:pre-wrap;font-size:10px;line-height:1.6;color:var(--ts)"></pre>
+  <details id="aks-details" style="margin:0">
+    <summary style="cursor:pointer;font-size:11px;font-family:var(--mf);color:var(--tm);user-select:none;padding:4px 8px;border:1px solid var(--bd);border-radius:4px">API Keys</summary>
+    <div id="aks" style="position:absolute;right:0;top:100%;z-index:100;padding:12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);box-shadow:0 8px 24px rgba(0,0,0,.3);min-width:340px;margin-top:4px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="password" class="si" id="aki" placeholder="Paste your API key..." style="font-size:12px;flex:1;min-width:180px"/>
+        <button class="bt on" id="akb">Save</button>
+        <button class="bt" id="akcl" style="color:var(--co);border-color:rgba(194,120,120,.3);padding:6px 10px" title="Clear API key (Ctrl+Shift+K)">Clear</button>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:var(--tm);font-family:var(--mf)" id="aim">Key stored in memory only — cleared on tab close</div>
+    </div>
+  </details>
 </div>
-<details id="aks-details" style="margin-bottom:12px">
-<summary style="cursor:pointer;font-size:12px;font-family:var(--mf);color:var(--tm);padding:8px 0;user-select:none">API Key Settings</summary>
-<div id="aks" style="padding:12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select class="fs" id="aip" style="min-width:140px"><option value="anthropic" selected>Anthropic (Claude)</option><option value="openai">OpenAI (GPT)</option><option value="google">Google (Gemini)</option><option value="mistral">Mistral</option><option value="deepseek">DeepSeek</option></select><select class="fs" id="aimodel" style="min-width:160px"></select><input type="password" class="si" id="aki" placeholder="Paste your Anthropic API key (sk-ant-...)" style="font-size:12px;flex:1;min-width:180px"/><button class="bt on" id="akb">Save</button><button class="bt" id="akcl" style="color:var(--co);border-color:rgba(194,120,120,.3);padding:6px 10px" title="Clear API key (Ctrl+Shift+K)"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:-2px;margin-right:4px"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 016 0v2"/></svg>Clear Key</button></div><div style="margin-top:6px;font-size:11px;color:var(--tm);font-family:var(--mf)" id="aim">Model: claude-sonnet-4-20250514 — key required for AI features</div></div>
-</details>
-<div class="cc"><div class="cm" id="cmsg"></div><div style="display:flex;gap:8px;flex-shrink:0"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div></div>
+<div class="cc"><div class="cm" id="cmsg"></div><div class="ai-input-row"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div>
+</div>
+<div class="ai-tab-ctx" id="ai-tab-ctx">
+  <div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Context</div>
+  <div id="ai-ctx-detail" style="font-size:11px;color:var(--ts);font-family:var(--mf);line-height:1.6"></div>
+</div>
+</div>
+</div>
 <div class="tp" id="tab-settings">
 <h2 style="font-size:20px;font-weight:600;color:var(--ac);margin-bottom:20px;font-family:var(--sf)">Settings</h2>
 <!-- PROFILE -->
@@ -521,6 +533,37 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </main>
 </div>
 <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+</div>
+<!-- ═══ FLOATING CHATBOT ═══ -->
+<div id="fc-bubble" class="fc-bubble" onclick="_fcToggle()" title="Meridian AI Assistant">
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 5.8 2 10.4c0 2.8 1.6 5.2 4 6.8L5 22l4.3-2.5c.9.2 1.8.3 2.7.3 5.52 0 10-3.8 10-8.4S17.52 2 12 2z"/><circle cx="8" cy="10.4" r="1" fill="#fff" stroke="none"/><circle cx="12" cy="10.4" r="1" fill="#fff" stroke="none"/><circle cx="16" cy="10.4" r="1" fill="#fff" stroke="none"/></svg>
+  <span class="fc-badge" id="fc-badge" style="display:none">0</span>
+</div>
+<div id="fc-panel" class="fc-panel" style="display:none">
+  <div class="fc-header">
+    <select class="fs fc-provider-sel" id="fc-provider"></select>
+    <span style="flex:1"></span>
+    <button class="fc-hbtn" onclick="_clearChat()" title="Clear chat">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5"/><path d="M3 4l1 10a1 1 0 001 1h6a1 1 0 001-1l1-10"/></svg>
+    </button>
+    <button class="fc-hbtn" onclick="goTab('ai');_fcClose()" title="Expand to full tab">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2h5v5M7 14H2V9"/><path d="M14 2L9 7M2 14l5-5"/></svg>
+    </button>
+    <button class="fc-hbtn" onclick="_fcClose()" title="Minimize">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+  <div class="fc-msgs" id="fc-msgs"></div>
+  <div class="fc-key-prompt" id="fc-key-prompt" style="display:none">
+    <div style="font-size:12px;color:var(--ts);margin-bottom:8px">Enter your <span id="fc-key-provider-name">Anthropic</span> API key to start chatting</div>
+    <div style="display:flex;gap:6px"><input type="password" class="si fc-key-input" id="fc-aki" placeholder="sk-ant-..." style="font-size:12px;flex:1"/><button class="bt on" style="padding:6px 12px;font-size:12px" onclick="_fcSaveKey()">Save</button></div>
+  </div>
+  <div class="fc-input-row">
+    <input class="si fc-input" id="fc-ci" placeholder="Ask Meridian AI..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)_fcSend()"/>
+    <button class="bt on fc-send" onclick="_fcSend()">
+      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2L7 9M14 2l-4 12-3-5-5-3z"/></svg>
+    </button>
+  </div>
 </div>
 <script src="meridian-core.js"></script>
 <script src="meridian-data.js"></script>

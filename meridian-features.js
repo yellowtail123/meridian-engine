@@ -2,32 +2,79 @@
 // AI agent, map tools, citation graph, gap analysis, library enhancements
 
 // ═══ AI — Multi-Provider Support ═══
+// Gemini CORS proxy fallback — set to your deployed worker URL, or empty to skip
+const _GEMINI_PROXY = location.hostname === 'meridian-engine.com' || location.hostname === 'www.meridian-engine.com'
+  ? '/api/gemini/' : '';
+function _geminiUrl(model, action) {
+  const path = `models/${model}:${action}`;
+  return {
+    direct: `https://generativelanguage.googleapis.com/v1beta/${path}`,
+    proxy: _GEMINI_PROXY ? `${_GEMINI_PROXY}${path}` : null
+  };
+}
 const AI_PROVIDERS={
-  anthropic:{name:'Anthropic (Claude)',placeholder:'sk-ant-...',models:['claude-sonnet-4-20250514','claude-opus-4-20250514'],defaultModel:'claude-sonnet-4-20250514'},
-  openai:{name:'OpenAI (GPT)',placeholder:'sk-...',models:['gpt-4o','gpt-4o-mini','gpt-4-turbo'],defaultModel:'gpt-4o'},
-  google:{name:'Google (Gemini)',placeholder:'AIza...',models:['gemini-2.0-flash','gemini-2.0-pro'],defaultModel:'gemini-2.0-flash'},
-  mistral:{name:'Mistral',placeholder:'...',models:['mistral-large-latest','mistral-small-latest'],defaultModel:'mistral-large-latest'},
-  deepseek:{name:'DeepSeek',placeholder:'sk-...',models:['deepseek-chat','deepseek-reasoner'],defaultModel:'deepseek-chat'}
+  anthropic:{name:'Anthropic (Claude)',displayModels:{'claude-sonnet-4-20250514':'Claude Sonnet 4','claude-haiku-4-5-20251001':'Claude Haiku 4.5'},placeholder:'sk-ant-...',models:['claude-sonnet-4-20250514','claude-haiku-4-5-20251001'],defaultModel:'claude-sonnet-4-20250514'},
+  openai:{name:'OpenAI (GPT)',displayModels:{'gpt-4o':'GPT-4o','gpt-4o-mini':'GPT-4o Mini'},placeholder:'sk-...',models:['gpt-4o','gpt-4o-mini'],defaultModel:'gpt-4o'},
+  google:{name:'Google (Gemini)',displayModels:{'gemini-2.0-flash':'Gemini 2.0 Flash','gemini-1.5-pro':'Gemini 1.5 Pro'},placeholder:'AIza...',models:['gemini-2.0-flash','gemini-1.5-pro'],defaultModel:'gemini-2.0-flash'}
 };
-const _OAI_ENDPOINTS={openai:'https://api.openai.com/v1/chat/completions',mistral:'https://api.mistral.ai/v1/chat/completions',deepseek:'https://api.deepseek.com/v1/chat/completions'};
-function _syncModelDropdown(prov){
-  const sel=$('#aimodel');if(!sel)return;
-  const info=AI_PROVIDERS[prov];if(!info)return;
-  sel.innerHTML=info.models.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
-  const savedModel=localStorage.getItem('meridian_model_'+prov);
-  if(savedModel&&info.models.includes(savedModel)){sel.value=savedModel;S.aiModel=savedModel}
-  else{sel.value=info.defaultModel;S.aiModel=info.defaultModel}
+// ═══ Unified model selector — populates all provider dropdowns ═══
+function _buildProviderOptions(){
+  let html='';
+  for(const[prov,info]of Object.entries(AI_PROVIDERS)){
+    for(const m of info.models){
+      const display=info.displayModels?.[m]||m;
+      html+=`<option value="${prov}:${m}">${display}</option>`;
+    }
+  }
+  return html;
+}
+function _syncAllProviderDropdowns(){
+  const val=S.aiProvider+':'+S.aiModel;
+  const opts=_buildProviderOptions();
+  ['#aip','#fc-provider'].forEach(sel=>{
+    const el=$(sel);if(!el)return;
+    el.innerHTML=opts;
+    if(el.querySelector(`option[value="${val}"]`))el.value=val;
+  });
+}
+function _onProviderChange(val){
+  const[prov,model]=val.split(':');
+  S.aiProvider=prov;S.aiModel=model;
+  safeStore('meridian_provider',prov);
+  safeStore('meridian_model_'+prov,model);
+  _syncAllProviderDropdowns();
+  // Load key for this provider
+  _keyVault.retrieve('meridian_key_'+prov).then(sk=>{
+    S.apiK=sk||'';
+    const aki=$('#aki');if(aki)aki.value=sk||'';
+    _updateKeyPromptVisibility();
+  });
+}
+function _updateKeyPromptVisibility(){
+  const fcPrompt=$('#fc-key-prompt');
+  const fcProvName=$('#fc-key-provider-name');
+  if(fcPrompt){
+    if(!S.apiK){
+      fcPrompt.style.display='';
+      if(fcProvName)fcProvName.textContent=AI_PROVIDERS[S.aiProvider]?.name||S.aiProvider;
+      const fcAki=$('#fc-aki');if(fcAki)fcAki.placeholder=AI_PROVIDERS[S.aiProvider]?.placeholder||'API key...';
+    }else{
+      fcPrompt.style.display='none';
+    }
+  }
+  const aki=$('#aki');
+  if(aki){aki.placeholder=AI_PROVIDERS[S.aiProvider]?.placeholder||'API key...';}
 }
 async function updateAIProvider(prov){
   prov=prov||S.aiProvider||'anthropic';
   S.aiProvider=prov;
   const info=AI_PROVIDERS[prov];if(!info)return;
-  $('#aki').placeholder=info.placeholder;
-  _syncModelDropdown(prov);
-  const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel;
+  if(!S.aiModel||!info.models.includes(S.aiModel))S.aiModel=info.defaultModel;
+  _syncAllProviderDropdowns();
   const saved=await _keyVault.retrieve('meridian_key_'+prov);
-  if(saved){$('#aki').value=saved;S.apiK=saved;$('#aks').style.borderColor='var(--sb)'}
-  else{$('#aki').value='';S.apiK='';$('#aks').style.borderColor='var(--bd)'}
+  S.apiK=saved||'';
+  const aki=$('#aki');if(aki)aki.value=saved||'';
+  _updateKeyPromptVisibility();
 }
 async function callAI({messages,system,tools,maxTokens=4096,signal}){
   const prov=S.aiProvider||'anthropic',model=S.aiModel||AI_PROVIDERS[prov].defaultModel,key=S.apiK;
@@ -55,16 +102,18 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     const body={contents:gc,generationConfig:{maxOutputTokens:maxTokens}};
     if(system)body.systemInstruction={parts:[{text:system}]};
     if(tools?.length)body.tools=[{functionDeclarations:tools.map(t=>({name:t.name,description:t.description,parameters:t.input_schema}))}];
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal});
+    const urls=_geminiUrl(model,'generateContent');
+    let r;
+    try{r=await fetch(urls.direct,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal})}
+    catch(corsErr){if(urls.proxy){r=await fetch(urls.proxy+'?key='+key,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal})}else throw corsErr}
     if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const data=await r.json();if(!data.candidates?.length)throw new Error('No response from Gemini');
     const parts=data.candidates[0].content?.parts||[],content=[];
     for(const p of parts){if(p.text)content.push({type:'text',text:p.text});if(p.functionCall)content.push({type:'tool_use',id:'gem_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name:p.functionCall.name,input:p.functionCall.args||{}})}
     return{content,stop_reason:content.some(c=>c.type==='tool_use')?'tool_use':'end_turn'};
   }
-  // OpenAI-compatible providers: OpenAI, Mistral, DeepSeek
-  const endpoint=_OAI_ENDPOINTS[prov];
-  if(endpoint){
+  // OpenAI
+  if(prov==='openai'){
     const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
     for(const m of messages){
       if(m.role==='user'){
@@ -83,9 +132,9 @@ async function callAI({messages,system,tools,maxTokens=4096,signal}){
     }
     const body={model,max_tokens:maxTokens,messages:oaiMsgs};
     if(tools?.length)body.tools=tools.map(t=>({type:'function',function:{name:t.name,description:t.description,parameters:t.input_schema}}));
-    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal});
+    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body),signal});
     if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
-    const data=await r.json();if(!data.choices?.[0])throw new Error('No response from '+AI_PROVIDERS[prov].name);
+    const data=await r.json();if(!data.choices?.[0])throw new Error('No response from OpenAI');
     const ch=data.choices[0],content=[];
     if(ch.message.content)content.push({type:'text',text:ch.message.content});
     if(ch.message.tool_calls)for(const tc of ch.message.tool_calls){try{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:JSON.parse(tc.function.arguments)})}catch{content.push({type:'tool_use',id:tc.id,name:tc.function.name,input:{}})}}
@@ -108,7 +157,11 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
   if(prov==='google'){
     const gc=messages.map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.content}]}));
     const body={contents:gc,generationConfig:{maxOutputTokens:maxTokens}};if(system)body.systemInstruction={parts:[{text:system}]};
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
+    const urls=_geminiUrl(model,'streamGenerateContent');
+    const streamDirect=urls.direct+'?alt=sse';const streamProxy=urls.proxy?(urls.proxy+'?key='+key+'&alt=sse'):null;
+    let r;
+    try{r=await fetch(streamDirect,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)})}
+    catch(corsErr){if(streamProxy){r=await fetch(streamProxy,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}else throw corsErr}
     if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const reader=r.body.getReader(),dec=new TextDecoder();let text='';
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
@@ -116,12 +169,11 @@ async function streamAI({messages,system,maxTokens=2000,onDelta}){
         try{const ev=JSON.parse(d);const pts=ev.candidates?.[0]?.content?.parts;if(pts)for(const p of pts)if(p.text){text+=p.text;onDelta(text)}}catch{}}}
     return text;
   }
-  // OpenAI-compatible providers: OpenAI, Mistral, DeepSeek
-  const endpoint=_OAI_ENDPOINTS[prov];
-  if(endpoint){
+  // OpenAI
+  if(prov==='openai'){
     const oaiMsgs=[];if(system)oaiMsgs.push({role:'system',content:system});
     messages.forEach(m=>oaiMsgs.push({role:m.role,content:m.content}));
-    const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,stream:true,messages:oaiMsgs})});
+    const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,max_tokens:maxTokens,stream:true,messages:oaiMsgs})});
     if(!r.ok){let em='HTTP '+r.status;try{const e=await r.json();em=e.error?.message||em}catch{}throw new Error(_scrubApiKeys(em))}
     const reader=r.body.getReader(),dec=new TextDecoder();let text='';
     while(true){const{done,value}=await reader.read();if(done)break;const chunk=dec.decode(value,{stream:true});
@@ -183,36 +235,53 @@ function renderToolCards(toolCalls){
     return`<div class="tool-card ${status}" onclick="this.classList.toggle('expanded')"><div class="tool-card-header"><span class="tool-icon">${icon}</span><span class="tool-label">${label}</span><span class="tool-summary">${escHTML(summary)}</span><span class="tool-expand">▸</span></div>${preview?`<div class="tool-card-body"><pre>${escHTML(preview)}</pre></div>`:''}</div>`;
   }).join('')+'</div>';
 }
-function rCh(){
-  const c=$('#cmsg');
+function _buildChatHTML(compact){
   if(!S.chatM.length){
+    if(compact)return`<div class="fc-empty"><div class="fc-empty-title">Meridian AI</div>Ask about your research, data, or methods</div>`;
     const prompts=AGENT_PROMPTS.sort(()=>Math.random()-.5).slice(0,3);
-    c.innerHTML=`<div style="text-align:center;padding:20px 0 8px"><div style="font-size:20px;font-weight:700;color:var(--ac);margin-bottom:4px">Research Buddy</div><p style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.5">Search papers, look up species, and analyze your library and data.<br>Try one of these to get started:</p></div><div class="csg">${prompts.map(s=>`<button class="csb" onclick="$('#ci').value=this.textContent">${s}</button>`).join('')}</div>`;return;
+    return`<div style="text-align:center;padding:20px 0 8px"><div style="font-size:20px;font-weight:700;color:var(--ac);margin-bottom:4px">Meridian AI</div><p style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.5">Search papers, look up species, and analyze your library and data.<br>Try one of these to get started:</p></div><div class="csg">${prompts.map(s=>`<button class="csb" onclick="_chatInsert(this.textContent)">${s}</button>`).join('')}</div>`;
   }
   let html='';
   for(let i=0;i<S.chatM.length;i++){
     const m=S.chatM[i];
     if(m.role==='user'){
-      // Skip tool_result messages (they're internal)
       if(Array.isArray(m.content)&&m.content[0]?.type==='tool_result')continue;
       const text=typeof m.content==='string'?m.content:(m.content[0]?.text||'');
       html+=`<div class="msg u"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">You</div><div class="ct">${escHTML(text)}</div></div>`;
     }else if(m.role==='assistant'){
       const text=typeof m.content==='string'?m.content:
         (Array.isArray(m.content)?m.content.filter(b=>b.type==='text').map(b=>b.text).join(''):'');
-      html+=`<div class="msg a"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">Research Buddy</div>`;
-      if(m._toolCalls&&m._toolCalls.length)html+=renderToolCards(m._toolCalls);
+      html+=`<div class="msg a"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">Meridian AI</div>`;
+      if(!compact&&m._toolCalls&&m._toolCalls.length)html+=renderToolCards(m._toolCalls);
       html+=`<div class="ct">${renderMD(text)}</div></div>`;
     }
   }
   if(S.chatL)html+=mkL();
-  c.innerHTML=html;
-  c.scrollTop=c.scrollHeight;
+  return html;
+}
+function rCh(){
+  // Render into AI tab
+  const c=$('#cmsg');
+  if(c){c.innerHTML=_buildChatHTML(false);c.scrollTop=c.scrollHeight;}
+  // Render into floating chat
+  const fc=$('#fc-msgs');
+  if(fc){fc.innerHTML=_buildChatHTML(true);fc.scrollTop=fc.scrollHeight;}
   // Toggle stop button
   const stopBtn=$('#cstop');if(stopBtn)stopBtn.style.display=S.chatL?'':'none';
+  // Update unread badge on floating chat (if panel is closed and new assistant message)
+  _fcUpdateBadge();
+}
+function _chatInsert(text){
+  // Insert into whichever input is visible
+  const fcPanel=$('#fc-panel');
+  if(fcPanel&&fcPanel.style.display!=='none'){
+    const inp=$('#fc-ci');if(inp){inp.value=text;inp.focus()}
+  }else{
+    const inp=$('#ci');if(inp){inp.value=text;inp.focus()}
+  }
 }
 function buildAIContext(){
-  const parts=['You are Research Buddy, an AI research assistant embedded in Meridian, a marine research platform.\n\nYou have tools to search academic databases, look up marine species, and explore the user\'s paper library and workshop data. Use them proactively:\n- Questions about published research → search_literature\n- References to "my papers" or "my library" → search_library or get_library_stats\n- Questions about a species → lookup_species\n- Questions about data in the Workshop → get_workshop_data\n- Need for technical reports → search_grey_literature\n- Conservation status or endangered species → get_conservation_status\n- Environmental conditions at a location → get_env_data\n- Fisheries catch data → get_fisheries_data\n- Marine heatwave detection → detect_marine_heatwaves\n- Diversity/ecological indices → compute_diversity\n- Chain tools when useful: e.g., look up species → get conservation status → search literature\n\nGuidelines:\n- Always use tools for factual lookups — never fabricate data.\n- Be concise. Cite specific numbers from tool results.\n- If a tool errors, explain what happened and suggest alternatives.'];
+  const parts=['You are Meridian AI, an expert marine science research assistant built into the Meridian Engine platform. You have direct access to the user\'s current research context including their search results, saved papers, species data, environmental data, and analysis. You can execute platform functions when asked. Be concise, precise, and scientific. Provide specific data, citations, code, and actionable recommendations. When referencing papers, use the data available in the user\'s library or search results.\n\nYou have tools to search academic databases, look up marine species, and explore the user\'s paper library and workshop data. Use them proactively:\n- Questions about published research → search_literature\n- References to "my papers" or "my library" → search_library or get_library_stats\n- Questions about a species → lookup_species\n- Questions about data in the Workshop → get_workshop_data\n- Need for technical reports → search_grey_literature\n- Conservation status or endangered species → get_conservation_status\n- Environmental conditions at a location → get_env_data\n- Fisheries catch data → get_fisheries_data\n- Marine heatwave detection → detect_marine_heatwaves\n- Diversity/ecological indices → compute_diversity\n- Chain tools when useful: e.g., look up species → get conservation status → search literature\n\nGuidelines:\n- Always use tools for factual lookups — never fabricate data.\n- Be concise. Cite specific numbers from tool results.\n- If a tool errors, explain what happened and suggest alternatives.'];
   if(S.lib.length){const titles=S.lib.slice(0,15).map(p=>`"${p.title}" (${p.year||'n.d.'}, ${p.journal||'unknown'})`).join('; ');parts.push(`\nUser's Library (${S.lib.length} papers): ${titles}${S.lib.length>15?' ...and more':''}`);}
   if(S.wsD.length){parts.push(`\nWorkshop Data: ${S.wsD.length} rows × ${S.wsC.length} cols. Columns: ${S.wsC.join(', ')}. Types: ${S.wsC.map(c=>c+':'+S.wsCT[c]).join(', ')}`);const nc=S.wsC.filter(c=>S.wsCT[c]==='continuous');if(nc.length){const preview=nc.slice(0,4).map(c=>{const vs=S.wsD.map(r=>r[c]).filter(v=>typeof v==='number');return vs.length?`${c}: range ${Math.min(...vs).toFixed(2)}–${Math.max(...vs).toFixed(2)}, mean ${(vs.reduce((a,v)=>a+v,0)/vs.length).toFixed(2)}`:c}).join('; ');parts.push(`Stats: ${preview}`);}}
   const envMeta=Object.keys(S.envR);if(envMeta.length){parts.push(`\nEnv Data at (${$('#elat')?.value},${$('#elon')?.value}): ${envMeta.map(id=>S.envR[id].nm+': '+S.envR[id].value+' '+S.envR[id].u).join(', ')}`);}
@@ -438,17 +507,12 @@ function buildApiMessages(){
 let _agentAbort=null;
 function abortAgent(){if(_agentAbort){_agentAbort.abort();_agentAbort=null;toast('Agent stopped','info')}}
 
-// ── Agent loop ──
-async function sCh(){
-  const inp=$('#ci'),m=inp.value.trim();if(!m||S.chatL)return;
-  if(!S.apiK)return toast('Enter API key in the field above','err');
-  inp.value='';S.chatM.push({role:'user',content:m});S.chatL=true;rCh();
-
+// ── Agent loop (shared between AI tab and floating chat) ──
+async function _runAgentLoop(){
   _agentAbort=new AbortController();
   const signal=_agentAbort.signal;
   let iterations=0;const MAX_ITER=8;
 
-  // Build session-aware system prompt
   let _sessionCtx='';
   try{_sessionCtx=await buildSessionSummary()}catch{}
   const systemPrompt=_sessionCtx
@@ -465,11 +529,9 @@ async function sCh(){
       const toolParts=data.content.filter(b=>b.type==='tool_use');
 
       if(toolParts.length){
-        // Assistant message with tool calls — create placeholder in chat
         const assistantMsg={role:'assistant',content:textParts.map(b=>b.text).join('')||'',_apiContent:data.content,_toolCalls:toolParts.map(tc=>({id:tc.id,name:tc.name,input:tc.input,status:'running',result:null}))};
         S.chatM.push(assistantMsg);rCh();
 
-        // Execute tools
         const toolResults=[];
         for(const tc of toolParts){
           if(signal.aborted)throw new Error('Stopped');
@@ -484,33 +546,27 @@ async function sCh(){
           }
           rCh();
         }
-        // Add tool results as user message
         S.chatM.push({role:'user',content:toolResults});
         rCh();
-
-        // If stop_reason is end_turn, we're done even with tools
         if(data.stop_reason==='end_turn')break;
-        // Otherwise loop to get Claude's next response
       }else{
-        // Text-only response — final answer
         const finalText=textParts.map(b=>b.text).join('')||'No response.';
         S.chatM.push({role:'assistant',content:finalText,_apiContent:data.content});
+        if(!_fcOpen)_fcUnread++;
         break;
       }
     }
     if(iterations>=MAX_ITER)toast('Agent reached max iterations','info');
   }catch(e){
     if(e.name!=='AbortError'&&e.message!=='Stopped'){
-      const hint=e.message.includes('401')||e.message.includes('invalid')?' Check your API key in the settings above.':e.message.includes('429')?' Rate limit reached — wait a moment and try again.':e.message.includes('503')||e.message.includes('500')?' The AI service is temporarily unavailable — try again shortly.':'';
+      const hint=e.message.includes('401')||e.message.includes('invalid')?' Check your API key.':e.message.includes('429')?' Rate limit reached — wait a moment.':e.message.includes('503')||e.message.includes('500')?' AI service temporarily unavailable.':'';
       S.chatM.push({role:'assistant',content:'Error: '+e.message+hint});
     }else{
-      // On abort, add partial message if we have tool results
       S.chatM.push({role:'assistant',content:'*Stopped by user.*'});
     }
   }
   S.chatL=false;_agentAbort=null;rCh();
   if(db)try{
-    // Strip internal fields for storage
     const toStore=S.chatM.map(m=>{
       if(m._apiContent||m._toolCalls){
         const stored={role:m.role,content:typeof m.content==='string'?m.content:(Array.isArray(m.content)?m.content:'')};
@@ -521,17 +577,81 @@ async function sCh(){
     dbPutChat(toStore);
   }catch{}
 }
-$('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓';$('#aim').textContent='Model: '+S.aiModel;toast('API key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');setTimeout(()=>$('#akb').textContent='Save',2000)}else{toast('Enter an API key first','err')}});
+// AI tab send handler
+async function sCh(){
+  const inp=$('#ci'),m=inp.value.trim();if(!m||S.chatL)return;
+  if(!S.apiK)return toast('Enter API key in the API Keys dropdown','err');
+  inp.value='';S.chatM.push({role:'user',content:m});S.chatL=true;rCh();
+  _runAgentLoop();
+}
+$('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#akb').textContent='\u2713';toast('API key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');_updateKeyPromptVisibility();setTimeout(()=>$('#akb').textContent='Save',2000)}else{toast('Enter an API key first','err')}});
 $('#aki').addEventListener('keydown',e=>{if(e.key==='Enter')$('#akb').click()});
-$('#aip').addEventListener('change',()=>{updateAIProvider($('#aip').value)});
-$('#aimodel').addEventListener('change',()=>{S.aiModel=$('#aimodel').value;safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#aim').textContent='Model: '+S.aiModel});
+// Unified provider dropdown handlers
+$('#aip')?.addEventListener('change',function(){_onProviderChange(this.value)});
+$('#fc-provider')?.addEventListener('change',function(){_onProviderChange(this.value)});
+
+// ═══ FLOATING CHATBOT ENGINE ═══
+let _fcOpen=false,_fcUnread=0;
+function _fcToggle(){if(_fcOpen)_fcClose();else _fcOpenPanel()}
+function _fcOpenPanel(){
+  const panel=$('#fc-panel');const bubble=$('#fc-bubble');
+  if(!panel)return;
+  panel.style.display='flex';_fcOpen=true;_fcUnread=0;_fcUpdateBadge();
+  if(bubble)bubble.classList.remove('has-unread');
+  _updateKeyPromptVisibility();
+  const fc=$('#fc-msgs');if(fc){fc.innerHTML=_buildChatHTML(true);fc.scrollTop=fc.scrollHeight;}
+  setTimeout(()=>{const inp=$('#fc-ci');if(inp)inp.focus()},150);
+}
+function _fcClose(){
+  const panel=$('#fc-panel');if(panel)panel.style.display='none';
+  _fcOpen=false;
+}
+function _fcUpdateBadge(){
+  const badge=$('#fc-badge');const bubble=$('#fc-bubble');
+  if(!badge||!bubble)return;
+  if(_fcUnread>0&&!_fcOpen){
+    badge.textContent=_fcUnread>9?'9+':_fcUnread;
+    badge.style.display='';
+    bubble.classList.add('has-unread');
+  }else{
+    badge.style.display='none';
+    bubble.classList.remove('has-unread');
+  }
+}
+function _fcSend(){
+  const inp=$('#fc-ci');if(!inp)return;
+  const m=inp.value.trim();if(!m||S.chatL)return;
+  if(!S.apiK){toast('Enter an API key first','err');return}
+  inp.value='';
+  // Reuse the main chat input path
+  const mainInp=$('#ci');if(mainInp)mainInp.value=m;
+  S.chatM.push({role:'user',content:m});S.chatL=true;rCh();
+  // Trigger the agent loop directly
+  _runAgentLoop();
+}
+function _fcSaveKey(){
+  const inp=$('#fc-aki');if(!inp)return;
+  const key=inp.value.trim();if(!key){toast('Enter an API key','err');return}
+  S.apiK=key;
+  _keyVault.store('meridian_key_'+S.aiProvider,key);
+  safeStore('meridian_provider',S.aiProvider);
+  // Sync main tab
+  const aki=$('#aki');if(aki)aki.value=key;
+  _updateKeyPromptVisibility();
+  toast('Key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');
+}
+function _clearChat(){
+  S.chatM=[];S.chatL=false;rCh();
+  if(db)try{dbPutChat([])}catch{}
+  toast('Chat cleared','ok',1500);
+}
 // ═══ API KEY SECURITY ═══
 const _KEY_TIMEOUT_MS=15*60*1000;
 let _keyInactivityTimer=null;
 function _resetKeyTimer(){clearTimeout(_keyInactivityTimer);if(!S.apiK)return;_keyInactivityTimer=setTimeout(_onKeyTimeout,_KEY_TIMEOUT_MS)}
-function _onKeyTimeout(){_clearApiKey(true);S.aiProvider='anthropic';const aip=$('#aip');if(aip)aip.value='anthropic';_syncModelDropdown('anthropic');const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel+' \u2014 key required for AI features';_showKeyTimeoutNotice()}
+function _onKeyTimeout(){_clearApiKey(true);S.aiProvider='anthropic';S.aiModel=AI_PROVIDERS.anthropic.defaultModel;_syncAllProviderDropdowns();_updateKeyPromptVisibility();_showKeyTimeoutNotice()}
 function _showKeyTimeoutNotice(){const existing=$('#key-timeout-notice');if(existing)existing.remove();const n=document.createElement('div');n.id='key-timeout-notice';n.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10010;padding:14px 20px;background:linear-gradient(135deg,rgba(194,120,120,.15),rgba(212,160,74,.1));border-bottom:1px solid rgba(194,120,120,.3);text-align:center;font-size:13px;color:var(--co);font-family:var(--mf);animation:fadeIn .3s';n.innerHTML='\uD83D\uDD12 Your API key was cleared for security due to inactivity. Please re-enter your key to continue. <button class="bt sm" style="margin-left:12px;font-size:11px;color:var(--ac);border-color:var(--ab)" onclick="goTab(\'ai\');this.parentElement.remove()">Go to AI Settings</button>';document.body.appendChild(n)}
-function _clearApiKey(silent){S.apiK='';const aki=$('#aki');if(aki)aki.value='';const aks=$('#aks');if(aks)aks.style.borderColor='var(--bd)';const akb=$('#akb');if(akb)akb.textContent='Save';const aim=$('#aim');if(aim)aim.textContent='Model: '+(S.aiModel||AI_PROVIDERS[S.aiProvider]?.defaultModel||'')+' \u2014 key required for AI features';clearTimeout(_keyInactivityTimer);_keyInactivityTimer=null;if(!silent)toast('Key cleared.','ok',2000)}
+function _clearApiKey(silent){S.apiK='';const aki=$('#aki');if(aki)aki.value='';const akb=$('#akb');if(akb)akb.textContent='Save';clearTimeout(_keyInactivityTimer);_keyInactivityTimer=null;_updateKeyPromptVisibility();if(!silent)toast('Key cleared.','ok',2000)}
 ['mousemove','keydown','scroll','touchstart'].forEach(ev=>document.addEventListener(ev,_resetKeyTimer,{passive:true}));
 $('#akb').addEventListener('click',()=>setTimeout(_resetKeyTimer,200));
 $('#aip').addEventListener('change',()=>setTimeout(_resetKeyTimer,200));
@@ -1295,10 +1415,15 @@ openDB().then(loadLib).then(async()=>{S.cols=await loadCols();renderLib();
   // Restore provider and model
   const savedProv=localStorage.getItem('meridian_provider')||'anthropic';
   S.aiProvider=AI_PROVIDERS[savedProv]?savedProv:'anthropic';
-  const aip=$('#aip');if(aip)aip.value=S.aiProvider;
-  _syncModelDropdown(S.aiProvider);
-  const provInfo=AI_PROVIDERS[S.aiProvider];if(provInfo){$('#aki').placeholder=provInfo.placeholder;$('#aim').textContent='Model: '+S.aiModel}
-  _keyVault.retrieve('meridian_key_'+S.aiProvider).then(sk=>{if(sk){S.apiK=sk;const ai=$('#aki');if(ai)ai.value=sk;$('#aks').style.borderColor='var(--sb)';$('#akb').textContent='✓'}})
+  const savedModel=localStorage.getItem('meridian_model_'+S.aiProvider);
+  const provInfo=AI_PROVIDERS[S.aiProvider];
+  if(savedModel&&provInfo?.models.includes(savedModel))S.aiModel=savedModel;
+  else if(provInfo)S.aiModel=provInfo.defaultModel;
+  _syncAllProviderDropdowns();
+  _keyVault.retrieve('meridian_key_'+S.aiProvider).then(sk=>{
+    if(sk){S.apiK=sk;const ai=$('#aki');if(ai)ai.value=sk;$('#akb').textContent='\u2713'}
+    _updateKeyPromptVisibility();
+  })
   if(typeof PADI!=='undefined'&&PADI.init)PADI.init().catch(e=>console.warn('PADI init:',e));
   setTimeout(autoRestoreSession,500);
 }).catch(e=>{console.warn('DB init:',e);rCh()});
@@ -2890,7 +3015,7 @@ function showOnboarding(){
       <div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Optional — AI API Key</div>
       <div style="font-size:12px;color:var(--ts);margin-bottom:10px;line-height:1.5">Bring your own key to enable the AI research assistant. You can also set this later in the AI tab.</div>
       <div style="display:flex;gap:8px;align-items:center">
-        <select class="fs" id="splash-aip" style="min-width:130px"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google</option><option value="mistral">Mistral</option><option value="deepseek">DeepSeek</option></select>
+        <select class="fs" id="splash-aip" style="min-width:130px"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google</option></select>
         <input type="password" class="si" id="splash-aki" placeholder="sk-ant-..." style="font-size:12px;flex:1;padding:9px 12px">
       </div>
     </div>
@@ -2914,14 +3039,10 @@ function showOnboarding(){
     const key=ov.querySelector('#splash-aki').value.trim();
     const prov=splashAip.value;
     if(key){
-      S.apiK=key;S.aiProvider=prov;
+      S.apiK=key;S.aiProvider=prov;S.aiModel=AI_PROVIDERS[prov]?.defaultModel||'';
       _keyVault.store('meridian_key_'+prov,key);safeStore('meridian_provider',prov);
-      // Sync main AI tab controls
-      const mainAip=$('#aip');if(mainAip)mainAip.value=prov;
       const mainAki=$('#aki');if(mainAki)mainAki.value=key;
-      const aks=$('#aks');if(aks)aks.style.borderColor='var(--sb)';
-      _syncModelDropdown(prov);
-      const aim=$('#aim');if(aim)aim.textContent='Model: '+S.aiModel
+      _syncAllProviderDropdowns();_updateKeyPromptVisibility();
     }
     ov.remove();
     safeStore('meridian_onboarded','1');

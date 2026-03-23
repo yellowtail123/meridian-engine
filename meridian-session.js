@@ -141,24 +141,17 @@ function buildSessionOneLiner() {
   return parts.length ? 'Session context: ' + parts.join(' · ') : 'Session context: no data yet';
 }
 
-// ── Toggle the context detail panel ──
-function toggleAiCtx() {
-  const detail = $('#ai-ctx-detail');
-  const arrow = $('#ai-ctx-arrow');
-  if (!detail) return;
-  const show = detail.style.display === 'none';
-  detail.style.display = show ? '' : 'none';
-  if (arrow) arrow.textContent = show ? '▾' : '▸';
-}
-
 // ── Refresh the AI context indicator ──
 async function refreshAiCtxIndicator() {
-  const summary = $('#ai-ctx-summary');
   const detail = $('#ai-ctx-detail');
-  if (!summary) return;
-  summary.textContent = buildSessionOneLiner();
-  if (detail) {
-    const full = await buildSessionSummary();
-    detail.textContent = full || 'No session data available yet.';
-  }
+  if (!detail) return;
+  const parts = [];
+  const tab = document.querySelector('.sb-item.active')?.dataset?.tab;
+  if (tab) parts.push('<div style="margin-bottom:6px"><strong style="color:var(--ac)">Tab:</strong> ' + tab + '</div>');
+  if (S.lib.length) parts.push('<div><strong>Library:</strong> ' + S.lib.length + ' papers</div>');
+  if (S.wsD.length) parts.push('<div><strong>Workshop:</strong> ' + S.wsD.length + ' rows, ' + S.wsC.length + ' cols</div>');
+  const envKeys = Object.keys(S.envR);
+  if (envKeys.length) parts.push('<div><strong>Env:</strong> ' + envKeys.length + ' variables loaded</div>');
+  try { const sp = JSON.parse(sessionStorage.getItem('meridian_sp') || 'null'); if (sp) parts.push('<div><strong>Species:</strong> ' + sp.sciName + '</div>'); } catch {}
+  detail.innerHTML = parts.length ? parts.join('') : '<div style="color:var(--tm)">No data loaded yet. Search literature, explore species, or fetch environmental data.</div>';
 }
