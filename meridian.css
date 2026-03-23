@@ -318,28 +318,30 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .leaflet-control-scale-line{background:rgba(39,37,54,.85)!important;color:var(--ts)!important;border-color:var(--coast)!important;font-family:var(--mf)!important;font-size:10px!important;padding:2px 6px!important}
 /* ═══ LEAFLET CONTROLS — Dark Theme ═══ */
 .leaflet-control-zoom{border:1px solid rgba(201,149,107,.2)!important;border-radius:6px!important;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3)!important}
-.leaflet-control-zoom a{background:#2a2640!important;color:var(--ac)!important;border-color:rgba(201,149,107,.15)!important;width:30px!important;height:30px!important;line-height:30px!important;font-size:16px!important;font-weight:400!important;transition:background .15s,color .15s}
-.leaflet-control-zoom a:hover{background:#3a3555!important;color:#E8C49B!important}
-.leaflet-control-zoom a.leaflet-disabled{color:rgba(201,149,107,.25)!important;background:#222038!important}
-.leaflet-control-layers{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:6px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;color:var(--ts)!important;font-family:var(--mf)!important;font-size:12px!important}
-.leaflet-control-layers-toggle{background-color:#2a2640!important;width:30px!important;height:30px!important;border-radius:6px!important}
+.leaflet-control-zoom a{background:#2a2640!important;color:#e8e4df!important;border-color:rgba(201,149,107,.15)!important;width:30px!important;height:30px!important;line-height:30px!important;font-size:18px!important;font-weight:600!important;transition:background .15s,color .15s}
+.leaflet-control-zoom a:hover{background:#3a3555!important;color:#fff!important}
+.leaflet-control-zoom a.leaflet-disabled{color:rgba(232,228,223,.3)!important;background:#222038!important}
+.leaflet-control-layers{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:6px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;color:#e8e4df!important;font-family:var(--mf)!important;font-size:12px!important}
+.leaflet-control-layers-toggle{background-color:transparent!important;width:30px!important;height:30px!important;border-radius:6px!important;filter:brightness(0) invert(1)}
 .leaflet-control-layers-expanded{padding:8px 12px!important}
-.leaflet-control-layers label{color:var(--ts)!important;font-size:12px!important}
+.leaflet-control-layers label{color:#e8e4df!important;font-size:12px!important}
+.leaflet-control-layers label span{color:#e8e4df!important}
 .leaflet-control-layers-separator{border-top-color:rgba(201,149,107,.15)!important}
-.leaflet-control-layers input[type=checkbox],.leaflet-control-layers input[type=radio]{accent-color:var(--ac);vertical-align:middle}
-.leaflet-control-attribution{background:rgba(39,37,54,.8)!important;color:var(--tm)!important;font-size:9px!important;font-family:var(--mf)!important}
-.leaflet-control-attribution a{color:var(--ac)!important}
-/* Leaflet.Draw toolbar */
-.leaflet-draw-toolbar a{background-color:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;color:var(--ts)!important;width:30px!important;height:30px!important;line-height:30px!important}
-.leaflet-draw-toolbar a:hover{background-color:#3a3555!important}
+.leaflet-control-layers input[type=checkbox],.leaflet-control-layers input[type=radio]{accent-color:var(--ac);vertical-align:middle;width:14px;height:14px}
+.leaflet-control-attribution{background:rgba(39,37,54,.8)!important;color:#c2b8ae!important;font-size:9px!important;font-family:var(--mf)!important}
+.leaflet-control-attribution a{color:#C9956B!important}
+/* Leaflet.Draw toolbar — sprite icons need inversion for dark theme */
+.leaflet-draw-toolbar{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:6px!important;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3)!important}
+.leaflet-draw-toolbar a{background-color:transparent!important;border:none!important;color:#e8e4df!important;width:30px!important;height:30px!important;line-height:30px!important;filter:brightness(0) invert(1)}
+.leaflet-draw-toolbar a:hover{filter:brightness(0) invert(1) drop-shadow(0 0 1px rgba(255,255,255,.4))}
+.leaflet-draw-toolbar a .sr-only{color:#e8e4df!important}
 .leaflet-draw-section{border-color:rgba(201,149,107,.15)!important}
 .leaflet-draw.leaflet-control{border:none!important;box-shadow:none!important}
-.leaflet-draw-toolbar{border-radius:6px!important;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3)!important}
 .leaflet-draw-actions{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;left:32px!important}
 .leaflet-draw-actions li:first-child a{border-radius:4px 0 0 4px!important}
 .leaflet-draw-actions li:last-child a{border-radius:0 4px 4px 0!important}
-.leaflet-draw-actions a{background:#2a2640!important;color:var(--ac)!important;border:none!important;font-family:var(--mf)!important;font-size:11px!important;padding:4px 10px!important;line-height:1.4!important;height:auto!important}
-.leaflet-draw-actions a:hover{background:#3a3555!important;color:#E8C49B!important}
+.leaflet-draw-actions a{background:#2a2640!important;color:#e8e4df!important;border:none!important;font-family:var(--mf)!important;font-size:11px!important;padding:4px 10px!important;line-height:1.4!important;height:auto!important}
+.leaflet-draw-actions a:hover{background:#3a3555!important;color:#fff!important}
 .leaflet-draw-tooltip{background:rgba(39,37,54,.92)!important;border:1px solid rgba(201,149,107,.25)!important;color:var(--ts)!important;font-family:var(--mf)!important;font-size:11px!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;padding:4px 8px!important}
 .leaflet-draw-tooltip-subtext{color:var(--tm)!important}
 .leaflet-draw-tooltip::before{border-right-color:rgba(39,37,54,.92)!important}
@@ -350,15 +352,15 @@ html.light .leaflet-control-zoom a{background:#ffffff!important;color:#6B5210!im
 html.light .leaflet-control-zoom a:hover{background:#f0ebe3!important;color:#8B6914!important}
 html.light .leaflet-control-zoom a.leaflet-disabled{color:#ccc!important;background:#f5f5f5!important}
 html.light .leaflet-control-layers{background:#ffffff!important;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important;color:#3a3a3a!important}
-html.light .leaflet-control-layers-toggle{background-color:#ffffff!important}
+html.light .leaflet-control-layers-toggle{background-color:transparent!important;filter:none!important}
 html.light .leaflet-control-layers label{color:#3a3a3a!important}
 html.light .leaflet-control-layers-separator{border-top-color:#d0cbc3!important}
 html.light .leaflet-control-layers input[type=checkbox],html.light .leaflet-control-layers input[type=radio]{accent-color:#8B6914}
 html.light .leaflet-control-attribution{background:rgba(255,255,255,.85)!important;color:#555!important}
 html.light .leaflet-control-attribution a{color:#8B6914!important}
-html.light .leaflet-draw-toolbar a{background-color:#ffffff!important;border-color:#d0cbc3!important;color:#3a3a3a!important}
-html.light .leaflet-draw-toolbar a:hover{background-color:#f0ebe3!important}
-html.light .leaflet-draw-toolbar{box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
+html.light .leaflet-draw-toolbar a{background-color:transparent!important;border-color:#d0cbc3!important;color:#3a3a3a!important;filter:none!important}
+html.light .leaflet-draw-toolbar a:hover{background-color:transparent!important;filter:none!important}
+html.light .leaflet-draw-toolbar{background:#ffffff!important;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
 html.light .leaflet-draw-actions{background:#ffffff!important;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
 html.light .leaflet-draw-actions a{background:#ffffff!important;color:#6B5210!important}
 html.light .leaflet-draw-actions a:hover{background:#f0ebe3!important;color:#8B6914!important}
