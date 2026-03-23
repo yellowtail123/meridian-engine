@@ -21,6 +21,7 @@ const FILES = [
   "meridian-fielddata.js",
   "meridian-gapfill.js",
   "meridian-padi.js",
+  "meridian-pdf.js",
   "meridian-repro.js",
   "meridian-session.js",
   "meridian-studydesign.js",
