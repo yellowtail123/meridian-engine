@@ -330,7 +330,13 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .leaflet-control-layers input[type=checkbox],.leaflet-control-layers input[type=radio]{accent-color:var(--ac);vertical-align:middle;width:14px;height:14px}
 .leaflet-control-attribution{background:rgba(39,37,54,.8)!important;color:#c2b8ae!important;font-size:9px!important;font-family:var(--mf)!important}
 .leaflet-control-attribution a{color:#C9956B!important}
-/* Leaflet.Draw — left as default white; custom theming broke sprite icons + click handlers */
+/* ═══ Custom Draw Control ═══ */
+.meridian-draw-ctrl{background:var(--bs);border:1px solid var(--bd)!important;border-radius:8px!important;padding:4px;display:flex;flex-direction:column;gap:2px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.mdc-btn{display:block;padding:5px 10px;background:var(--bi);border:1px solid var(--bd);border-radius:5px;color:var(--ts);font-size:11px;font-family:var(--mf);cursor:pointer;text-decoration:none!important;white-space:nowrap;text-align:center;transition:background .15s,border-color .15s}
+.mdc-btn:hover{background:var(--be);border-color:var(--ab);color:var(--ac)}
+.mdc-btn.active{background:rgba(201,149,107,.2);color:var(--ac);border-color:var(--ac);font-weight:600}
+.mdc-del:hover{background:rgba(212,160,74,.15);border-color:var(--wa);color:var(--wa)}
+.mdc-sep{height:1px;background:var(--bd);margin:2px 0}
 /* ═══ LEAFLET CONTROLS — Light Theme ═══ */
 html.light .leaflet-control-zoom{border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
 html.light .leaflet-control-zoom a{background:#ffffff!important;color:#6B5210!important;border-color:#d0cbc3!important}
@@ -343,6 +349,10 @@ html.light .leaflet-control-layers-separator{border-top-color:#d0cbc3!important}
 html.light .leaflet-control-layers input[type=checkbox],html.light .leaflet-control-layers input[type=radio]{accent-color:#8B6914}
 html.light .leaflet-control-attribution{background:rgba(255,255,255,.85)!important;color:#555!important}
 html.light .leaflet-control-attribution a{color:#8B6914!important}
+html.light .meridian-draw-ctrl{background:#fff;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+html.light .mdc-btn{background:#f5f2ed;border-color:#d0cbc3;color:#3a3a3a}
+html.light .mdc-btn:hover{background:#e8e3dc;border-color:#8B6914;color:#6B5210}
+html.light .mdc-btn.active{background:rgba(139,105,20,.15);color:#6B5210;border-color:#8B6914}
 #envMap:fullscreen{border:0;border-radius:0!important;height:100vh!important}
 #habitat-attrib{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;font-size:10px}
 .hab-chip{padding:2px 8px;background:rgba(201,149,107,.12);border:1px solid var(--bd);border-radius:3px;color:var(--tm);font-family:var(--mf)}

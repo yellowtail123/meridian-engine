@@ -685,11 +685,38 @@ function initEnvMap(){
     if(_envBounds){clearAreaSelection()}
     openEnvGroup('loc');updateEnvLocCtx();
     [_el,_lo].forEach(el=>{if(!el)return;el.style.transition='background .3s';el.style.background='rgba(27,96,144,0.15)';setTimeout(()=>{el.style.background=''},500)})});
-  // Draw controls
+  // Draw controls — custom toolbar replaces L.Control.Draw (avoids sprite image dependency)
   _drawnItems=new L.FeatureGroup();_envMap.addLayer(_drawnItems);
-  const drawControl=new L.Control.Draw({draw:{polygon:{shapeOptions:{color:'#7B9E87',weight:2,fillOpacity:0.15}},polyline:false,circle:false,circlemarker:false,marker:false,rectangle:{shapeOptions:{color:'#C9956B',weight:2,fillOpacity:0.15}}},edit:{featureGroup:_drawnItems,remove:true}});
-  _envMap.addControl(drawControl);
-  _envMap.on(L.Draw.Event.CREATED,function(e){_drawnItems.clearLayers();_drawnItems.addLayer(e.layer);const b=e.layer.getBounds();_envBounds={south:b.getSouth(),north:b.getNorth(),west:b.getWest(),east:b.getEast()};
+  let _activeDrawHandler=null,_editActive=false;
+  const _MeridianDraw=L.Control.extend({options:{position:'topleft'},onAdd:function(map){
+    const c=L.DomUtil.create('div','meridian-draw-ctrl');L.DomEvent.disableClickPropagation(c);L.DomEvent.disableScrollPropagation(c);
+    function deactivate(){if(_activeDrawHandler){try{_activeDrawHandler.disable()}catch(ex){}_activeDrawHandler=null}
+      if(_editActive){_drawnItems.eachLayer(function(l){if(l.editing)l.editing.disable()});
+        // Update bounds from edited shape
+        _drawnItems.eachLayer(function(l){if(l.getBounds){const b=l.getBounds();_envBounds={south:b.getSouth(),north:b.getNorth(),west:b.getWest(),east:b.getEast()}}});
+        _editActive=false}
+      c.querySelectorAll('.mdc-btn').forEach(function(b){b.classList.remove('active')})}
+    [{id:'marker',label:'📍 Point',mk:function(){return new L.Draw.Marker(map,{})}},
+     {id:'polygon',label:'⬡ Polygon',mk:function(){return new L.Draw.Polygon(map,{shapeOptions:{color:'#7B9E87',weight:2,fillOpacity:0.15}})}},
+     {id:'polyline',label:'📏 Line',mk:function(){return new L.Draw.Polyline(map,{shapeOptions:{color:'#C9956B',weight:2}})}},
+     {id:'rectangle',label:'▭ Rectangle',mk:function(){return new L.Draw.Rectangle(map,{shapeOptions:{color:'#C9956B',weight:2,fillOpacity:0.15}})}}
+    ].forEach(function(t){var a=L.DomUtil.create('a','mdc-btn',c);a.href='#';a.title=t.label;a.textContent=t.label;a.dataset.tool=t.id;
+      L.DomEvent.on(a,'click',function(ev){L.DomEvent.preventDefault(ev);var was=a.classList.contains('active');deactivate();
+        if(!was){_activeDrawHandler=t.mk();_activeDrawHandler.enable();a.classList.add('active')}})});
+    L.DomUtil.create('div','mdc-sep',c);
+    var eb=L.DomUtil.create('a','mdc-btn',c);eb.href='#';eb.title='Edit shapes';eb.textContent='✏️ Edit';eb.dataset.tool='edit';
+    L.DomEvent.on(eb,'click',function(ev){L.DomEvent.preventDefault(ev);var was=eb.classList.contains('active');deactivate();
+      if(!was&&_drawnItems.getLayers().length){_drawnItems.eachLayer(function(l){if(l.editing)l.editing.enable()});_editActive=true;eb.classList.add('active')}});
+    var db=L.DomUtil.create('a','mdc-btn mdc-del',c);db.href='#';db.title='Delete drawn shapes';db.textContent='🗑️ Delete';db.dataset.tool='delete';
+    L.DomEvent.on(db,'click',function(ev){L.DomEvent.preventDefault(ev);deactivate();if(_drawnItems.getLayers().length)clearAreaSelection()});
+    // Clear active button state when drawing completes or is cancelled
+    map.on('draw:created draw:drawstop',function(){_activeDrawHandler=null;c.querySelectorAll('.mdc-btn').forEach(function(b){b.classList.remove('active')})});
+    return c}});
+  _envMap.addControl(new _MeridianDraw());
+  _envMap.on(L.Draw.Event.CREATED,function(e){_drawnItems.clearLayers();_drawnItems.addLayer(e.layer);
+    // Marker → set lat/lon like a map click, no area selection
+    if(e.layerType==='marker'){const p=e.layer.getLatLng();$('#elat').value=p.lat.toFixed(4);$('#elon').value=p.lng.toFixed(4);_envMarker.setLatLng(p);openEnvGroup('loc');updateEnvLocCtx();return}
+    const b=e.layer.getBounds();_envBounds={south:b.getSouth(),north:b.getNorth(),west:b.getWest(),east:b.getEast()};
     const cLat=(b.getSouth()+b.getNorth())/2,cLon=(b.getWest()+b.getEast())/2;
     if(e.layerType==='polygon'){const ll=e.layer.getLatLngs()[0];_envPolygon=ll.map(p=>[p.lat,p.lng]);
       // Compute area via spherical excess approximation
