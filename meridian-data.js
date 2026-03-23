@@ -1163,10 +1163,10 @@ function sendCompareToWS(){if(!window._compareResults)return;S.wsC=['Species','S
 
 // ═══ ENV DATA — verified datasets + timeouts ═══
 const EV=[
-{id:'sst',nm:'SST',u:'°C',cat:'Physical',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'sst',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01'}},
-{id:'sst_anom',nm:'SST Anomaly',u:'°C',cat:'Physical',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'anom',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41anom',v:'sstAnom',dm:3,lag:2,minDate:'2002-06-01'}},
-{id:'chlor',nm:'Chlorophyll-a',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01',alt:{server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwNPPVIIRSchlaDaily',v:'chlor_a',dm:4,z:'(0.0)',lag:3,minDate:'2017-01-01'}},
-{id:'par',nm:'Kd490',u:'m⁻¹',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4901day',v:'k490',dm:3,lag:2,minDate:'2012-01-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4908day',v:'k490',dm:3,minDate:'2003-01-01'}},
+{id:'sst',nm:'SST',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'sst',dm:3,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01'}},
+{id:'sst_anom',nm:'SST Anomaly',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'anom',dm:3,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41anom',v:'sstAnom',dm:3,lag:2,minDate:'2002-06-01'}},
+{id:'chlor',nm:'Chlorophyll-a',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01'}},
+{id:'par',nm:'Kd490',u:'m⁻¹',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4901day',v:'kd_490',dm:3,lag:8,minDate:'2002-07-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4901day',v:'k490',dm:3,lag:2,minDate:'2012-01-01'}},
 {id:'co2',nm:'CO₂',u:'ppm',cat:'Biogeochem',src:'co2'},
 {id:'wh',nm:'Wave Height',u:'m',cat:'Waves',src:'m',p:'wave_height',pd:'wave_height_max'},
 {id:'wd',nm:'Wave Dir',u:'°',cat:'Waves',src:'m',p:'wave_direction',pd:'wave_direction_dominant'},
@@ -1178,13 +1178,13 @@ const EV=[
 {id:'pr',nm:'Pressure',u:'hPa',cat:'Atmos',src:'w',p:'pressure_msl',pd:'pressure_msl_mean'},
 {id:'pp',nm:'Precip',u:'mm',cat:'Atmos',src:'w',p:'precipitation',pd:'precipitation_sum'},
 {id:'cl',nm:'Cloud',u:'%',cat:'Atmos',src:'w',p:'cloud_cover',pd:'cloud_cover_mean'},
-{id:'sr',nm:'Solar',u:'W/m²',cat:'Atmos',src:'w',p:'shortwave_radiation',pd:'shortwave_radiation_sum'},
+{id:'sr',nm:'Solar (PAR)',u:'einstein/m²/day',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1par01day',v:'par',dm:3,lag:8,minDate:'2002-07-01'},
 {id:'hm',nm:'Humidity',u:'%',cat:'Atmos',src:'w',p:'relative_humidity_2m',pd:'relative_humidity_2m_mean'},
-{id:'sal',nm:'Salinity',u:'PSU',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'coastwatchSMOSv662SSS3day',v:'sss',dm:4,z:'(0.0)',minDate:'2010-06-01',lag:3,alt:{server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwSMAPsssDaily',v:'sss',dm:4,z:'(0.0)',minDate:'2015-04-01'}},
+{id:'sal',nm:'Salinity',u:'PSU',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaacwSMAPsss3day',v:'sss',dm:3,minDate:'2015-04-01',lag:3,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'coastwatchSMOSv662SSS3day',v:'sss',dm:4,z:'(0.0)',lag:3,minDate:'2010-06-01'}},
 {id:'npp',nm:'Net Primary Productivity',u:'mgC/m²/day',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8}},
-{id:'curr_u',nm:'Current (U)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'u',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30}},
-{id:'curr_v',nm:'Current (V)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'v',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30}},
-{id:'sla',nm:'Sea Level Anomaly',u:'m',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14},
+{id:'curr_u',nm:'Current (U)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'u_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14}},
+{id:'curr_v',nm:'Current (V)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'v_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14}},
+{id:'sla',nm:'Sea Level Anomaly',u:'m',cat:'Physical',src:'e',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwBLENDEDsshDaily',v:'sla',dm:3,minDate:'2017-02-13',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14}},
 {id:'dhw',nm:'Degree Heating Weeks',u:'°C-weeks',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_DHW',dm:3,minDate:'1985-04-01',lag:5},
 {id:'baa',nm:'Bleaching Alert Area',u:'level',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_BAA',dm:3,minDate:'1985-04-01',lag:5},
 {id:'hotspot',nm:'Coral Hotspot',u:'°C',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_HOTSPOT',dm:3,minDate:'1985-04-01',lag:5},
@@ -1195,7 +1195,7 @@ const EV=[
 {id:'pco2',nm:'Surface pCO\u2082',u:'\u00b5atm',cat:'Carbon',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaa_psl_5b56_2d90_a498',v:'fco2_ave_weighted',dm:3,minDate:'1970-01-01',lag:365,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaa_psl_5b56_2d90_a498',v:'fco2_ave_weighted',dm:3}},
 {id:'omega_ar',nm:'\u03a9arag (estimated)',u:'',cat:'Carbon',src:'calc'},
 // ── New: Physical Oceanography ──
-{id:'mld',nm:'Mixed Layer Depth',u:'m',cat:'Physical',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'mixed_layer_thickness',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,lag:45,minDate:'1870-01-16'}},
+{id:'mld',nm:'Mixed Layer Depth',u:'m',cat:'Physical',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'mixed_layer_thickness',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14},
 // ── New: Biogeochemistry ──
 {id:'poc',nm:'Particulate Organic Carbon',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1poc8day',v:'poc',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8},
 {id:'dox',nm:'Dissolved Oxygen',u:'mL/L',cat:'Biogeochem',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'noaacwWOA18o_t00an01',v:'o_an',dm:4,z:'(0.0)',lag:365,minDate:'1955-01-01'},
@@ -1213,37 +1213,45 @@ const EV=[
 let _fusionMode=false;
 const _fusionSources={
   sst:[
+    {id:'oisst_cw',nm:'OISST v2.1 (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'sst',dm:3,lag:14,minDate:'1981-09-01',res:'0.25°'},
     {id:'oisst',nm:'OISST v2.1 (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'sst',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',res:'25 km'},
     {id:'mur',nm:'MUR SST v4.1 (JPL)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01',res:'1 km'},
     {id:'crw_sst',nm:'CRW CoralTemp (PIFSC)',server:'https://oceanwatch.pifsc.noaa.gov/erddap',ds:'CRW_sst_v3_1',v:'analysed_sst',dm:3,lag:3,minDate:'1985-01-01',res:'5 km'},
     {id:'pathfinder',nm:'Pathfinder v5.3 Night (PolarWatch)',server:'https://polarwatch.noaa.gov/erddap',ds:'erdPH53sstn8day',v:'sst',dm:3,lag:14,minDate:'1981-08-25',res:'4 km'},
     {id:'hadisst',nm:'HadISST (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,lag:45,minDate:'1870-01-16',res:'1°'}],
   sst_anom:[
+    {id:'oisst_anom_cw',nm:'OISST Anomaly (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'anom',dm:3,lag:14,minDate:'1981-09-01',res:'0.25°'},
     {id:'oisst_anom',nm:'OISST Anomaly (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'anom',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',res:'25 km'},
     {id:'mur_anom',nm:'MUR SST Anomaly (JPL)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41anom',v:'sstAnom',dm:3,lag:2,minDate:'2002-06-01',res:'1 km'},
     {id:'crw_anom',nm:'CRW SST Anomaly (PIFSC)',server:'https://oceanwatch.pifsc.noaa.gov/erddap',ds:'CRW_sst_anom_v1_0',v:'sst_anomaly',dm:3,lag:3,minDate:'1985-01-01',res:'5 km'}],
   chlor:[
+    {id:'modis_chla_8d',nm:'MODIS Aqua Chl-a 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',res:'4 km'},
     {id:'viirs_vh',nm:'VIIRS VH 2018 Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01',res:'4 km'},
     {id:'viirs_cw',nm:'VIIRS SNPP NRT (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwNPPVIIRSchlaDaily',v:'chlor_a',dm:4,z:'(0.0)',lag:3,minDate:'2017-01-01',res:'4 km'},
     {id:'viirs_nrt',nm:'VIIRS SNPP NRT Prod (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'productivity_viirs_snpp_nrt_daily',v:'chlor_a',dm:3,lag:2,minDate:'2017-11-01',res:'4 km'},
     {id:'modis_chla',nm:'MODIS Aqua Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla1day',v:'chlorophyll',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'}],
   par:[
+    {id:'modis_kd_1d',nm:'MODIS Aqua Kd490 1-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4901day',v:'kd_490',dm:3,lag:8,minDate:'2002-07-01',res:'4 km'},
     {id:'viirs_kd_vh',nm:'VIIRS VH 2018 Kd490 (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4901day',v:'k490',dm:3,lag:2,minDate:'2012-01-01',res:'4 km'},
     {id:'viirs_kd_8d',nm:'VIIRS VH 2018 Kd490 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4908day',v:'k490',dm:3,lag:8,minDate:'2012-01-01',res:'4 km'},
     {id:'viirs_kd_wk',nm:'VIIRS SQ Kd490 Weekly (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisVHNSQkd490Weekly',v:'kd_490',dm:3,lag:8,minDate:'2012-01-01',res:'4 km'},
     {id:'modis_kd_r22',nm:'MODIS Kd490 R2022 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4908day_R2022SQ',v:'k490',dm:3,minDate:'2003-01-01',res:'4 km'}],
   sal:[
+    {id:'smap_3d',nm:'SMAP SSS 3-day (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaacwSMAPsss3day',v:'sss',dm:3,lag:3,minDate:'2015-04-01',res:'0.25°'},
     {id:'smos',nm:'SMOS SSS 3-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'coastwatchSMOSv662SSS3day',v:'sss',dm:4,z:'(0.0)',lag:3,minDate:'2010-06-01',res:'25 km'},
-    {id:'smap',nm:'SMAP SSS (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwSMAPsssDaily',v:'sss',dm:4,z:'(0.0)',minDate:'2015-04-01',res:'40 km'}],
+    {id:'smap',nm:'SMAP SSS Daily (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwSMAPsssDaily',v:'sss',dm:4,z:'(0.0)',minDate:'2015-04-01',res:'40 km'}],
   curr_u:[
+    {id:'oscar_u_cw',nm:'OSCAR Currents U (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'u_current',dm:3,minDate:'1993-01-01',lag:30,res:'1/3°'},
     {id:'nesdis_u',nm:'NESDIS SSH ugos (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'},
     {id:'oscar_u',nm:'OSCAR Currents U (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'u',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30,res:'0.33°'},
     {id:'hycom_u',nm:'HYCOM Global U (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'water_u',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14,res:'0.08°'}],
   curr_v:[
+    {id:'oscar_v_cw',nm:'OSCAR Currents V (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'v_current',dm:3,minDate:'1993-01-01',lag:30,res:'1/3°'},
     {id:'nesdis_v',nm:'NESDIS SSH vgos (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'},
     {id:'oscar_v',nm:'OSCAR Currents V (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'v',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30,res:'0.33°'},
     {id:'hycom_v',nm:'HYCOM Global V (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'water_v',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14,res:'0.08°'}],
   sla:[
+    {id:'blended_sla',nm:'Blended SSH SLA (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwBLENDEDsshDaily',v:'sla',dm:3,minDate:'2017-02-13',lag:14,res:'0.25°'},
     {id:'nesdis_sla',nm:'NESDIS SSH SLA (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'}],
   npp:[
     {id:'modis_pp8',nm:'MODIS Aqua PP 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'},
@@ -1322,10 +1330,10 @@ const EV_GROUPS=[
   {name:'Coral & Ecological',ids:['dhw','baa','hotspot','seaice']}
 ];
 const EV_INFO={
-  sst:{full:'Sea Surface Temperature',source:'NOAA OISST v2.1 / MUR SST',res:'25 km / 1 km',cov:'1981\u2013present'},
-  sst_anom:{full:'SST Anomaly (departure from climatology)',source:'NOAA OISST / MUR',res:'25 km',cov:'1981\u2013present'},
-  chlor:{full:'Chlorophyll-a concentration',source:'VIIRS / MODIS Aqua satellite',res:'4 km',cov:'2003\u2013present'},
-  par:{full:'Diffuse attenuation at 490nm (water clarity/turbidity)',source:'VIIRS satellite',res:'4 km',cov:'2012\u2013present'},
+  sst:{full:'Sea Surface Temperature',source:'NOAA OISST v2.1 via CoastWatch ERDDAP',res:'0.25°',cov:'1981\u2013present'},
+  sst_anom:{full:'SST Anomaly (departure from climatology)',source:'NOAA OISST v2.1 via CoastWatch ERDDAP',res:'0.25°',cov:'1981\u2013present'},
+  chlor:{full:'Chlorophyll-a concentration',source:'NASA MODIS Aqua 8-day composite',res:'4 km',cov:'2003\u2013present'},
+  par:{full:'Diffuse attenuation at 490nm (water clarity/turbidity)',source:'NASA MODIS Aqua Kd490',res:'4 km',cov:'2002\u2013present'},
   co2:{full:'Global atmospheric CO\u2082 (Mauna Loa)',source:'NOAA GML / Scripps',res:'daily',cov:'1958\u2013present'},
   wh:{full:'Significant wave height',source:'Open-Meteo Marine',res:'~5 km',cov:'90 days'},
   wd:{full:'Mean wave direction',source:'Open-Meteo Marine',res:'~5 km',cov:'90 days'},
@@ -1337,13 +1345,13 @@ const EV_INFO={
   pr:{full:'Mean sea level pressure',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
   pp:{full:'Total precipitation',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
   cl:{full:'Cloud cover',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
-  sr:{full:'Shortwave radiation (proxy for PAR)',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
+  sr:{full:'Photosynthetically Active Radiation (PAR)',source:'NASA MODIS Aqua via CoastWatch ERDDAP',res:'4 km',cov:'2002\u2013present'},
   hm:{full:'Relative humidity at 2m',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
-  sal:{full:'Sea surface salinity',source:'SMOS / SMAP satellite',res:'25\u201340 km',cov:'2010\u2013present'},
+  sal:{full:'Sea surface salinity',source:'NASA SMAP via CoastWatch ERDDAP',res:'0.25°',cov:'2015\u2013present'},
   npp:{full:'Net Primary Productivity (VGPM model)',source:'MODIS Aqua / VIIRS',res:'4 km',cov:'2003\u2013present'},
-  curr_u:{full:'Eastward ocean surface current velocity',source:'NESDIS SSH / OSCAR',res:'25 km / 0.33\u00b0',cov:'1992\u2013present'},
-  curr_v:{full:'Northward ocean surface current velocity',source:'NESDIS SSH / OSCAR',res:'25 km / 0.33\u00b0',cov:'1992\u2013present'},
-  sla:{full:'Sea level anomaly from altimetry',source:'NESDIS SSH',res:'25 km',cov:'2017\u2013present'},
+  curr_u:{full:'Eastward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
+  curr_v:{full:'Northward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
+  sla:{full:'Sea level anomaly from blended altimetry',source:'NOAA CoastWatch blended SSH',res:'0.25°',cov:'2017\u2013present'},
   dhw:{full:'Degree Heating Weeks \u2014 thermal stress accumulated over 12 weeks',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
   baa:{full:'Bleaching Alert Area level (0\u20134)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
   hotspot:{full:'Coral bleaching hotspot (\u00b0C above MMM)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
@@ -1505,6 +1513,10 @@ if(_polygonMode==='cut'&&_envPolygon)_clampNotes.push('Polygon cut: '+_envPolygo
 const ep=eV.map(async v=>{
   await _acquireSlot();
   try{
+  // Sea ice: not applicable in tropical latitudes
+  if(v.id==='seaice'&&Math.abs(parseFloat(lat))<=35){
+    S.envR.seaice={nm:'Sea Ice',value:0,u:'fraction',note:'Not applicable — no sea ice at this latitude'};
+    mc('seaice','ok','Tropical latitude');up(v.nm);return}
   // Promote alt to primary if server is dead
   let effV=v;let altPromoted=false;
   if(isServerDown(v.server)&&v.alt&&!isServerDown(v.alt.server)){
@@ -1764,7 +1776,7 @@ const onip=hOni?(async()=>{try{
 // ── NAO Index (NOAA CPC) ──
 const hNao=sel.includes('nao');
 const naop=hNao?(async()=>{try{
-  const naoUrl='https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii.table';
+  const naoUrl='https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii';
   const r=await envFetchT(naoUrl,15000);
   if(!r.ok)throw new Error('NAO HTTP '+r.status);
   const t=await r.text();
