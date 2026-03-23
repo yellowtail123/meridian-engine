@@ -464,9 +464,13 @@ html.light .set-toggle-track::after{background:#aaa}
 .sidebar:hover .sb-divider,.sidebar.expanded .sb-divider{display:none}
 /* Collapsible sidebar groups */
 .sb-ghdr{display:flex;align-items:center;width:100%;padding:8px 0;border:none;background:0;cursor:pointer;color:var(--tm);font-family:var(--sf);font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap;border-left:3px solid transparent;letter-spacing:.02em}
-.sb-ghdr:hover{color:var(--ts);background:rgba(201,149,107,.06)}
+.sb-ghdr:hover{color:var(--ts);background:rgba(201,149,107,.10);border-left-color:rgba(201,149,107,.15)}
 .sb-collapsible[data-expanded="true"]>.sb-ghdr{color:var(--ac);border-left-color:rgba(201,149,107,.3)}
-.sb-chevron{margin-left:auto;margin-right:12px;font-size:9px;color:var(--tm);opacity:0;transition:opacity 200ms ease,transform .2s}
+.sb-gcount{margin-left:4px;font-size:10px;font-weight:600;font-family:var(--mf);color:var(--ac);background:var(--am);border:1px solid var(--ab);border-radius:8px;padding:0 5px;line-height:16px;opacity:0;transition:opacity 200ms ease}
+.sidebar:hover .sb-gcount,.sidebar.expanded .sb-gcount,.sidebar.mobile-open .sb-gcount{opacity:1}
+.sb-collapsible[data-expanded="true"] .sb-gcount{opacity:0!important}
+.sb-chevron{margin-left:auto;margin-right:12px;color:var(--ac);opacity:0;transition:opacity 200ms ease,transform 150ms ease;display:flex;align-items:center}
+.sb-chevron svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .sidebar:hover .sb-chevron,.sidebar.expanded .sb-chevron,.sidebar.mobile-open .sb-chevron{opacity:1}
 .sb-collapsible[data-expanded="true"] .sb-chevron{transform:rotate(90deg)}
 .sb-gitems{display:none}
@@ -533,7 +537,8 @@ html.light .sb-logo-full{background:linear-gradient(135deg,#8B6914,#6B5210,#a078
 html.light .sb-item:hover{background:rgba(139,105,20,.06)}
 html.light .sb-item.active{color:var(--ac);border-left-color:var(--ac)}
 html.light .sb-bottom-btn:hover{background:rgba(139,105,20,.06)}
-html.light .sb-ghdr:hover{background:rgba(139,105,20,.06)}
+html.light .sb-ghdr:hover{background:rgba(139,105,20,.10);border-left-color:rgba(139,105,20,.15)}
+html.light .sb-gcount{color:var(--ac);background:rgba(139,105,20,.10);border-color:rgba(139,105,20,.25)}
 html.light .sb-collapsible[data-expanded="true"]>.sb-ghdr{color:var(--ac);border-left-color:rgba(139,105,20,.3)}
 html.light .sb-item.sub-active{background:rgba(139,105,20,.06)}
 html.light .rp-tab.on{background:rgba(139,105,20,.12);color:var(--ac);border-color:rgba(139,105,20,.28)}
