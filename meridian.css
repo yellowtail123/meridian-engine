@@ -330,22 +330,7 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .leaflet-control-layers input[type=checkbox],.leaflet-control-layers input[type=radio]{accent-color:var(--ac);vertical-align:middle;width:14px;height:14px}
 .leaflet-control-attribution{background:rgba(39,37,54,.8)!important;color:#c2b8ae!important;font-size:9px!important;font-family:var(--mf)!important}
 .leaflet-control-attribution a{color:#C9956B!important}
-/* Leaflet.Draw toolbar — sprite icons need inversion for dark theme */
-.leaflet-draw-toolbar{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:6px!important;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3)!important}
-.leaflet-draw-toolbar a{background-color:transparent!important;border:none!important;color:#e8e4df!important;width:30px!important;height:30px!important;line-height:30px!important;filter:brightness(0) invert(1)}
-.leaflet-draw-toolbar a:hover{filter:brightness(0) invert(1) drop-shadow(0 0 1px rgba(255,255,255,.4))}
-.leaflet-draw-toolbar a .sr-only{color:#e8e4df!important}
-.leaflet-draw-section{border-color:rgba(201,149,107,.15)!important}
-.leaflet-draw.leaflet-control{border:none!important;box-shadow:none!important}
-.leaflet-draw-actions{background:#2a2640!important;border:1px solid rgba(201,149,107,.2)!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;left:32px!important}
-.leaflet-draw-actions li:first-child a{border-radius:4px 0 0 4px!important}
-.leaflet-draw-actions li:last-child a{border-radius:0 4px 4px 0!important}
-.leaflet-draw-actions a{background:#2a2640!important;color:#e8e4df!important;border:none!important;font-family:var(--mf)!important;font-size:11px!important;padding:4px 10px!important;line-height:1.4!important;height:auto!important}
-.leaflet-draw-actions a:hover{background:#3a3555!important;color:#fff!important}
-.leaflet-draw-tooltip{background:rgba(39,37,54,.92)!important;border:1px solid rgba(201,149,107,.25)!important;color:var(--ts)!important;font-family:var(--mf)!important;font-size:11px!important;border-radius:4px!important;box-shadow:0 2px 8px rgba(0,0,0,.3)!important;padding:4px 8px!important}
-.leaflet-draw-tooltip-subtext{color:var(--tm)!important}
-.leaflet-draw-tooltip::before{border-right-color:rgba(39,37,54,.92)!important}
-.leaflet-edit-move,.leaflet-edit-resize{border-color:var(--ac)!important}
+/* Leaflet.Draw — left as default white; custom theming broke sprite icons + click handlers */
 /* ═══ LEAFLET CONTROLS — Light Theme ═══ */
 html.light .leaflet-control-zoom{border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
 html.light .leaflet-control-zoom a{background:#ffffff!important;color:#6B5210!important;border-color:#d0cbc3!important}
@@ -358,15 +343,6 @@ html.light .leaflet-control-layers-separator{border-top-color:#d0cbc3!important}
 html.light .leaflet-control-layers input[type=checkbox],html.light .leaflet-control-layers input[type=radio]{accent-color:#8B6914}
 html.light .leaflet-control-attribution{background:rgba(255,255,255,.85)!important;color:#555!important}
 html.light .leaflet-control-attribution a{color:#8B6914!important}
-html.light .leaflet-draw-toolbar a{background-color:transparent!important;border-color:#d0cbc3!important;color:#3a3a3a!important;filter:none!important}
-html.light .leaflet-draw-toolbar a:hover{background-color:transparent!important;filter:none!important}
-html.light .leaflet-draw-toolbar{background:#ffffff!important;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
-html.light .leaflet-draw-actions{background:#ffffff!important;border-color:#d0cbc3!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
-html.light .leaflet-draw-actions a{background:#ffffff!important;color:#6B5210!important}
-html.light .leaflet-draw-actions a:hover{background:#f0ebe3!important;color:#8B6914!important}
-html.light .leaflet-draw-tooltip{background:rgba(255,255,255,.95)!important;border-color:#d0cbc3!important;color:#3a3a3a!important;box-shadow:0 2px 8px rgba(0,0,0,.1)!important}
-html.light .leaflet-draw-tooltip-subtext{color:#555!important}
-html.light .leaflet-draw-tooltip::before{border-right-color:rgba(255,255,255,.95)!important}
 #envMap:fullscreen{border:0;border-radius:0!important;height:100vh!important}
 #habitat-attrib{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0;font-size:10px}
 .hab-chip{padding:2px 8px;background:rgba(201,149,107,.12);border:1px solid var(--bd);border-radius:3px;color:var(--tm);font-family:var(--mf)}
