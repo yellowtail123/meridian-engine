@@ -1,4 +1,4 @@
-const CACHE_NAME='meridian-v10';
+const CACHE_NAME='meridian-v11';
 const APP_SHELL=[
   '/','/meridian.html','/meridian.css',
   '/meridian-core.js','/meridian-stats.js','/meridian-ui.js',
