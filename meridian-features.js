@@ -3093,7 +3093,7 @@ function undoDelete(){
   if(!_undoStack.length)return;
   const paper=_undoStack.pop();
   _removeTombstone(paper.id);
-  dbPut(paper).then(loadLib).then(renderLib).then(()=>toast('Paper restored'+(paper.title?' — '+paper.title.slice(0,40):''),'ok'));
+  dbPut(paper).then(loadLib).then(renderLib).then(()=>toast('Paper restored'+(paper.title?' — '+paper.title.slice(0,40):''),'ok')).catch(()=>toast('Failed to restore paper','err'));
   _refreshUndoBar();
 }
 function _refreshUndoBar(){
@@ -3112,7 +3112,7 @@ function undoDeleteAll(){
   if(!_undoStack.length)return;
   const count=_undoStack.length;
   _undoStack.forEach(p=>_removeTombstone(p.id));
-  Promise.all(_undoStack.map(p=>dbPut(p))).then(()=>{_undoStack=[];return loadLib()}).then(renderLib).then(()=>toast(count+' papers restored','ok'));
+  Promise.all(_undoStack.map(p=>dbPut(p))).then(()=>{_undoStack=[];return loadLib()}).then(renderLib).then(()=>toast(count+' papers restored','ok')).catch(()=>toast('Failed to restore papers','err'));
   _refreshUndoBar();
 }
 // Patch dbDel calls in library card rendering
