@@ -43,6 +43,7 @@ function _onProviderChange(val){
   safeStore('meridian_provider',prov);
   safeStore('meridian_model_'+prov,model);
   _syncAllProviderDropdowns();
+  if(typeof _updateCtxProviderInfo==='function')_updateCtxProviderInfo();
   // Load key for this provider
   _keyVault.retrieve('meridian_key_'+prov).then(sk=>{
     S.apiK=sk||'';
@@ -206,8 +207,20 @@ const AGENT_TOOLS=[
 {name:'run_trophic_network',description:'Visualize trophic/food web network from predator-prey data in Workshop.',input_schema:{type:'object',properties:{}}},
 {name:'get_genetic_resources',description:'Get genetic sequence counts from NCBI (SRA, nucleotide, protein) for a species.',input_schema:{type:'object',properties:{species:{type:'string',description:'Scientific name'}},required:['species']}},
 {name:'get_phylogeny',description:'Get taxonomic lineage from Open Tree of Life for a species.',input_schema:{type:'object',properties:{species:{type:'string',description:'Scientific name'}},required:['species']}},
+  {name:'save_to_library',description:'Save a paper to the user\'s library by DOI or by providing title/authors/year. Returns confirmation.',input_schema:{type:'object',properties:{doi:{type:'string',description:'DOI of the paper'},title:{type:'string',description:'Paper title (if no DOI)'},authors:{type:'array',items:{type:'string'},description:'Author names'},year:{type:'integer',description:'Publication year'},journal:{type:'string',description:'Journal name'}},required:[]}},
+  {name:'export_library',description:'Export the user\'s library as BibTeX, RIS, or JSON. Returns the export string.',input_schema:{type:'object',properties:{format:{type:'string',description:'Export format: bibtex, ris, or json (default bibtex)'}},required:[]}},
+  {name:'compare_species',description:'Compare two marine species side by side: taxonomy, occurrences, depth ranges, biology.',input_schema:{type:'object',properties:{species_a:{type:'string',description:'First species name'},species_b:{type:'string',description:'Second species name'}},required:['species_a','species_b']}},
+  {name:'get_current_environmental',description:'Get the environmental data currently loaded in the Env tab (already fetched by user). No API call needed.',input_schema:{type:'object',properties:{},required:[]}},
+  {name:'recommend_test',description:'Recommend an appropriate statistical test for the user\'s workshop data given their research question.',input_schema:{type:'object',properties:{question:{type:'string',description:'Research question or goal (e.g. "compare lengths between sites", "correlate temperature and growth")'}},required:['question']}},
+  {name:'calculate_sample_size',description:'Calculate required sample size given effect size, alpha, power, and test type.',input_schema:{type:'object',properties:{test:{type:'string',description:'Test type: t_test, anova, chi_squared, correlation'},effect_size:{type:'number',description:'Expected effect size (Cohen\'s d for t-test, f for ANOVA, w for chi-sq, r for correlation)'},alpha:{type:'number',description:'Significance level (default 0.05)'},power:{type:'number',description:'Desired power (default 0.8)'},groups:{type:'integer',description:'Number of groups (for ANOVA)'}},required:['test','effect_size']}},
+  {name:'analyse_keywords',description:'Analyse keyword frequency and co-occurrence across the user\'s library papers.',input_schema:{type:'object',properties:{},required:[]}},
+  {name:'find_gaps',description:'Identify research gaps from the user\'s library: under-represented species, regions, methods, or time periods.',input_schema:{type:'object',properties:{focus:{type:'string',description:'Focus area: species, regions, methods, temporal, or all (default all)'}},required:[]}},
+  {name:'build_question',description:'Help build a structured research question using PICO/PEO framework from user input.',input_schema:{type:'object',properties:{topic:{type:'string',description:'Rough research topic or idea'},framework:{type:'string',description:'Framework: pico or peo (default pico)'}},required:['topic']}},
+  {name:'search_datasets',description:'Search for open marine/environmental datasets from OBIS, GBIF, PANGAEA, and ERDDAP.',input_schema:{type:'object',properties:{query:{type:'string',description:'Search terms'}},required:['query']}},
+  {name:'go_to_tab',description:'Navigate the Meridian app to a specific tab. Use when the user asks to "go to", "show me", or "open" a section.',input_schema:{type:'object',properties:{tab:{type:'string',description:'Tab ID: home, lit, library, gaps, graph, species, env, research, publications, archive, workshop, ecostats, studydesign, fielddata, ai, settings'},subtab:{type:'string',description:'Optional subtab for research tab: keywords, questions, gapmap, methods, samplesize'}},required:['tab']}},
+  {name:'open_paper',description:'Open a specific paper from the library by title search. Shows its details in the Library tab.',input_schema:{type:'object',properties:{query:{type:'string',description:'Paper title or keywords to match'}},required:['query']}},
 ];
-const TOOL_LABELS={search_literature:'Searching literature',search_grey_literature:'Searching grey literature',lookup_species:'Looking up species',search_library:'Searching library',get_library_stats:'Analyzing library',get_workshop_data:'Reading workshop data',screen_papers:'Screening papers',get_evidence_table:'Getting evidence table',get_screening_progress:'Checking screening progress',get_conservation_status:'Checking conservation status',get_env_data:'Fetching environmental data',get_fisheries_data:'Fetching fisheries data',detect_marine_heatwaves:'Detecting marine heatwaves',compute_diversity:'Computing diversity indices',run_analysis:'Running analysis',check_data_quality:'Checking data quality',run_sdm:'Running habitat suitability model',run_trophic_network:'Building trophic network',get_genetic_resources:'Fetching genetic resources',get_phylogeny:'Looking up phylogeny'};
+const TOOL_LABELS={search_literature:'Searching literature',search_grey_literature:'Searching grey literature',lookup_species:'Looking up species',search_library:'Searching library',get_library_stats:'Analyzing library',get_workshop_data:'Reading workshop data',screen_papers:'Screening papers',get_evidence_table:'Getting evidence table',get_screening_progress:'Checking screening progress',get_conservation_status:'Checking conservation status',get_env_data:'Fetching environmental data',get_fisheries_data:'Fetching fisheries data',detect_marine_heatwaves:'Detecting marine heatwaves',compute_diversity:'Computing diversity indices',run_analysis:'Running analysis',check_data_quality:'Checking data quality',run_sdm:'Running habitat suitability model',run_trophic_network:'Building trophic network',get_genetic_resources:'Fetching genetic resources',get_phylogeny:'Looking up phylogeny',save_to_library:'Saving to library',export_library:'Exporting library',compare_species:'Comparing species',get_current_environmental:'Reading env data',recommend_test:'Recommending test',calculate_sample_size:'Calculating sample size',analyse_keywords:'Analysing keywords',find_gaps:'Finding research gaps',build_question:'Building research question',search_datasets:'Searching datasets',go_to_tab:'Navigating',open_paper:'Opening paper'};
 const AGENT_PROMPTS=["Review my library and identify research gaps","Find recent papers on coral bleaching in the Great Barrier Reef","Look up Tursiops truncatus — what's known about its distribution?","What statistical tests would work for my workshop data?","Search for grey literature on Mediterranean marine protected areas","Find papers on otolith microchemistry in sparids","Look up Diplodus sargus and find recent stock assessment papers","Summarize the methods used across my library papers","Screen my papers for studies on [topic]","Show the evidence table for [species]","What's my screening progress?","Export my library as BibTeX","What is the conservation status of blue whale?","Show me environmental data at 25°N 80°W","Are there any marine heatwaves in the Mediterranean this year?","Compute diversity indices for my workshop data","What fisheries data exists for Atlantic bluefin tuna?"];
 function summarizeToolInput(name,input){
   if(name==='search_literature'||name==='search_grey_literature')return'"'+input.query+'"';
@@ -222,6 +235,17 @@ function summarizeToolInput(name,input){
   if(name==='get_fisheries_data')return input.species;
   if(name==='detect_marine_heatwaves')return input.lat+','+input.lon+' '+input.start_date+'→'+input.end_date;
   if(name==='compute_diversity')return input.species_column+'/'+input.abundance_column;
+  if(name==='save_to_library')return input.doi||input.title||'';
+  if(name==='export_library')return input.format||'bibtex';
+  if(name==='compare_species')return input.species_a+' vs '+input.species_b;
+  if(name==='recommend_test')return'"'+input.question+'"';
+  if(name==='calculate_sample_size')return input.test+' d='+input.effect_size;
+  if(name==='analyse_keywords')return S.lib.length+' papers';
+  if(name==='find_gaps')return input.focus||'all';
+  if(name==='build_question')return'"'+input.topic+'"';
+  if(name==='search_datasets')return'"'+input.query+'"';
+  if(name==='go_to_tab')return _TAB_NAMES[input.tab]||input.tab;
+  if(name==='open_paper')return'"'+input.query+'"';
   return'';
 }
 function renderToolCards(toolCalls){
@@ -253,7 +277,10 @@ function _buildChatHTML(compact){
         (Array.isArray(m.content)?m.content.filter(b=>b.type==='text').map(b=>b.text).join(''):'');
       html+=`<div class="msg a"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">Meridian AI</div>`;
       if(!compact&&m._toolCalls&&m._toolCalls.length)html+=renderToolCards(m._toolCalls);
-      html+=`<div class="ct">${renderMD(text)}</div></div>`;
+      const rendered=typeof _linkCitations==='function'?_linkCitations(renderMD(text)):renderMD(text);
+      html+=`<div class="ct">${rendered}</div>`;
+      if(!compact&&m._usage){const u=m._usage;html+=`<div class="msg-cost">${u.input+u.output} tok`+(u.cost?` · ${_fmtCost(u.cost)}`:'')+`</div>`}
+      html+=`</div>`;
     }
   }
   if(S.chatL)html+=mkL();
@@ -280,22 +307,70 @@ function _chatInsert(text){
     const inp=$('#ci');if(inp){inp.value=text;inp.focus()}
   }
 }
+// ── Context toggle state ──
+let _aiCtxOn=true,_lastCtxTags=[];
+function _toggleAiCtx(on){_aiCtxOn=on;_updateCtxIndicator();safeStore('meridian_ctx_on',on?'1':'0');
+  const t1=$('#ai-ctx-toggle'),t2=$('#ai-ctx-toggle-panel');if(t1)t1.checked=on;if(t2)t2.checked=on}
+try{_aiCtxOn=localStorage.getItem('meridian_ctx_on')!=='0'}catch{}
+
+const _TAB_NAMES={home:'Home',lit:'Literature Search',library:'Library',gaps:'Gap Analysis',graph:'Citations',species:'Species Explorer',env:'Environmental Data',research:'Research Planning',publications:'Publications',archive:'Archived Data',workshop:'Workshop / Analysis',ecostats:'Ecological Statistics',studydesign:'Study Design',fielddata:'Field Data',ai:'AI Assistant',settings:'Settings'};
+
 function buildAIContext(){
-  const parts=['You are Meridian AI, an expert marine science research assistant built into the Meridian Engine platform. You have direct access to the user\'s current research context including their search results, saved papers, species data, environmental data, and analysis. You can execute platform functions when asked. Be concise, precise, and scientific. Provide specific data, citations, code, and actionable recommendations. When referencing papers, use the data available in the user\'s library or search results.\n\nYou have tools to search academic databases, look up marine species, and explore the user\'s paper library and workshop data. Use them proactively:\n- Questions about published research → search_literature\n- References to "my papers" or "my library" → search_library or get_library_stats\n- Questions about a species → lookup_species\n- Questions about data in the Workshop → get_workshop_data\n- Need for technical reports → search_grey_literature\n- Conservation status or endangered species → get_conservation_status\n- Environmental conditions at a location → get_env_data\n- Fisheries catch data → get_fisheries_data\n- Marine heatwave detection → detect_marine_heatwaves\n- Diversity/ecological indices → compute_diversity\n- Chain tools when useful: e.g., look up species → get conservation status → search literature\n\nGuidelines:\n- Always use tools for factual lookups — never fabricate data.\n- Be concise. Cite specific numbers from tool results.\n- If a tool errors, explain what happened and suggest alternatives.'];
-  if(S.lib.length){const titles=S.lib.slice(0,15).map(p=>`"${p.title}" (${p.year||'n.d.'}, ${p.journal||'unknown'})`).join('; ');parts.push(`\nUser's Library (${S.lib.length} papers): ${titles}${S.lib.length>15?' ...and more':''}`);}
-  if(S.wsD.length){parts.push(`\nWorkshop Data: ${S.wsD.length} rows × ${S.wsC.length} cols. Columns: ${S.wsC.join(', ')}. Types: ${S.wsC.map(c=>c+':'+S.wsCT[c]).join(', ')}`);const nc=S.wsC.filter(c=>S.wsCT[c]==='continuous');if(nc.length){const preview=nc.slice(0,4).map(c=>{const vs=S.wsD.map(r=>r[c]).filter(v=>typeof v==='number');return vs.length?`${c}: range ${Math.min(...vs).toFixed(2)}–${Math.max(...vs).toFixed(2)}, mean ${(vs.reduce((a,v)=>a+v,0)/vs.length).toFixed(2)}`:c}).join('; ');parts.push(`Stats: ${preview}`);}}
-  const envMeta=Object.keys(S.envR);if(envMeta.length){parts.push(`\nEnv Data at (${$('#elat')?.value},${$('#elon')?.value}): ${envMeta.map(id=>S.envR[id].nm+': '+S.envR[id].value+' '+S.envR[id].u).join(', ')}`);}
-  try{const sp=JSON.parse(sessionStorage.getItem('meridian_sp')||'null');if(sp)parts.push(`\nSpecies: ${sp.sciName} (${sp.rank||'Species'}), GBIF: ${sp.gbifOcc?.length||0} occ, OBIS: ${sp.obisOcc?.length||0} occ`);}catch{}
-  // Screening progress
-  if(_screeningData?.length){const inc=_screeningData.filter(s=>s.decision==='include').length;const exc=_screeningData.filter(s=>s.decision==='exclude').length;const may=_screeningData.filter(s=>s.decision==='maybe').length;
-    parts.push(`\nScreening: ${_screeningData.length}/${S.lib.length} screened (${inc} included, ${exc} excluded, ${may} maybe)`);}
-  // Evidence table summary
-  const withFindings=S.lib.filter(p=>p.findings);if(withFindings.length)parts.push(`\nEvidence: ${withFindings.length} papers have extracted findings`);
-  // Search audit
-  if(_searchAudit.length)parts.push(`\nSearch log: ${_searchAudit.length} recorded searches`);
-  // Session context from meridian-session.js (synchronous parts already captured above;
-  // the full async buildSessionSummary() is injected by sCh before calling callAI)
-  return parts.join('');
+  const SYS='You are Meridian AI, an expert marine science research assistant built into the Meridian Engine platform. You have direct access to the user\'s current research context including their search results, saved papers, species data, environmental data, and analysis. You can execute platform functions when asked. Be concise, precise, and scientific. Provide specific data, citations, code, and actionable recommendations. When referencing papers, use the data available in the user\'s library or search results.\n\nYou have tools to search academic databases, look up marine species, and explore the user\'s paper library and workshop data. Use them proactively:\n- Questions about published research → search_literature\n- References to "my papers" or "my library" → search_library or get_library_stats\n- Questions about a species → lookup_species\n- Questions about data in the Workshop → get_workshop_data\n- Need for technical reports → search_grey_literature\n- Conservation status or endangered species → get_conservation_status\n- Environmental conditions at a location → get_env_data or get_current_environmental\n- Fisheries catch data → get_fisheries_data\n- Marine heatwave detection → detect_marine_heatwaves\n- Diversity/ecological indices → compute_diversity\n- Navigate the app → go_to_tab\n- Save or export papers → save_to_library, export_library\n- Compare species → compare_species\n- Statistical guidance → recommend_test, calculate_sample_size\n- Research planning → analyse_keywords, find_gaps, build_question\n- Open a paper from library → open_paper\n- Chain tools when useful: e.g., look up species → get conservation status → search literature\n\nGuidelines:\n- Always use tools for factual lookups — never fabricate data.\n- Be concise. Cite specific numbers from tool results.\n- If a tool errors, explain what happened and suggest alternatives.\n- You are limited to 5 tool calls per response. Plan calls efficiently.';
+
+  if(!_aiCtxOn){_lastCtxTags=[];_updateCtxIndicator();return SYS}
+
+  const CTX_BUDGET=4000;
+  const estTok=s=>Math.ceil(s.length/4);
+  const blocks=[];// {text,tag,pri}
+
+  // Priority 1 — current tab context
+  const tab=document.querySelector('.sb-item.active')?.dataset?.tab||'home';
+  blocks.push({text:`Current tab: ${_TAB_NAMES[tab]||tab}`,tag:'Tab: '+(_TAB_NAMES[tab]||tab),pri:1});
+
+  if(tab==='lit'&&S.litR?.length){blocks.push({text:`Literature results: ${S.litR.length} papers. Top: ${S.litR.slice(0,5).map(p=>`"${p.title}" (${p.year||'n.d.'})`).join('; ')}`,tag:`${S.litR.length} search results`,pri:1})}
+  if(tab==='species'){try{const sp=JSON.parse(sessionStorage.getItem('meridian_sp')||'null');if(sp)blocks.push({text:`Active species: ${sp.sciName} (${sp.rank||''}), GBIF: ${sp.gbifOcc?.length||0} occ, OBIS: ${sp.obisOcc?.length||0} occ`,tag:sp.sciName,pri:1})}catch{}}
+  if(tab==='env'){const ek=Object.keys(S.envR);if(ek.length)blocks.push({text:`Env data at (${$('#elat')?.value}, ${$('#elon')?.value}): ${ek.map(id=>S.envR[id].nm+': '+S.envR[id].value+' '+S.envR[id].u).join(', ')}`,tag:`${ek.length} env variables`,pri:1})}
+  if(tab==='workshop'&&S.wsD.length){const nc=S.wsC.filter(c=>S.wsCT[c]==='continuous');let wsCtx=`Workshop: ${S.wsD.length} rows × ${S.wsC.length} cols. Columns: ${S.wsC.join(', ')}. Types: ${S.wsC.map(c=>c+':'+S.wsCT[c]).join(', ')}`;if(nc.length){const preview=nc.slice(0,4).map(c=>{const vs=S.wsD.map(r=>r[c]).filter(v=>typeof v==='number');return vs.length?`${c}: ${Math.min(...vs).toFixed(2)}–${Math.max(...vs).toFixed(2)}, μ=${(vs.reduce((a,v)=>a+v,0)/vs.length).toFixed(2)}`:c}).join('; ');wsCtx+=` Stats: ${preview}`}blocks.push({text:wsCtx,tag:`Workshop ${S.wsD.length}×${S.wsC.length}`,pri:1})}
+  if(tab==='library'&&S.lib.length)blocks.push({text:`Viewing library (${S.lib.length} papers)`,tag:`Library (${S.lib.length})`,pri:1});
+  if(tab==='gaps'&&window._gapData?.length)blocks.push({text:`Gap analysis: ${window._gapData.length} gaps. Top: ${window._gapData.slice(0,3).map(g=>g.title||g.gap||'').join('; ')}`,tag:`${window._gapData.length} gaps`,pri:1});
+  if(tab==='research'){const sub=document.querySelector('.sb-item.active')?.dataset?.subtab;if(sub)blocks.push({text:`Research planning subtab: ${sub}`,tag:'Research: '+sub,pri:1})}
+  if(tab==='fielddata'){const ds=safeParse('meridian_field_datasets',[]);if(ds.length)blocks.push({text:`Field data: ${ds.length} datasets, latest "${ds[ds.length-1]?.name||'Unnamed'}" (${ds[ds.length-1]?.rows?.length||0} records)`,tag:`${ds.length} field datasets`,pri:1})}
+
+  // Priority 2 — active data not on current tab
+  if(tab!=='species'){try{const sp=JSON.parse(sessionStorage.getItem('meridian_sp')||'null');if(sp)blocks.push({text:`Species in session: ${sp.sciName}`,tag:sp.sciName,pri:2})}catch{}}
+  if(tab!=='env'){const ek=Object.keys(S.envR);if(ek.length)blocks.push({text:`Env data: ${ek.length} variables at (${$('#elat')?.value}, ${$('#elon')?.value})`,tag:`${ek.length} env vars`,pri:2})}
+  if(tab!=='workshop'&&S.wsD.length)blocks.push({text:`Workshop: ${S.wsD.length} rows, ${S.wsC.length} cols (${S.wsC.join(', ')})`,tag:`Workshop ${S.wsD.length}r`,pri:2});
+  if(typeof _screeningData!=='undefined'&&_screeningData?.length){const inc=_screeningData.filter(s=>s.decision==='include').length;blocks.push({text:`Screening: ${_screeningData.length}/${S.lib.length} screened (${inc} included)`,tag:'Screening progress',pri:2})}
+  const wF=S.lib.filter(p=>p.findings);if(wF.length)blocks.push({text:`Evidence: ${wF.length} papers have extracted findings`,tag:`${wF.length} evidence entries`,pri:2});
+  if(typeof _searchAudit!=='undefined'&&_searchAudit.length)blocks.push({text:`Search log: ${_searchAudit.length} recorded searches`,tag:'Search audit',pri:2});
+
+  // Priority 3 — library paper titles
+  if(S.lib.length){const titles=S.lib.slice(0,15).map(p=>`"${p.title}" (${p.year||'n.d.'}, ${p.journal||''})`).join('; ');blocks.push({text:`Library (${S.lib.length} papers): ${titles}${S.lib.length>15?' ...and more':''}`,tag:`${S.lib.length} papers`,pri:3})}
+
+  // Assemble within budget
+  blocks.sort((a,b)=>a.pri-b.pri);
+  let budget=CTX_BUDGET,ctx='',tags=[];
+  for(const b of blocks){const cost=estTok(b.text);if(cost<=budget){ctx+='\n'+b.text;budget-=cost;tags.push(b.tag)}}
+  _lastCtxTags=tags;
+  _updateCtxIndicator();
+  return SYS+(ctx?'\n\nCURRENT RESEARCH CONTEXT:'+ctx:'');
+}
+// ── Update "AI can see" indicators ──
+function _updateCtxIndicator(){
+  // Full AI tab context panel
+  const detail=$('#ai-ctx-detail');
+  if(detail){
+    if(!_aiCtxOn){detail.innerHTML='<div style="color:var(--tm)">Context injection disabled</div>';return}
+    if(!_lastCtxTags.length){detail.innerHTML='<div style="color:var(--tm)">No data loaded yet. Search literature, explore species, or fetch environmental data.</div>';return}
+    detail.innerHTML='<div style="margin-bottom:4px;color:var(--ac);font-weight:600">AI can see:</div>'+_lastCtxTags.map(t=>`<div style="padding:2px 0">· ${escHTML(t)}</div>`).join('');
+  }
+  // Floating chat indicator
+  const fcInd=$('#fc-ctx-indicator');
+  if(fcInd){
+    if(_aiCtxOn&&_lastCtxTags.length){fcInd.style.display='';fcInd.title='AI can see: '+_lastCtxTags.join(', ')}
+    else{fcInd.style.display='none'}
+  }
 }
 
 // ── Tool Executor ──
@@ -483,6 +558,110 @@ case 'run_sdm':{goTab('workshop');setTimeout(()=>{runSDM();resolve({status:'ok',
 case 'run_trophic_network':{goTab('workshop');setTimeout(()=>{runTrophicNetwork();resolve({status:'ok',note:'Trophic network rendered'})},300);break}
 case 'get_genetic_resources':{const name=input.species||'';try{const[sra,nuc,prot]=await Promise.all([fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=sra&term=${encodeURIComponent(name)}[Organism]&retmode=json&retmax=0`,8000).then(r=>r.ok?r.json():null).catch(()=>null),fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term=${encodeURIComponent(name)}[Organism]&retmode=json&retmax=0`,8000).then(r=>r.ok?r.json():null).catch(()=>null),fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=protein&term=${encodeURIComponent(name)}[Organism]&retmode=json&retmax=0`,8000).then(r=>r.ok?r.json():null).catch(()=>null)]);resolve({species:name,sra_experiments:parseInt(sra?.esearchresult?.count||'0'),nucleotide_sequences:parseInt(nuc?.esearchresult?.count||'0'),protein_sequences:parseInt(prot?.esearchresult?.count||'0')})}catch{resolve({error:'NCBI lookup failed'})}break}
 case 'get_phylogeny':{const name=input.species||'';try{const r=await fetchT('https://api.opentreeoflife.org/v3/tnrs/match_names',12000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:[name]})});if(!r.ok)throw 0;const j=await r.json();const match=j.results?.[0]?.matches?.[0];if(!match?.taxon)throw 0;const lr=await fetchT('https://api.opentreeoflife.org/v3/taxonomy/taxon_info',10000,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ott_id:match.taxon.ott_id,include_lineage:true})});if(!lr.ok)throw 0;const ld=await lr.json();resolve({species:name,ott_id:match.taxon.ott_id,lineage:(ld.lineage||[]).slice(0,10).map(n=>({name:n.unique_name||n.name,rank:n.rank}))})}catch{resolve({error:'Phylogeny lookup failed'})}break}
+    case 'save_to_library':{
+      const paper={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),title:input.title||'Untitled',authors:input.authors||[],year:input.year||null,journal:input.journal||'',doi:input.doi||'',dateAdded:new Date().toISOString(),src:'ai'};
+      if(input.doi&&!input.title){
+        try{const r=await fetchT(`https://api.crossref.org/works/${encodeURIComponent(input.doi)}`,10000);
+        if(r.ok){const d=await r.json();const w=d.message;paper.title=w.title?.[0]||paper.title;paper.authors=(w.author||[]).map(a=>[a.given,a.family].filter(Boolean).join(' '));paper.year=w.published?.['date-parts']?.[0]?.[0]||paper.year;paper.journal=w['container-title']?.[0]||paper.journal;paper.abstract=w.abstract?.replace(/<[^>]+>/g,'')||''}}catch{}}
+      S.lib.push(paper);if(db)try{await dbPutPaper(paper)}catch{};
+      const libc=$('#libc');if(libc){libc.textContent=S.lib.length;libc.style.display=''}
+      return{saved:true,title:paper.title,library_size:S.lib.length}}
+    case 'export_library':{
+      const fmt=(input.format||'bibtex').toLowerCase();
+      if(!S.lib.length)return{error:'Library is empty'};
+      if(fmt==='json')return{format:'json',papers:S.lib.length,data:JSON.stringify(S.lib.slice(0,50).map(p=>({title:p.title,authors:p.authors,year:p.year,journal:p.journal,doi:p.doi})))};
+      if(fmt==='ris'){const lines=S.lib.slice(0,50).map(p=>`TY  - JOUR\nTI  - ${p.title||''}\n${(p.authors||[]).map(a=>'AU  - '+a).join('\n')}\nPY  - ${p.year||''}\nJO  - ${p.journal||''}\nDO  - ${p.doi||''}\nER  -`);return{format:'ris',papers:S.lib.length,data:lines.join('\n\n')}}
+      // bibtex default
+      const entries=S.lib.slice(0,50).map((p,i)=>{const key=(p.authors?.[0]||'Unknown').replace(/\s/g,'')+(p.year||'nd')+'_'+i;return`@article{${key},\n  title={${p.title||''}},\n  author={${(p.authors||[]).join(' and ')}},\n  year={${p.year||''}},\n  journal={${p.journal||''}},\n  doi={${p.doi||''}}\n}`});
+      return{format:'bibtex',papers:S.lib.length,data:entries.join('\n\n')}}
+    case 'compare_species':{
+      const[a,b]=await Promise.all([executeAgentTool('lookup_species',{name:input.species_a}),executeAgentTool('lookup_species',{name:input.species_b})]);
+      return{species_a:a,species_b:b}}
+    case 'get_current_environmental':{
+      const ek=Object.keys(S.envR);if(!ek.length)return{message:'No environmental data loaded. User needs to fetch data in the Env tab first.'};
+      const lat=$('#elat')?.value,lon=$('#elon')?.value;
+      return{location:{lat,lon},variables:ek.map(id=>({id,name:S.envR[id].nm,value:S.envR[id].value,unit:S.envR[id].u}))}}
+    case 'recommend_test':{
+      const q=(input.question||'').toLowerCase();
+      const recs=[];
+      if(!S.wsD.length)return{note:'No Workshop data loaded.',recommendations:['Load data into the Workshop tab first, then ask again.']};
+      const nc=S.wsC.filter(c=>S.wsCT[c]==='continuous'),cc=S.wsC.filter(c=>S.wsCT[c]==='categorical');
+      if(q.includes('compar')||q.includes('differ')){
+        if(cc.length&&nc.length)recs.push({test:'kruskal_wallis',reason:'Compare numeric variable across categorical groups (non-parametric)'},
+          {test:'permanova',reason:'Multivariate comparison across groups'},
+          {test:'anosim',reason:'Analysis of similarity between groups'});
+      }
+      if(q.includes('correlat')||q.includes('relat')||q.includes('associat'))recs.push({test:'pca',reason:'Explore relationships among multiple continuous variables'});
+      if(q.includes('growth')||q.includes('length')||q.includes('age'))recs.push({test:'vbgf',reason:'Von Bertalanffy growth model'},{test:'weight_length',reason:'Weight-length relationship'});
+      if(q.includes('catch')||q.includes('mortal'))recs.push({test:'catch_curve',reason:'Mortality estimation from catch data'},{test:'ypr',reason:'Yield-per-recruit analysis'});
+      if(q.includes('divers')||q.includes('communit'))recs.push({test:'diversity',reason:'Shannon, Simpson diversity indices'},{test:'nmds',reason:'Non-metric multidimensional scaling'});
+      if(q.includes('sample size')||q.includes('power'))recs.push({test:'power_analysis',reason:'Power analysis for sample size planning'});
+      if(!recs.length)recs.push({test:'pca',reason:'Exploratory analysis'},{test:'kruskal_wallis',reason:'Group comparisons'});
+      return{data_summary:{rows:S.wsD.length,numeric_columns:nc,categorical_columns:cc},recommendations:recs.slice(0,4)}}
+    case 'calculate_sample_size':{
+      const test=input.test||'t_test',es=input.effect_size||0.5,alpha=input.alpha||0.05,power=input.power||0.8;
+      const za=test==='t_test'?1.96:test==='anova'?1.96:1.96;// normal approx
+      const zb=power>=0.9?1.28:power>=0.8?0.84:0.67;
+      let n;
+      if(test==='t_test'){n=Math.ceil(2*((za+zb)/es)**2)}
+      else if(test==='anova'){const k=input.groups||3;n=Math.ceil(k*((za+zb)/(es||0.25))**2)}
+      else if(test==='chi_squared'){n=Math.ceil(((za+zb)/(es||0.3))**2)}
+      else if(test==='correlation'){n=Math.ceil(((za+zb)/(0.5*Math.log((1+es)/(1-Math.min(es,0.99)))))**2+3)}
+      else{n=Math.ceil(2*((za+zb)/(es||0.5))**2)}
+      return{test,effect_size:es,alpha,power,required_n:n,note:'Approximate — for precise power analysis use the Sample Size Calculator tab'}}
+    case 'analyse_keywords':{
+      if(!S.lib.length)return{error:'Library is empty'};
+      const freq={};S.lib.forEach(p=>{(p.concepts||[]).forEach(c=>{freq[c]=(freq[c]||0)+1});
+        const words=(p.title||'').toLowerCase().replace(/[^a-z\s]/g,'').split(/\s+/).filter(w=>w.length>4);
+        words.forEach(w=>{freq[w]=(freq[w]||0)+1})});
+      const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+      // Co-occurrence (top 10 pairs)
+      const pairs={};S.lib.forEach(p=>{const kws=[...(p.concepts||[])].slice(0,8);for(let i=0;i<kws.length;i++)for(let j=i+1;j<kws.length;j++){const k=[kws[i],kws[j]].sort().join(' + ');pairs[k]=(pairs[k]||0)+1}});
+      const topPairs=Object.entries(pairs).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      return{total_papers:S.lib.length,top_keywords:sorted.slice(0,25).map(([k,n])=>({keyword:k,count:n})),co_occurrences:topPairs.map(([k,n])=>({pair:k,count:n}))}}
+    case 'find_gaps':{
+      if(!S.lib.length)return{error:'Library is empty — add papers first'};
+      extractAllMetadata();
+      const focus=(input.focus||'all').toLowerCase();
+      const gaps={species:[],regions:[],methods:[],temporal:[]};
+      const speciesSet=new Set(),regionSet=new Set(),methodSet=new Set();
+      S.lib.forEach(p=>{(p._species||[]).forEach(s=>speciesSet.add(s));(p._regions||[]).forEach(r=>regionSet.add(r));(p._methods||[]).forEach(m=>methodSet.add(m))});
+      // Species-region matrix gaps
+      if(focus==='all'||focus==='species'||focus==='regions'){
+        const specArr=[...speciesSet],regArr=[...regionSet];
+        if(specArr.length&&regArr.length>1){
+          const matrix={};S.lib.forEach(p=>{(p._species||[]).forEach(s=>(p._regions||[]).forEach(r=>{matrix[s+'|||'+r]=(matrix[s+'|||'+r]||0)+1}))});
+          specArr.forEach(s=>{const missing=regArr.filter(r=>!matrix[s+'|||'+r]);if(missing.length>regArr.length*0.5)gaps.species.push({species:s,missing_regions:missing.slice(0,5)})})}}
+      // Temporal gaps
+      if(focus==='all'||focus==='temporal'){
+        const years=S.lib.map(p=>p.year).filter(Boolean).sort((a,b)=>a-b);
+        if(years.length>2){const min=years[0],max=years[years.length-1];const yearCounts={};years.forEach(y=>{yearCounts[y]=(yearCounts[y]||0)+1});
+          for(let y=min;y<=max;y++){if(!yearCounts[y])gaps.temporal.push(y)}}}
+      // Method gaps
+      if(focus==='all'||focus==='methods'){
+        const common=['GLM','GLMM','PCA','ANOVA','t-test','chi-squared','regression','meta-analysis','Bayesian'];
+        common.forEach(m=>{if(![...methodSet].some(ms=>ms.toLowerCase().includes(m.toLowerCase())))gaps.methods.push(m)})}
+      return{library_size:S.lib.length,species_count:speciesSet.size,region_count:regionSet.size,method_count:methodSet.size,gaps}}
+    case 'build_question':{
+      const topic=input.topic||'';const fw=(input.framework||'pico').toLowerCase();
+      if(fw==='peo')return{framework:'PEO',population:'[Define study population, e.g., Diplodus sargus in the Mediterranean]',exposure:'[Define exposure/variable, e.g., marine protected area presence]',outcome:'[Define measurable outcome, e.g., abundance, size distribution]',draft_question:`In [population], what is the effect of [exposure] on [outcome]?`,topic,tip:'Fill in the brackets with specifics from your research. Use search_literature to check if this question has been addressed.'};
+      return{framework:'PICO',population:'[Define study population, e.g., juvenile sparids in BGTW]',intervention:'[Define intervention/variable]',comparison:'[Define comparison group or condition]',outcome:'[Define measurable outcome]',draft_question:`In [population], does [intervention] compared to [comparison] affect [outcome]?`,topic,tip:'Fill in the brackets. Use find_gaps to check novelty.'}}
+    case 'search_datasets':{
+      const q=input.query;const results=[];
+      // OBIS datasets
+      try{const r=await fetchT(`https://api.obis.org/v3/dataset?q=${encodeURIComponent(q)}&size=5`,10000);if(r.ok){const d=await r.json();(d.results||[]).forEach(ds=>results.push({source:'OBIS',title:ds.title,records:ds.records,url:`https://obis.org/dataset/${ds.id}`}))}}catch{}
+      // GBIF datasets
+      try{const r=await fetchT(`https://api.gbif.org/v1/dataset/search?q=${encodeURIComponent(q)}&limit=5`,10000);if(r.ok){const d=await r.json();(d.results||[]).forEach(ds=>results.push({source:'GBIF',title:ds.title,records:ds.recordCount,url:`https://www.gbif.org/dataset/${ds.key}`}))}}catch{}
+      return{query:q,datasets:results}}
+    case 'go_to_tab':{
+      const t=input.tab;if(!_TAB_NAMES[t])return{error:'Unknown tab: '+t+'. Valid: '+Object.keys(_TAB_NAMES).join(', ')};
+      goTab(t,input.subtab);return{navigated:true,tab:_TAB_NAMES[t],subtab:input.subtab||null}}
+    case 'open_paper':{
+      const q=(input.query||'').toLowerCase();if(!S.lib.length)return{error:'Library is empty'};
+      const match=S.lib.find(p=>(p.title||'').toLowerCase().includes(q));
+      if(!match)return{error:'No paper matching "'+input.query+'" in library'};
+      goTab('library');
+      return{found:true,title:match.title,authors:(match.authors||[]).slice(0,3),year:match.year,journal:match.journal,doi:match.doi,abstract:match.abstract?match.abstract.slice(0,300):null}}
     default:return{error:'Unknown tool: '+name};
   }
 }
@@ -507,11 +686,21 @@ function buildApiMessages(){
 let _agentAbort=null;
 function abortAgent(){if(_agentAbort){_agentAbort.abort();_agentAbort=null;toast('Agent stopped','info')}}
 
+// ── Token/cost pricing per 1M tokens ──
+const _AI_PRICING={
+  'claude-sonnet-4-20250514':{input:3,output:15},'claude-haiku-4-5-20251001':{input:1,output:5},
+  'gpt-4o':{input:2.5,output:10},'gpt-4o-mini':{input:0.15,output:0.6},
+  'gemini-2.0-flash':{input:0.10,output:0.40},'gemini-1.5-pro':{input:1.25,output:5}
+};
+function _fmtCost(usd){return usd<0.001?'<$0.001':'$'+usd.toFixed(4)}
+
 // ── Agent loop (shared between AI tab and floating chat) ──
 async function _runAgentLoop(){
   _agentAbort=new AbortController();
   const signal=_agentAbort.signal;
   let iterations=0;const MAX_ITER=8;
+  const MAX_TOOLS_PER_RESPONSE=5;
+  let totalIn=0,totalOut=0;
 
   let _sessionCtx='';
   try{_sessionCtx=await buildSessionSummary()}catch{}
@@ -525,8 +714,13 @@ async function _runAgentLoop(){
       iterations++;
       const apiMsgs=buildApiMessages();
       const data=await callAI({messages:apiMsgs,system:systemPrompt,tools:AGENT_TOOLS,maxTokens:4096,signal});
+      // Track tokens
+      if(data.usage){totalIn+=(data.usage.input_tokens||0);totalOut+=(data.usage.output_tokens||0)}
       const textParts=data.content.filter(b=>b.type==='text');
-      const toolParts=data.content.filter(b=>b.type==='tool_use');
+      let toolParts=data.content.filter(b=>b.type==='tool_use');
+
+      // Enforce 5-tool-call limit per response
+      if(toolParts.length>MAX_TOOLS_PER_RESPONSE)toolParts=toolParts.slice(0,MAX_TOOLS_PER_RESPONSE);
 
       if(toolParts.length){
         const assistantMsg={role:'assistant',content:textParts.map(b=>b.text).join('')||'',_apiContent:data.content,_toolCalls:toolParts.map(tc=>({id:tc.id,name:tc.name,input:tc.input,status:'running',result:null}))};
@@ -551,7 +745,11 @@ async function _runAgentLoop(){
         if(data.stop_reason==='end_turn')break;
       }else{
         const finalText=textParts.map(b=>b.text).join('')||'No response.';
-        S.chatM.push({role:'assistant',content:finalText,_apiContent:data.content});
+        const pricing=_AI_PRICING[S.aiModel];
+        const cost=pricing?((totalIn/1e6)*pricing.input+(totalOut/1e6)*pricing.output):0;
+        const _u={input:totalIn,output:totalOut,cost};
+        S.chatM.push({role:'assistant',content:finalText,_apiContent:data.content,_usage:_u});
+        if(typeof _trackSessionTokens==='function')_trackSessionTokens(_u);
         if(!_fcOpen)_fcUnread++;
         break;
       }
@@ -641,8 +839,10 @@ function _fcSaveKey(){
   toast('Key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');
 }
 function _clearChat(){
-  S.chatM=[];S.chatL=false;rCh();
+  S.chatM=[];S.chatL=false;_currentSessionId=null;rCh();
   if(db)try{dbPutChat([])}catch{}
+  if(typeof _renderSavedSessions==='function')_renderSavedSessions();
+  if(typeof _refreshAllChips==='function')_refreshAllChips();
   toast('Chat cleared','ok',1500);
 }
 // ═══ API KEY SECURITY ═══
@@ -3418,3 +3618,349 @@ function _qcFlagDesc(flag){
   }
 })();
 
+// ═══════════════════════════════════════════════════════════════
+// PHASE 3 — Quick Actions, Data Interpreter, Bookmarks, Ask AI
+// ═══════════════════════════════════════════════════════════════
+
+// ── Quick Actions Chip System ──
+const _QUICK_ACTIONS=[
+  // Literature
+  {id:'summarize_paper',label:'Summarize this paper',icon:'📄',tabs:['lit','library'],
+    build(){const p=_getSelectedPaper();return p?`Summarize this paper: "${p.title}". Abstract: ${(p.abstract||'No abstract available').slice(0,600)}`:'Summarize this paper: [select or paste a paper title]'}},
+  {id:'compare_papers',label:'Compare these papers',icon:'⚖️',tabs:['library'],
+    build(){const sel=_getSelectedPapers(3);return sel.length>=2?`Compare these papers:\n${sel.map((p,i)=>`${i+1}. "${p.title}" (${p.year||'n.d.'}) — ${(p.abstract||'').slice(0,200)}`).join('\n')}`:'Compare these papers: [select 2-3 papers in Library using batch mode]'}},
+  {id:'find_related',label:'Find related papers',icon:'🔗',tabs:['lit','library'],
+    build(){const p=_getSelectedPaper();return p?`Find related papers to: "${p.title}". Key concepts: ${(p.concepts||[]).slice(0,5).join(', ')||'unknown'}. Suggest search queries I should try.`:'Find papers related to: [select a paper first]'}},
+  {id:'extract_findings',label:'Extract key findings',icon:'🔬',tabs:['lit','library'],
+    build(){const p=_getSelectedPaper();return p?`Extract the key findings from: "${p.title}". Abstract: ${(p.abstract||'').slice(0,600)}`:'Extract key findings from: [select a paper first]'}},
+  // Data Analysis
+  {id:'analyse_data',label:'Analyse this data',icon:'📊',tabs:['workshop','env','fielddata','ecostats'],
+    build(){if(S.wsD.length)return`Analyse my workshop data: ${S.wsD.length} rows, columns: ${S.wsC.join(', ')}. Column types: ${S.wsC.map(c=>c+':'+S.wsCT[c]).join(', ')}. What patterns, relationships, or issues do you see?`;const ek=Object.keys(S.envR);if(ek.length)return`Analyse my environmental data at (${$('#elat')?.value}, ${$('#elon')?.value}): ${ek.map(id=>S.envR[id].nm+': '+S.envR[id].value+' '+S.envR[id].u).join(', ')}`;return'Analyse this data: [load data in Workshop or fetch environmental data first]'}},
+  {id:'suggest_viz',label:'Suggest visualizations',icon:'📈',tabs:['workshop','env','fielddata'],
+    build(){if(S.wsD.length)return`I have a dataset with ${S.wsD.length} rows and columns: ${S.wsC.map(c=>c+' ('+S.wsCT[c]+')').join(', ')}. What visualizations would best reveal patterns in this data? Suggest specific chart types and which columns to use.`;return'Suggest visualizations for: [load data first]'}},
+  {id:'identify_outliers',label:'Identify outliers',icon:'🎯',tabs:['workshop','fielddata'],
+    build(){if(S.wsD.length)return`Scan my workshop data for outliers and anomalies. ${S.wsD.length} rows, numeric columns: ${S.wsC.filter(c=>S.wsCT[c]==='continuous').join(', ')}. Flag any suspicious values and explain why.`;return'Identify outliers in: [load data first]'}},
+  {id:'explain_trend',label:'Explain this trend',icon:'📉',tabs:['env'],
+    build(){const ek=Object.keys(S.envR);if(ek.length)return`Interpret these environmental data trends at (${$('#elat')?.value}, ${$('#elon')?.value}): ${ek.map(id=>S.envR[id].nm+': '+S.envR[id].value+' '+S.envR[id].u).join(', ')}. What do these values suggest? Are they typical? Any concerning patterns?`;return'Explain this trend: [fetch environmental data first]'}},
+  // Writing
+  {id:'draft_abstract',label:'Draft an abstract',icon:'✍️',tabs:['_always'],
+    build(){return'Draft an abstract for my study. I will provide: research question, methods, key results, and conclusions. Ask me for each piece of information you need.'}},
+  {id:'draft_methods',label:'Draft methods section',icon:'📝',tabs:['_always'],
+    build(){if(S.wsD.length)return`Draft a methods section. My data has ${S.wsD.length} observations with variables: ${S.wsC.join(', ')}. Ask me about the study design, sampling protocol, and statistical approach.`;return'Draft a methods section for my study. Ask me about the study design, sampling protocol, statistical methods, and sample size.'}},
+  {id:'draft_results',label:'Draft results paragraph',icon:'📋',tabs:['_always'],
+    build(){return'Draft a results paragraph in academic prose. I will provide the statistical test results and key numbers. Ask me for the specific results to describe.'}},
+  {id:'improve_text',label:'Improve this text',icon:'✨',tabs:['_always'],
+    build(){return'Improve the following text for clarity and academic tone:\n\n[paste your text here]'}},
+  {id:'gen_citation',label:'Generate citation',icon:'📚',tabs:['lit','library','_always'],
+    build(){const p=_getSelectedPaper();return p?`Generate a citation in APA, MLA, Chicago, and BibTeX for: "${p.title}" by ${(p.authors||[]).join(', ')} (${p.year||'n.d.'}), ${p.journal||''}. DOI: ${p.doi||'none'}`:'Generate a citation for: [select a paper, or provide title, authors, year, journal]'}},
+  // Research Design
+  {id:'design_study',label:'Design my study',icon:'🧪',tabs:['_always'],
+    build(){return'Help me design a marine research study. I\'ll describe my species, location, and research question. Guide me through choosing methods, sample size, and timeline.'}},
+  {id:'what_stat_test',label:'What stat test?',icon:'🧮',tabs:['workshop','_always'],
+    build(){if(S.wsD.length)return`What statistical test should I use? My data: ${S.wsD.length} rows, numeric columns: ${S.wsC.filter(c=>S.wsCT[c]==='continuous').join(', ')}, categorical: ${S.wsC.filter(c=>S.wsCT[c]==='categorical').join(', ')}. Ask me clarifying questions about my research question.`;return'What statistical test should I use for my data? Ask me clarifying questions about my data structure and research question.'}},
+  {id:'identify_gaps',label:'Identify research gaps',icon:'🔍',tabs:['library','gaps','research'],
+    build(){if(S.lib.length)return`Analyse my library of ${S.lib.length} papers and identify research gaps — under-studied species, regions, methods, or time periods. Use the find_gaps and analyse_keywords tools.`;return'Identify research gaps in: [add papers to your library first]'}},
+  // Species (shown on species tab)
+  {id:'tell_species',label:'Tell me about this species',icon:'🐟',tabs:['species'],
+    build(){try{const sp=JSON.parse(sessionStorage.getItem('meridian_sp')||'null');if(sp)return`Tell me about ${sp.sciName}: ecology, distribution, conservation status, and current research. Use lookup_species and get_conservation_status tools.`}catch{}return'Tell me about: [look up a species first]'}},
+];
+
+function _getSelectedPaper(){
+  // Try batch selection first
+  if(S.batchSelected?.size)for(const id of S.batchSelected){const p=S.lib.find(x=>x.id===id);if(p)return p}
+  // Try most recent search result that's expanded (has visible .pd)
+  const expanded=document.querySelector('.pc .pd[style*="display: block"], .pc .pd[style*="display:block"]');
+  if(expanded){const card=expanded.closest('.pc');const idx=[...document.querySelectorAll('.pc')].indexOf(card);if(idx>=0&&S.litR?.[idx])return S.litR[idx]}
+  // Fall back to first library paper or first search result
+  if(S.lib.length)return S.lib[0];
+  if(S.litR?.length)return S.litR[0];
+  return null;
+}
+function _getSelectedPapers(max){
+  if(S.batchSelected?.size){const sel=[];for(const id of S.batchSelected){const p=S.lib.find(x=>x.id===id);if(p)sel.push(p);if(sel.length>=max)break}return sel}
+  return S.lib.slice(0,max);
+}
+
+function _getChipsForTab(){
+  const tab=document.querySelector('.sb-item.active')?.dataset?.tab||'home';
+  return _QUICK_ACTIONS.filter(a=>a.tabs.includes(tab)||a.tabs.includes('_always'));
+}
+
+function _renderChips(containerId){
+  const el=$(containerId);if(!el)return;
+  const chips=_getChipsForTab();
+  if(!chips.length){el.innerHTML='';return}
+  el.innerHTML=chips.map(a=>`<button class="qa-chip" onclick="_chipClick('${a.id}')" title="${escHTML(a.label)}">${a.icon} ${escHTML(a.label)}</button>`).join('');
+}
+
+function _chipClick(id){
+  const action=_QUICK_ACTIONS.find(a=>a.id===id);if(!action)return;
+  const text=action.build();
+  // Populate whichever input is visible
+  const fcPanel=$('#fc-panel');
+  if(fcPanel&&fcPanel.style.display!=='none'){
+    const inp=$('#fc-ci');if(inp){inp.value=text;inp.focus()}
+  }else{
+    const inp=$('#ci');if(inp){inp.value=text;inp.focus()}
+  }
+}
+
+function _refreshAllChips(){_renderChips('#qa-chips');_renderChips('#fc-qa-chips');_renderCtxQuickActions()}
+function _renderCtxQuickActions(){
+  const el=$('#ctx-quick-actions');if(!el)return;
+  const chips=_getChipsForTab();
+  if(!chips.length){el.innerHTML='<div style="color:var(--tm)">Navigate to a tab to see relevant actions</div>';return}
+  el.innerHTML=chips.map(a=>`<div class="ctx-qa-item" onclick="_chipClick('${a.id}')">${a.icon} <span>${escHTML(a.label)}</span></div>`).join('');
+}
+function _updateCtxProviderInfo(){
+  const el=$('#ctx-provider-info');if(!el)return;
+  const prov=AI_PROVIDERS[S.aiProvider];
+  const model=prov?.displayModels?.[S.aiModel]||S.aiModel;
+  el.innerHTML=`${prov?.name||S.aiProvider}<br>${model}`;
+}
+// Refresh chips on tab change — hook into goTab
+const _origGoTab=window.goTab;
+if(typeof _origGoTab==='function'){window.goTab=function(id,sub){_origGoTab(id,sub);setTimeout(_refreshAllChips,50)}}
+// Initial render after DOM ready
+setTimeout(()=>{_refreshAllChips();_updateCtxProviderInfo();_updateSessionTokenDisplay()},200);
+
+// ── Data Interpreter ──
+// Enhanced tool: get full env time series for AI interpretation
+AGENT_TOOLS.push(
+  {name:'get_env_timeseries',description:'Get environmental time series data (actual values) for AI interpretation. Returns timestamps + values, truncated to ~100 data points. Use when user says "analyse my SST data" or "interpret this time series".',input_schema:{type:'object',properties:{variable:{type:'string',description:'Variable ID: sst, chlor, sal, npp, sla, etc.'},lat:{type:'number'},lon:{type:'number'},start_date:{type:'string',description:'YYYY-MM-DD'},end_date:{type:'string',description:'YYYY-MM-DD'}},required:['variable','lat','lon']}},
+  {name:'describe_dataset',description:'Get a full description of the current Workshop dataset including summary stats and sample rows for AI interpretation. Returns column names, types, stats, and first 10 rows. Use when user says "describe this dataset" or "what does my data look like".',input_schema:{type:'object',properties:{},required:[]}},
+);
+TOOL_LABELS['get_env_timeseries']='Fetching time series';
+TOOL_LABELS['describe_dataset']='Describing dataset';
+
+// Insert before the default case — we need to add to the switch.
+// We'll do this by overriding executeAgentTool with a wrapper.
+const _origExecuteAgentTool=executeAgentTool;
+window.executeAgentTool=async function(name,input){
+  if(name==='get_env_timeseries'){
+    const vid=input.variable||'sst';const v=EV.find(e=>e.id===vid);
+    if(!v||v.src!=='e')return{error:'Variable not found: '+vid};
+    const lat=input.lat,lon=input.lon;
+    const sd=input.start_date||'2020-01-01',ed=input.end_date||new Date().toISOString().split('T')[0];
+    try{
+      const lonVal=v.lon360&&lon<0?360+lon:lon;
+      const url=`${v.server}/griddap/${v.ds}.json?${v.v}[(${sd}T00:00:00Z):1:(${ed}T00:00:00Z)]${v.dm===4?`[(${v.z||'0'})]`:''}[(${lat}):1:(${lat})][(${lonVal}):1:(${lonVal})]`;
+      const r=await fetchT(url,30000);if(!r.ok)return{error:'Could not fetch data'};
+      const d=await r.json();let rows=d.table?.rows||[];
+      // Truncate to ~100 points
+      if(rows.length>100){const step=Math.ceil(rows.length/100);rows=rows.filter((_,i)=>i%step===0)}
+      const values=rows.map(r=>({time:r[0],value:r[r.length-1]})).filter(d=>d.value!=null&&!isNaN(d.value));
+      const vals=values.map(d=>d.value);
+      const mean=vals.reduce((a,v)=>a+v,0)/vals.length;
+      const trend=vals.length>10?(vals[vals.length-1]-vals[0])/(vals.length-1):0;
+      return{variable:v.nm,unit:v.u,location:{lat,lon},period:`${sd} to ${ed}`,data_points:values.length,original_points:d.table?.rows?.length||0,summary:{min:+Math.min(...vals).toFixed(3),max:+Math.max(...vals).toFixed(3),mean:+mean.toFixed(3),trend_per_step:+trend.toFixed(4)},values:values.slice(0,100),code_suggestion:{python:`import pandas as pd\ndf = pd.read_csv('your_data.csv')\ndf['${v.v}'].plot(title='${v.nm} Time Series')`,r:`library(ggplot2)\ndf <- read.csv('your_data.csv')\nggplot(df, aes(x=time, y=${v.v})) + geom_line() + ggtitle('${v.nm}')`}};
+    }catch(e){return{error:e.message}}
+  }
+  if(name==='describe_dataset'){
+    if(!S.wsD.length)return{message:'No dataset loaded in Workshop. Upload a CSV first.'};
+    const stats={};
+    S.wsC.forEach(col=>{
+      if(S.wsCT[col]==='continuous'){
+        const vals=S.wsD.map(r=>r[col]).filter(v=>typeof v==='number'&&!isNaN(v));
+        if(vals.length){vals.sort((a,b)=>a-b);const n=vals.length,sum=vals.reduce((a,v)=>a+v,0),mean=sum/n;
+          const med=n%2?vals[Math.floor(n/2)]:(vals[n/2-1]+vals[n/2])/2;
+          const sd=Math.sqrt(vals.reduce((a,v)=>a+(v-mean)**2,0)/n);
+          const iqr=vals[Math.floor(n*.75)]-vals[Math.floor(n*.25)];
+          stats[col]={n,min:+vals[0].toFixed(4),max:+vals[n-1].toFixed(4),mean:+mean.toFixed(4),median:+med.toFixed(4),sd:+sd.toFixed(4),iqr:+iqr.toFixed(4),missing:S.wsD.length-n}}
+      }else{
+        const counts={};let missing=0;S.wsD.forEach(r=>{const v=r[col];if(v==null||v==='')missing++;else counts[String(v)]=(counts[String(v)]||0)+1});
+        const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+        stats[col]={type:'categorical',unique:Object.keys(counts).length,missing,top_values:top.map(([k,n])=>({value:k,count:n}))}
+      }
+    });
+    return{rows:S.wsD.length,columns:S.wsC,types:S.wsCT,stats,sample_rows:S.wsD.slice(0,10),
+      code_suggestion:{python:`import pandas as pd\ndf = pd.read_csv('your_data.csv')\ndf.describe()\ndf.info()`,r:`df <- read.csv('your_data.csv')\nsummary(df)\nstr(df)`}};
+  }
+  return _origExecuteAgentTool(name,input);
+};
+
+// ── Conversation Persistence (Supabase Bookmarks) ──
+let _savedSessions=[];
+let _currentSessionId=null;
+
+async function _bookmarkChat(){
+  if(!_supaUser){toast('Sign in to bookmark conversations','err');return}
+  if(!S.chatM.length){toast('Nothing to bookmark','err');return}
+  const title=(S.chatM.find(m=>m.role==='user'&&typeof m.content==='string')?.content||'Untitled').slice(0,80);
+  const msgs=S.chatM.map(m=>{
+    const o={role:m.role,content:typeof m.content==='string'?m.content:(Array.isArray(m.content)?JSON.stringify(m.content):'')};
+    if(m._toolCalls)o._toolCalls=m._toolCalls;
+    if(m._usage)o._usage=m._usage;
+    return o;
+  });
+  try{
+    if(_currentSessionId){
+      // Update existing
+      const{error}=await SB.from('chat_sessions').update({messages:msgs,provider:S.aiProvider,model:S.aiModel,updated_at:new Date().toISOString()}).eq('id',_currentSessionId);
+      if(error)throw error;
+      toast('Conversation updated','ok');
+    }else{
+      // Check cap
+      const{count}=await SB.from('chat_sessions').select('id',{count:'exact',head:true}).eq('user_id',_supaUser.id).eq('bookmarked',true);
+      if(count>=100){toast('Limit reached (100 saved conversations). Delete some first.','err');return}
+      if(count>=90)toast(`You have ${count}/100 saved conversations`,'info');
+      const{data,error}=await SB.from('chat_sessions').insert({user_id:_supaUser.id,title,provider:S.aiProvider,model:S.aiModel,messages:msgs,bookmarked:true}).select().single();
+      if(error)throw error;
+      _currentSessionId=data.id;
+      toast('Conversation bookmarked','ok');
+    }
+    _loadSavedSessions();
+  }catch(e){toast('Bookmark failed: '+e.message,'err')}
+}
+
+async function _loadSavedSessions(){
+  if(!_supaUser)return;
+  try{
+    const{data,error}=await SB.from('chat_sessions').select('id,title,provider,model,messages,created_at,updated_at').eq('user_id',_supaUser.id).eq('bookmarked',true).order('updated_at',{ascending:false}).limit(100);
+    if(error)throw error;
+    _savedSessions=data||[];
+    _renderSavedSessions();
+  }catch(e){console.warn('Load sessions:',e)}
+}
+
+function _renderSavedSessions(){
+  const el=$('#saved-sessions-list');if(!el)return;
+  if(!_savedSessions.length){el.innerHTML='<div style="color:var(--tm);font-size:11px;padding:8px 0">No saved conversations yet. Click the bookmark icon to save one.</div>';return}
+  el.innerHTML=_savedSessions.map(s=>{
+    const msgCount=Array.isArray(s.messages)?s.messages.filter(m=>m.role==='user'||m.role==='assistant').length:0;
+    const date=new Date(s.updated_at||s.created_at).toLocaleDateString();
+    const prov=(AI_PROVIDERS[s.provider]?.name||s.provider||'').split('(')[0].trim();
+    const active=s.id===_currentSessionId?'style="background:var(--am);border-color:var(--ab)"':'';
+    return`<div class="saved-session" ${active} onclick="_loadSession('${s.id}')">
+      <div class="ss-title">${escHTML(s.title.slice(0,50))}</div>
+      <div class="ss-meta">${prov} · ${msgCount} msgs · ${date}</div>
+      <div class="ss-actions"><button class="ss-btn" onclick="event.stopPropagation();_renameSession('${s.id}')" title="Rename">✏️</button><button class="ss-btn" onclick="event.stopPropagation();_deleteSession('${s.id}')" title="Delete">🗑</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function _loadSession(id){
+  const s=_savedSessions.find(s=>s.id===id);if(!s)return;
+  S.chatM=(s.messages||[]).map(m=>{
+    const msg={role:m.role,content:m.content};
+    if(m._toolCalls)msg._toolCalls=m._toolCalls;
+    if(m._usage)msg._usage=m._usage;
+    // Restore stringified arrays
+    if(typeof msg.content==='string'&&msg.content.startsWith('['))try{msg.content=JSON.parse(msg.content)}catch{}
+    return msg;
+  });
+  _currentSessionId=id;
+  if(s.provider&&s.model){
+    _onProviderChange(s.provider+':'+s.model);
+  }
+  rCh();
+  _renderSavedSessions();
+  toast('Loaded: '+s.title.slice(0,40),'ok');
+}
+
+async function _renameSession(id){
+  const s=_savedSessions.find(s=>s.id===id);if(!s)return;
+  const name=prompt('Rename conversation:',s.title);
+  if(!name||name===s.title)return;
+  try{
+    const{error}=await SB.from('chat_sessions').update({title:name}).eq('id',id);
+    if(error)throw error;
+    s.title=name;_renderSavedSessions();
+  }catch(e){toast('Rename failed','err')}
+}
+
+async function _deleteSession(id){
+  if(!confirm('Delete this saved conversation?'))return;
+  try{
+    const{error}=await SB.from('chat_sessions').delete().eq('id',id);
+    if(error)throw error;
+    _savedSessions=_savedSessions.filter(s=>s.id!==id);
+    if(_currentSessionId===id)_currentSessionId=null;
+    _renderSavedSessions();
+    toast('Conversation deleted','ok');
+  }catch(e){toast('Delete failed','err')}
+}
+
+function _newChat(){
+  S.chatM=[];_currentSessionId=null;S.chatL=false;rCh();_renderSavedSessions();_refreshAllChips();
+}
+
+// Load saved sessions when user signs in
+const _origUpdateUISignedIn=window.updateUISignedIn;
+if(typeof _origUpdateUISignedIn==='function'){
+  window.updateUISignedIn=function(user){_origUpdateUISignedIn(user);setTimeout(_loadSavedSessions,500)};
+}
+
+// ── "Ask AI About This" Helper ──
+function _askAI(text){
+  // Open floating chat and populate
+  const panel=$('#fc-panel');
+  if(panel&&panel.style.display==='none')_fcOpenPanel();
+  else if(!panel)return;
+  setTimeout(()=>{
+    const inp=$('#fc-ci');
+    if(inp){inp.value=text;inp.focus()}
+  },100);
+}
+// Global so card renderers can call it
+window._askAI=_askAI;
+
+// ── Citation Linking ──
+function _linkCitations(html){
+  // Build a map of known paper titles from library + search results
+  const papers=[...S.lib];
+  if(S.litR?.length)papers.push(...S.litR);
+  if(!papers.length)return html;
+  // Sort by title length descending (match longer titles first to avoid partial matches)
+  const known=papers.filter(p=>p.title&&p.title.length>15).sort((a,b)=>(b.title||'').length-(a.title||'').length);
+  // For performance, only check first 50
+  for(const p of known.slice(0,50)){
+    const safe=escHTML(p.title).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    // Only match if the title appears as a complete phrase (not inside HTML tags)
+    const re=new RegExp(`(?<![">])("?)(${safe})("?)(?![<])`,'i');
+    if(re.test(html)){
+      const doi=p.doi||'';const id=p.id||'';
+      html=html.replace(re,`$1<a class="cite-link" href="#" onclick="event.preventDefault();_citationNav('${escJSAttr(id)}','${escJSAttr(doi)}')" title="View in Library">${'$2'}</a>$3`);
+    }
+  }
+  return html;
+}
+
+function _citationNav(id,doi){
+  // Try to find and highlight in library
+  const inLib=S.lib.find(p=>p.id===id);
+  if(inLib){
+    goTab('library');
+    setTimeout(()=>{
+      const card=document.querySelector(`.lib-card[data-paper-id="${CSS.escape(id)}"]`);
+      if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='2px solid var(--ac)';card.style.outlineOffset='2px';setTimeout(()=>{card.style.outline='';card.style.outlineOffset=''},3000)}
+    },200);
+    return;
+  }
+  // Try search results
+  const inLit=S.litR?.findIndex(p=>p.id===id);
+  if(inLit>=0){
+    goTab('lit');
+    setTimeout(()=>{
+      const cards=document.querySelectorAll('.pc');
+      // Account for pagination
+      const pageIdx=inLit%20;
+      if(cards[pageIdx]){cards[pageIdx].scrollIntoView({behavior:'smooth',block:'center'});cards[pageIdx].style.outline='2px solid var(--ac)';cards[pageIdx].style.outlineOffset='2px';setTimeout(()=>{cards[pageIdx].style.outline='';cards[pageIdx].style.outlineOffset=''},3000)}
+    },200);
+  }
+}
+
+// ── Session token tracking ──
+let _sessionTokens={input:0,output:0,cost:0};
+function _trackSessionTokens(usage){
+  if(!usage)return;
+  _sessionTokens.input+=(usage.input||0);
+  _sessionTokens.output+=(usage.output||0);
+  _sessionTokens.cost+=(usage.cost||0);
+  _updateSessionTokenDisplay();
+}
+function _updateSessionTokenDisplay(){
+  const el=$('#ctx-session-tokens');if(!el)return;
+  if(!_sessionTokens.input&&!_sessionTokens.output){el.innerHTML='No tokens used yet';return}
+  el.innerHTML=`In: ${_sessionTokens.input.toLocaleString()} · Out: ${_sessionTokens.output.toLocaleString()}<br>Est. cost: ${_fmtCost(_sessionTokens.cost)}`;
+}

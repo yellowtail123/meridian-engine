@@ -474,6 +474,9 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <div class="ai-tab-topbar">
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1">
     <select class="fs ai-provider-sel" id="aip" style="min-width:200px"></select>
+    <label class="ai-ctx-toggle" title="Include research context in AI prompts"><input type="checkbox" id="ai-ctx-toggle" checked onchange="_toggleAiCtx(this.checked)"/><span class="ai-ctx-ttrack"></span><span class="ai-ctx-tlabel">Context</span></label>
+    <button class="bt sm" onclick="_bookmarkChat()" title="Bookmark this conversation">&#x1F516;</button>
+    <button class="bt sm" onclick="_newChat()" title="New conversation">+ New</button>
     <button class="bt sm" id="ai-clear-chat" onclick="_clearChat()" title="Clear conversation">Clear</button>
   </div>
   <details id="aks-details" style="margin:0">
@@ -488,11 +491,42 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     </div>
   </details>
 </div>
-<div class="cc"><div class="cm" id="cmsg"></div><div class="ai-input-row"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div>
+<div class="cc"><div class="cm" id="cmsg"></div><div class="qa-chips-row" id="qa-chips"></div><div class="ai-input-row"><input class="si" id="ci" placeholder="Ask about methods, datasets, code..." style="font-size:13px"/><button class="bt on" id="csnd">Send</button><button class="stop-btn" id="cstop" style="display:none" onclick="abortAgent()">Stop</button></div></div>
 </div>
 <div class="ai-tab-ctx" id="ai-tab-ctx">
-  <div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Context</div>
-  <div id="ai-ctx-detail" style="font-size:11px;color:var(--ts);font-family:var(--mf);line-height:1.6"></div>
+  <!-- AI Can See -->
+  <div class="ctx-section">
+    <div class="ctx-section-hdr">Meridian AI can see:</div>
+    <div id="ai-ctx-detail" style="font-size:11px;color:var(--ts);font-family:var(--mf);line-height:1.6"></div>
+  </div>
+  <!-- Context Toggle -->
+  <div class="ctx-section">
+    <label class="ai-ctx-toggle" title="Include research context in AI prompts" style="margin:0">
+      <input type="checkbox" id="ai-ctx-toggle-panel" checked onchange="_toggleAiCtx(this.checked);var t=document.getElementById('ai-ctx-toggle');if(t)t.checked=this.checked"/>
+      <span class="ai-ctx-ttrack"></span>
+      <span class="ai-ctx-tlabel">Include Research Context</span>
+    </label>
+  </div>
+  <!-- Provider / Model -->
+  <div class="ctx-section">
+    <div class="ctx-section-hdr">Provider</div>
+    <div id="ctx-provider-info" style="font-size:11px;color:var(--ts);font-family:var(--mf)"></div>
+  </div>
+  <!-- Session Tokens -->
+  <div class="ctx-section">
+    <div class="ctx-section-hdr">Session Usage</div>
+    <div id="ctx-session-tokens" style="font-size:11px;color:var(--ts);font-family:var(--mf);line-height:1.5">No tokens used yet</div>
+  </div>
+  <!-- Saved Conversations -->
+  <div class="ctx-section">
+    <div class="ctx-section-hdr" style="display:flex;align-items:center;gap:6px">Saved <button class="bt sm" onclick="_bookmarkChat()" title="Bookmark current chat" style="padding:2px 8px;font-size:10px;min-height:auto">&#x1F516; Save</button><button class="bt sm" onclick="_newChat()" title="New conversation" style="padding:2px 8px;font-size:10px;min-height:auto">+ New</button></div>
+    <div id="saved-sessions-list" style="max-height:180px;overflow-y:auto"></div>
+  </div>
+  <!-- Quick Actions (vertical) -->
+  <div class="ctx-section">
+    <div class="ctx-section-hdr">Quick Actions</div>
+    <div id="ctx-quick-actions" style="font-size:11px"></div>
+  </div>
 </div>
 </div>
 </div>
@@ -542,7 +576,11 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <div id="fc-panel" class="fc-panel" style="display:none">
   <div class="fc-header">
     <select class="fs fc-provider-sel" id="fc-provider"></select>
+    <span class="fc-ctx-indicator" id="fc-ctx-indicator" title="AI has research context" style="display:none">&#9679;</span>
     <span style="flex:1"></span>
+    <button class="fc-hbtn" onclick="_bookmarkChat()" title="Bookmark conversation">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10v13l-5-3-5 3z"/></svg>
+    </button>
     <button class="fc-hbtn" onclick="_clearChat()" title="Clear chat">
       <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M10 7v5"/><path d="M3 4l1 10a1 1 0 001 1h6a1 1 0 001-1l1-10"/></svg>
     </button>
@@ -558,6 +596,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     <div style="font-size:12px;color:var(--ts);margin-bottom:8px">Enter your <span id="fc-key-provider-name">Anthropic</span> API key to start chatting</div>
     <div style="display:flex;gap:6px"><input type="password" class="si fc-key-input" id="fc-aki" placeholder="sk-ant-..." style="font-size:12px;flex:1"/><button class="bt on" style="padding:6px 12px;font-size:12px" onclick="_fcSaveKey()">Save</button></div>
   </div>
+  <div class="qa-chips-row fc-chips" id="fc-qa-chips"></div>
   <div class="fc-input-row">
     <input class="si fc-input" id="fc-ci" placeholder="Ask Meridian AI..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)_fcSend()"/>
     <button class="bt on fc-send" onclick="_fcSend()">

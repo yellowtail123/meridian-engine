@@ -218,6 +218,7 @@ function _archCard(d){
     </div>
     ${d.file_url?'<button class="bt sm on" onclick="event.stopPropagation();_archDownload(\''+d.id+'\')" style="margin-top:8px;font-size:11px">Download</button>':''}
     ${isOwn?'<button class="bt sm" onclick="event.stopPropagation();_archDeleteOwn(\''+d.id+'\')" style="margin-top:8px;margin-left:6px;font-size:11px;color:var(--co);border-color:rgba(194,120,120,.3)">Delete</button>':''}
+    <button class="ask-ai-btn" onclick="event.stopPropagation();_askAI('Describe this dataset: ${_esc((d.title||'').slice(0,100))}. Type: ${_esc(d.data_type||'')}. Region: ${_esc(d.region||'')}. Species: ${_esc((d.species||[]).slice(0,3).join(', '))}. ${_esc((d.description||'').slice(0,200))}')" title="Ask AI about this dataset">✨</button>
   </div>`;
 }
 

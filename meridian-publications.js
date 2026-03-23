@@ -124,6 +124,7 @@ function _pubCard(p){
         ${p.word_count?'<div style="font-size:10px;color:var(--tm);font-family:var(--mf)">'+p.word_count.toLocaleString()+' words</div>':''}
       </div>
     </div>
+    <button class="ask-ai-btn" onclick="event.stopPropagation();_askAI('Summarize this publication: ${_pesc((p.title||'').slice(0,120))}. Abstract: ${_pesc((p.abstract||'').slice(0,300))}')" title="Ask AI about this publication">✨</button>
   </div>`;
 }
 

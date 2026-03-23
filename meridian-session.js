@@ -143,6 +143,16 @@ function buildSessionOneLiner() {
 
 // ── Refresh the AI context indicator ──
 async function refreshAiCtxIndicator() {
+  // Sync toggle checkbox state
+  const tog = $('#ai-ctx-toggle');
+  const tog2 = $('#ai-ctx-toggle-panel');
+  if (tog && typeof _aiCtxOn !== 'undefined') tog.checked = _aiCtxOn;
+  if (tog2 && typeof _aiCtxOn !== 'undefined') tog2.checked = _aiCtxOn;
+  if (typeof _updateCtxProviderInfo === 'function') _updateCtxProviderInfo();
+  if (typeof _updateSessionTokenDisplay === 'function') _updateSessionTokenDisplay();
+  // Delegate to features.js _updateCtxIndicator if available
+  if (typeof _updateCtxIndicator === 'function') { _updateCtxIndicator(); return; }
+  // Fallback
   const detail = $('#ai-ctx-detail');
   if (!detail) return;
   const parts = [];

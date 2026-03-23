@@ -581,10 +581,19 @@ html.light .sb-toggle:hover{background:rgba(139,105,20,.06)}
 .ai-tab-layout{display:flex;gap:16px;height:calc(100vh - 120px);min-height:500px}
 .ai-tab-main{flex:1;display:flex;flex-direction:column;min-width:0}
 .ai-tab-topbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;position:relative;flex-wrap:wrap}
-.ai-tab-ctx{width:240px;flex-shrink:0;padding:12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);overflow-y:auto;font-size:11px}
 .ai-input-row{display:flex;gap:8px;flex-shrink:0}
 .ai-provider-sel,.fc-provider-sel{background:var(--bi);border:1px solid var(--bd);border-radius:6px;color:var(--tx);font-size:12px;font-family:var(--mf);padding:6px 10px;outline:none}
-@media(max-width:900px){.ai-tab-ctx{display:none}.ai-tab-layout{height:calc(100vh - 130px)}}
+/* Context toggle */
+.ai-ctx-toggle{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:11px;font-family:var(--mf);color:var(--tm)}
+.ai-ctx-toggle input{display:none}
+.ai-ctx-ttrack{width:28px;height:16px;border-radius:8px;background:var(--bd);position:relative;transition:background .2s;flex-shrink:0}
+.ai-ctx-ttrack::after{content:'';position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--tm);transition:transform .2s}
+.ai-ctx-toggle input:checked+.ai-ctx-ttrack{background:var(--ac)}
+.ai-ctx-toggle input:checked+.ai-ctx-ttrack::after{transform:translateX(12px);background:#fff}
+/* Floating chat context indicator */
+.fc-ctx-indicator{color:var(--ac);font-size:10px;cursor:help;opacity:.8}
+/* Token/cost display */
+.msg-cost{font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:6px;opacity:.7}
 /* ═══ FLOATING CHATBOT ═══ */
 @keyframes fc-pulse{0%,100%{box-shadow:0 2px 12px rgba(201,149,107,.3)}50%{box-shadow:0 2px 20px rgba(201,149,107,.6)}}
 .fc-bubble{position:fixed;bottom:24px;right:24px;width:50px;height:50px;border-radius:50%;background:var(--ac);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:10000;box-shadow:0 2px 12px rgba(201,149,107,.3);transition:transform .2s,box-shadow .2s}
@@ -613,3 +622,43 @@ html.light .sb-toggle:hover{background:rgba(139,105,20,.06)}
 html.light .fc-panel{background:#faf8f5;box-shadow:0 12px 40px rgba(0,0,0,.15)}
 html.light .fc-bubble{background:#8B6914}
 @media(max-width:768px){.fc-panel{right:0;bottom:0;left:0;width:100%;height:55vh;border-radius:16px 16px 0 0}.fc-bubble{bottom:16px;right:16px}}
+/* ═══ PHASE 3 ═══ */
+/* Quick Action Chips */
+.qa-chips-row{display:flex;gap:6px;overflow-x:auto;padding:6px 0 4px;flex-shrink:0;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.qa-chips-row::-webkit-scrollbar{height:3px}
+.qa-chips-row::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.qa-chip{white-space:nowrap;padding:5px 12px;border-radius:16px;border:1px solid var(--bd);background:var(--bs);color:var(--ts);font-size:11px;font-family:var(--mf);cursor:pointer;transition:all .15s;flex-shrink:0}
+.qa-chip:hover{border-color:var(--ac);color:var(--ac);background:var(--am)}
+.fc-chips{padding:4px 12px 0;gap:4px}
+.fc-chips .qa-chip{font-size:10px;padding:3px 8px;border-radius:12px}
+/* Ask AI Button (hover-reveal on cards) */
+.ask-ai-btn{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:1px solid var(--bd);background:var(--bs);color:var(--ac);font-size:14px;cursor:pointer;opacity:0;transition:opacity .2s,transform .15s;display:flex;align-items:center;justify-content:center;z-index:5;padding:0;line-height:1}
+.pc:hover .ask-ai-btn,.lib-card:hover .ask-ai-btn{opacity:1}
+.ask-ai-btn:hover{transform:scale(1.15);background:var(--am);border-color:var(--ac)}
+.ask-ai-inline{position:relative;opacity:1;top:0;right:0;width:auto;height:auto;border-radius:6px;padding:4px 10px;font-size:12px;display:inline-flex;gap:4px;margin-left:8px}
+/* Ensure .pc has relative positioning for the ✨ button */
+.pc{position:relative}
+.lib-card{position:relative}
+/* Citation Links */
+.cite-link{color:var(--ac)!important;text-decoration:underline;text-decoration-style:dotted;cursor:pointer;transition:color .15s}
+.cite-link:hover{color:var(--tx)!important;text-decoration-style:solid}
+/* AI Tab Context Panel — Enhanced */
+.ai-tab-ctx{width:280px;flex-shrink:0;padding:0;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);overflow-y:auto;font-size:11px}
+.ctx-section{padding:10px 12px;border-bottom:1px solid var(--bd)}
+.ctx-section:last-child{border-bottom:none}
+.ctx-section-hdr{font-size:10px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-weight:600}
+/* Saved Sessions */
+.saved-session{padding:6px 8px;border:1px solid var(--bd);border-radius:6px;margin-bottom:4px;cursor:pointer;transition:background .15s;position:relative}
+.saved-session:hover{background:var(--am)}
+.ss-title{font-size:11px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:40px}
+.ss-meta{font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:2px}
+.ss-actions{position:absolute;top:4px;right:4px;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.saved-session:hover .ss-actions{opacity:1}
+.ss-btn{background:none;border:none;cursor:pointer;font-size:11px;padding:2px;border-radius:3px;transition:background .1s}
+.ss-btn:hover{background:var(--be)}
+/* Context Quick Actions (vertical list in panel) */
+.ctx-qa-item{padding:5px 8px;border-radius:4px;cursor:pointer;color:var(--ts);font-size:11px;font-family:var(--mf);transition:background .15s;display:flex;align-items:center;gap:6px}
+.ctx-qa-item:hover{background:var(--am);color:var(--ac)}
+/* Session token display in context panel */
+#ctx-session-tokens{line-height:1.5}
+@media(max-width:900px){.ai-tab-ctx{display:none}}
