@@ -5,12 +5,13 @@ html.light .hdr-title::before{background:none}
 html.light .hdr-stars span{background:#6E6358;opacity:.08}
 html.light .logo{background:none!important;-webkit-text-fill-color:#1a1a2e!important;animation:none!important}
 html.light .logo span{-webkit-text-fill-color:#5a4a3a!important;text-shadow:none!important}
+html.light .daily-quote{-webkit-text-fill-color:#8B4040;text-shadow:none}
 html.light ::-webkit-scrollbar-thumb{background:rgba(80,60,20,.22)}
 html.light .toast.ok{background:#E8F5E9;color:#1B5E28;border-color:#A5D6A7}
 html.light .toast.err{background:#FFEBEE;color:#B71C1C;border-color:#EF9A9A}
 html.light .toast.info{background:#FFF8E1;color:#7A5C00;border-color:#FFE082}
-html.light .sec{box-shadow:0 1px 4px rgba(80,60,20,.06)}
-html.light .pc{box-shadow:0 1px 3px rgba(80,60,20,.05)}
+html.light .sec{box-shadow:0 1px 4px rgba(80,60,20,.06);border-color:#d0cbc3}
+html.light .pc{box-shadow:0 1px 3px rgba(80,60,20,.05);border-color:#d0cbc3}
 html.light .pc:hover{box-shadow:0 2px 8px rgba(80,60,20,.10)}
 html.light .msg.u{background:rgba(139,105,20,.06);border-color:rgba(139,105,20,.18)}
 html.light .msg.a{background:#ffffff;border-color:#d0cbc3}
@@ -22,7 +23,6 @@ html.light .measure-tip{background:rgba(255,255,255,.97)!important;color:#2d2d2d
 html.light .isobath-tip{background:rgba(255,255,255,.95)!important;color:#1B3B5F!important;border-color:rgba(27,59,95,.25)!important}
 html.light .leaflet-control-scale-line{background:rgba(255,255,255,.92)!important;color:#2d2d2d!important}
 html.light .trend-badge.ns{background:rgba(0,0,0,.04);border-color:#d0cbc3}
-html.light .gn-card.gn-high{border-left-color:#8B6914}
 html.light .src-badge.src-pm{color:#6B5210;background:rgba(139,105,20,.10);border-color:rgba(139,105,20,.20)}
 html.light .env-marker{border-color:#8B6914;box-shadow:0 0 8px rgba(139,105,20,.3)}
 html.light .search-hist{box-shadow:0 4px 12px rgba(0,0,0,.10);border-color:#d0cbc3}
@@ -30,8 +30,22 @@ html.light .geo-results{box-shadow:0 4px 12px rgba(0,0,0,.10);border-color:#d0cb
 html.light .undo-bar{box-shadow:0 4px 12px rgba(0,0,0,.10)}
 html.light .toast{box-shadow:0 4px 12px rgba(0,0,0,.10)}
 html.light .leaflet-popup-content-wrapper{box-shadow:0 4px 12px rgba(0,0,0,.10)!important}
-html.light .pdf-canvas-wrap{background:#eae5dd}
-html.light .pdf-canvas-wrap canvas{box-shadow:0 4px 16px rgba(0,0,0,.12)}
+html.light .pdf-modal{background:#faf8f5}
+html.light .pdf-tb{background:#ffffff;border-bottom-color:#d0cbc3}
+html.light .pdf-tb-title{color:#555}
+html.light .pdf-btn{color:#555;border-color:#d0cbc3}
+html.light .pdf-btn:hover{color:#6B5210;border-color:#8B6914}
+html.light .pdf-btn.active{color:#fff;background:#8B6914;border-color:#8B6914}
+html.light .pdf-save{color:#2D6B3F;border-color:rgba(45,107,63,.28)}
+html.light .pdf-sep{background:#d0cbc3}
+html.light .pdf-pages{background:#e0dbd3}
+html.light .pdf-pw{box-shadow:0 2px 12px rgba(0,0,0,.12)}
+html.light .pdf-plbl{color:#555}
+html.light .pdf-notes{background:#ffffff;border-left-color:#d0cbc3}
+html.light .pdf-notes-hdr{border-bottom-color:#d0cbc3}
+html.light .pdf-notes-ta{background:#f0ebe3;color:#2d2d2d}
+html.light .pdf-status{color:#555}
+html.light .pdf-fb{color:#2d2d2d}
 html.light .meridian-modal{box-shadow:0 12px 40px rgba(0,0,0,.15)}
 html.light .screen-btns .s-may{color:#6B5210;border-color:rgba(139,105,20,.30)}
 html.light .bg.yr{background:rgba(0,0,0,.04);color:#555555;border-color:rgba(0,0,0,.08)}
@@ -43,11 +57,11 @@ html.light .ctrl-group{background:#f0ebe3}
 html.light .si{background:#ffffff;border-color:#d0cbc3;color:#2d2d2d}
 html.light .si::placeholder{color:#888888}
 html.light .fi{background:#ffffff;border-color:#d0cbc3;color:#2d2d2d}
+html.light .fs{background:#ffffff;border-color:#d0cbc3;color:#2d2d2d}
+html.light select{background:#ffffff;color:#2d2d2d}
 html.light .bt{color:#2d2d2d;border-color:#d0cbc3}
 html.light .bt:hover{color:#6B5210;background:rgba(139,105,20,.06);border-color:#8B6914}
 html.light .bt.on{color:#ffffff;background:#8B6914;border-color:#8B6914}
-html.light .sec{border-color:#d0cbc3}
-html.light .pc{border-color:#d0cbc3}
 html.light .kbd-hint{color:#555555}
 html.light .meta{color:#555555}
 html.light .meta .tc{color:#2d2d2d}
@@ -210,7 +224,7 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .gn-card{padding:14px 16px;background:var(--bs);border-left:3px solid var(--bd);border-radius:0 6px 6px 0;margin-bottom:10px;cursor:pointer;transition:border-color .2s,background .2s}
 .gn-card:hover{background:var(--be);border-left-color:var(--ac)}
 .gn-card.gn-critical{border-left-color:var(--co)}
-.gn-card.gn-high{border-left-color:#D4A04A}
+.gn-card.gn-high{border-left-color:var(--wa)}
 .gn-card.gn-moderate{border-left-color:var(--ac)}
 .gn-card.gn-low{border-left-color:var(--lv)}
 .gn-card.gn-theoretical{border-left-color:var(--tm)}
@@ -218,12 +232,6 @@ input,textarea,select{font-family:var(--sf);font-size:15px}a{color:var(--ac);tex
 .gn-tag{display:inline-block;font-size:10px;font-family:var(--mf);padding:1px 5px;border-radius:3px;background:var(--be);color:var(--ts);border:1px solid var(--bd);margin:1px}
 .gn-dim{font-size:11px;color:var(--tm);font-family:var(--mf)}
 .gn-expand{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--bd);font-size:13px;color:var(--ts);line-height:1.65}
-/* ═══ PDF VIEWER ═══ */
-.pdf-modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;background:rgba(0,0,0,.85);display:flex;flex-direction:column}
-.pdf-toolbar{display:flex;gap:8px;padding:10px 16px;background:var(--bs);border-bottom:1px solid var(--bd);align-items:center;flex-shrink:0}
-.pdf-canvas-wrap{flex:1;overflow:auto;display:flex;justify-content:center;padding:20px;background:var(--bi)}
-.pdf-canvas-wrap canvas{box-shadow:0 4px 20px rgba(0,0,0,.5)}
-.pdf-annot{position:absolute;background:rgba(201,149,107,.15);border:1px solid var(--ab);border-radius:3px;cursor:pointer;min-height:20px}
 /* ═══ READING STATUS ═══ */
 .read-status{font-size:11px;padding:2px 8px;border-radius:10px;font-family:var(--mf);cursor:pointer;border:1px solid var(--bd)}
 .read-status.unread{background:var(--cm);color:var(--co)}.read-status.skimming{background:var(--am);color:var(--ac)}

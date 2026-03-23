@@ -1238,7 +1238,7 @@ document.addEventListener('keydown',e=>{
   // Y/N/M for screening (only when screening active and not in input)
   // Escape key closes modals
   if(e.key==='Escape'){
-    const pdfM=$('#pdfModal');if(pdfM){closePdfViewer();return}
+    const pdfM=$('#pdf-viewer-modal');if(pdfM&&pdfM.style.display==='flex'){closePdfViewer();return}
     const citeO=$('#citePanelOverlay');if(citeO){citeO.remove();return}
     const errC=$('#err-console');if(errC){errC.remove();return}
     const batchM=$('#batchImportModal');if(batchM){batchM.remove();return}

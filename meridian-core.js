@@ -179,7 +179,7 @@ const _errPipeline=(function(){
     _reportTimer=setTimeout(()=>{_reportTimer=null;_sendReport()},REPORT_INTERVAL);
   }
   function _sendReport(){
-    if(!_ERROR_ENDPOINT)return;
+    if(!_ERROR_ENDPOINT||window._DEBUG)return;
     const now=Date.now();
     if(now-_lastReportT<60000)_reportCount++;else _reportCount=1;
     _lastReportT=now;
