@@ -3,47 +3,35 @@
 // Deploy: npx wrangler deploy --config workers/erddap-proxy/wrangler.toml
 //
 // Usage: GET /api/erddap/proxy?url=<encoded-target-url>
-//
-// After deploying, set _CORS_WORKER in meridian-core.js to:
-//   '/api/erddap/proxy?url='
 
 const ALLOWED_ORIGINS = [
   'https://meridian-engine.com',
   'https://www.meridian-engine.com',
-  'http://localhost',
-  'http://127.0.0.1',
 ];
 
 const ALLOWED_HOSTS = [
   'coastwatch.pfeg.noaa.gov',
-  'coastwatch.noaa.gov',
   'www.ncei.noaa.gov',
-  'pae-paha.pacioos.hawaii.edu',
-  'oceanwatch.pifsc.noaa.gov',
-  'polarwatch.noaa.gov',
-  'upwell.pfeg.noaa.gov',
-  'apdrc.soest.hawaii.edu',
-  'erddap.marine.copernicus.eu',
-  'podaac-opendap.jpl.nasa.gov',
-  'oceandata.sci.gsfc.nasa.gov',
-  'www.ngdc.noaa.gov',
-  'dap.ceda.ac.uk',
+  'coastwatch.noaa.gov',
   'psl.noaa.gov',
   'www.cpc.ncep.noaa.gov',
-  'gml.noaa.gov',
-  'scrippsco2.ucsd.edu',
-  'members.oceantrack.org',
+  'dap.ceda.ac.uk',
 ];
 
 const RATE_LIMIT_MAX = 120; // per minute per IP
 const rateLimits = new Map();
 
-function isOriginAllowed(request) {
-  const origin = request.headers.get('Origin') || '';
-  const referer = request.headers.get('Referer') || '';
-  // Allow in development (no origin = direct/curl, localhost)
-  if (!origin && !referer) return true;
-  return ALLOWED_ORIGINS.some(o => origin === o || origin.startsWith('http://localhost') || referer.startsWith(o + '/'));
+// Only these upstream headers are forwarded to the client
+const SAFE_RESPONSE_HEADERS = [
+  'content-type',
+  'content-length',
+  'content-encoding',
+  'last-modified',
+  'etag',
+];
+
+function isOriginAllowed(origin) {
+  return ALLOWED_ORIGINS.includes(origin);
 }
 
 function corsHeaders(origin) {
@@ -84,6 +72,7 @@ export default {
       return new Response(null, { status: 204, headers: cors });
     }
 
+    // GET only
     if (request.method !== 'GET') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
@@ -91,13 +80,15 @@ export default {
       });
     }
 
-    if (!isOriginAllowed(request)) {
+    // Strict origin check — reject missing or unauthorized Origin
+    if (!isOriginAllowed(origin)) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
         headers: { ...cors, 'Content-Type': 'application/json' },
       });
     }
 
+    // Rate limit
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
     if (!checkRateLimit(ip)) {
       return new Response(JSON.stringify({ error: 'Rate limit exceeded' }), {
@@ -127,8 +118,16 @@ export default {
       });
     }
 
-    // Whitelist check
-    if (!ALLOWED_HOSTS.some(h => targetUrl.hostname === h)) {
+    // HTTPS only — blocks http, data, javascript, file, etc.
+    if (targetUrl.protocol !== 'https:') {
+      return new Response(JSON.stringify({ error: 'Only HTTPS targets allowed' }), {
+        status: 400,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Domain whitelist — exact hostname match
+    if (!ALLOWED_HOSTS.includes(targetUrl.hostname)) {
       return new Response(JSON.stringify({ error: 'Domain not allowed: ' + targetUrl.hostname }), {
         status: 403,
         headers: { ...cors, 'Content-Type': 'application/json' },
@@ -148,10 +147,13 @@ export default {
         });
       }
 
-      // Forward the response with CORS headers
-      const newHeaders = new Headers(resp.headers);
+      // Build clean response — only forward safe headers, strip everything else
+      const newHeaders = new Headers();
+      for (const name of SAFE_RESPONSE_HEADERS) {
+        const val = resp.headers.get(name);
+        if (val) newHeaders.set(name, val);
+      }
       Object.entries(cors).forEach(([k, v]) => newHeaders.set(k, v));
-      // Ensure cache at the edge (1hr) and in browser (5min)
       newHeaders.set('Cache-Control', 'public, max-age=300, s-maxage=3600');
 
       return new Response(resp.body, {
