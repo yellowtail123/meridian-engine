@@ -3694,14 +3694,16 @@ function undoDeleteAll(){
   _refreshUndoBar();
 }
 // Patch dbDel calls in library card rendering
-const _origDbDel=window.dbDel;
+// NOTE: must use window.dbDel (not a captured reference) to get the Supabase-hooked
+// version that _hookDataLayer() installs at DOMContentLoaded. A captured reference
+// would snapshot the raw IDB-only dbDel, causing deletes to never reach Supabase.
 window.dbDelWithUndo=function(id){
   const paper=S.lib.find(p=>p.id===id);
-  if(!paper)return _origDbDel(id);
+  if(!paper)return window.dbDel(id);
   _undoStack.push(JSON.parse(JSON.stringify(paper)));
   _refreshUndoBar();
   if(typeof PADI!=='undefined'&&PADI.onPaperRemoved)PADI.onPaperRemoved(id);
-  return _origDbDel(id);
+  return window.dbDel(id);
 };
 
 // ═══ TASK 5: OCCURRENCE QA/QC ═══

@@ -382,7 +382,14 @@ function matchAdvancedQuery(p,tokens){
       if(!src)return true;
       const hit=src.includes(t.term);
       return t.op==='NOT'?!hit:hit})})}
-async function deleteFiltered(){const sq=$('#lib-search-input')?.value?.toLowerCase()||'';const fl=sq?S.lib.filter(p=>{const hay=[p.title||'',p.abstract||'',(p.authors||[]).join(' '),(p.concepts||[]).join(' '),(p.tags||[]).join(' '),p.journal||''].join(' ').toLowerCase();return sq.split(/\s+/).every(w=>hay.includes(w))}):S.lib;if(!fl.length)return;if(!confirm('Delete '+fl.length+' papers?'))return;for(const p of fl){if(typeof dbDelWithUndo==='function')await dbDelWithUndo(p.id);else await dbDel(p.id)}await loadLib();renderLib()}
+async function deleteFiltered(){const sq=$('#lib-search-input')?.value?.toLowerCase()||'';const fl=sq?S.lib.filter(p=>{const hay=[p.title||'',p.abstract||'',(p.authors||[]).join(' '),(p.concepts||[]).join(' '),(p.tags||[]).join(' '),p.journal||''].join(' ').toLowerCase();return sq.split(/\s+/).every(w=>hay.includes(w))}):S.lib;if(!fl.length)return;if(!confirm('Delete '+fl.length+' papers?'))return;
+  // Bulk delete from Supabase for these specific papers
+  if(typeof SB!=='undefined'&&SB&&typeof _supaUser!=='undefined'&&_supaUser){
+    const ids=fl.map(p=>p.id);
+    try{await SB.from('library_papers').delete().eq('user_id',_supaUser.id).in('local_id',ids)}catch(e){console.warn('Cloud filtered delete:',e)}
+  }
+  for(const p of fl){await dbDel(p.id)}
+  await loadLib();renderLib()}
 function toggleBatchMode(){S.batchMode=!S.batchMode;if(!S.batchMode)S.batchSelected.clear();renderLib()}
 // ═══ PROJECT NAMESPACING ═══
 function getProjects(){const set=new Set();S.lib.forEach(p=>set.add(p.project||'Default'));set.add(S.activeProject||'Default');return[...set].sort()}
@@ -397,11 +404,33 @@ async function clearAllLibrary(){
   if(!count)return toast('Library is already empty','info');
   if(!confirm('Permanently delete ALL '+count+' papers from your library?\n\nThis removes papers from local storage AND cloud sync.\nThis cannot be undone.'))return;
   if(!confirm('Are you sure? This will delete '+count+' papers permanently.'))return;
-  for(const p of[...S.lib]){await dbDel(p.id)}
+  // 1. Bulk delete from Supabase FIRST (single atomic query, not per-paper)
+  if(typeof SB!=='undefined'&&SB&&typeof _supaUser!=='undefined'&&_supaUser){
+    try{await SB.from('library_papers').delete().eq('user_id',_supaUser.id)}
+    catch(e){console.warn('Cloud bulk delete failed:',e);
+      if(!confirm('Cloud sync delete failed. Clear local data anyway?\n(Papers may reappear from cloud on next sync.)'))return}
+  }
+  // 2. Clear IDB stores: papers, collections, screening, PADI
+  const stores=['papers','collections','screening','padi_tfidf','padi_bayes','padi_graph'];
+  for(const store of stores){
+    try{await new Promise((r,j)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).clear();tx.oncomplete=()=>r();tx.onerror=e=>j(e.target.error)})}catch(e){console.warn('Clear '+store+':',e)}
+  }
+  // 3. Clear related localStorage BEFORE clearing in-memory state
+  safeStore('meridian_reading_status',{});
+  safeStore('meridian_pico',{});
+  safeStore('meridian_screening',{});
+  safeStore('meridian_sync_queue',[]);
+  // 4. Clear tombstones — safe because cloud is already wiped
   if(typeof _clearTombstones==='function')_clearTombstones();
+  // 5. Clear in-memory state LAST (prevents stale data re-sync)
+  S.lib=[];
+  S.cols={};
   S.batchSelected.clear();
-  await loadLib();renderLib();
-  toast('All '+count+' papers deleted','ok');
+  if(typeof _readingStatus!=='undefined')try{Object.keys(_readingStatus).forEach(k=>delete _readingStatus[k])}catch{}
+  // 6. Force UI update
+  const c=$('#libc');if(c){c.textContent='0';hi(c)}
+  renderLib(true);
+  toast('All '+count+' papers deleted from local storage and cloud','ok');
 }
 function batchAddToCol(){if(!S.batchSelected.size)return toast('Select papers first','err');const keys=Object.keys(S.cols);if(!keys.length)return toast('Create a collection first','err');const opts=keys.map((k,i)=>`${i+1}: ${S.cols[k].name}`).join('\n');const choice=prompt('Add '+S.batchSelected.size+' papers to collection:\n'+opts+'\n(enter number)');if(!choice)return;const col=S.cols[keys[parseInt(choice)-1]];if(!col)return;S.batchSelected.forEach(id=>{if(!col.paperIds.includes(id))col.paperIds.push(id)});saveCol(col).then(renderLib);toast(S.batchSelected.size+' papers added to '+col.name,'ok')}
 function batchSetStatus(){if(!S.batchSelected.size)return toast('Select papers first','err');const st=prompt('Set status for '+S.batchSelected.size+' papers:\n1: unread\n2: skimming\n3: read\n4: reviewed');const map={'1':'unread','2':'skimming','3':'read','4':'reviewed'};if(!map[st])return;S.batchSelected.forEach(id=>{_readingStatus[id]=map[st]});safeStore('meridian_reading_status',_readingStatus);renderLib();toast('Status set to '+map[st],'ok')}
