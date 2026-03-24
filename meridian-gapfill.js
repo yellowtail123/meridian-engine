@@ -120,7 +120,6 @@ const _globalOceanMeans={
   npp:     [400,420,450,480,460,380,320,300,320,360,380,390],
   curr_u:  [0,0,0,0,0,0,0,0,0,0,0,0],
   curr_v:  [0,0,0,0,0,0,0,0,0,0,0,0],
-  dhw:     [0,0,0,0,0.5,1.0,1.5,2.0,1.5,0.5,0,0],
   baa:     [0,0,0,0,0,0,0,0,0,0,0,0],
   hotspot: [0,0,0,0,0.2,0.5,0.8,1.0,0.8,0.3,0,0],
   seaice:  [0.08,0.09,0.09,0.08,0.07,0.06,0.05,0.05,0.06,0.07,0.08,0.08],
@@ -187,24 +186,6 @@ function _crossVariablePredict(){
       confidence:CONFIDENCE.PREDICTED,srcNote:'predicted:VGPM(SST+Chl→NPP)'};
     predicted.push('npp');
     console.info(`GAP-FILL predicted npp = ${npp.toFixed(1)} from SST=${sst}, Chl=${chl}`);
-  }
-
-  // DHW from SST (NOAA CRW method: sum of hotspots over 12 weeks)
-  if(!S.envR.dhw&&S.envTS?.sst?.data?.length>=7){
-    const sstData=S.envTS.sst.data;
-    const last84=sstData.slice(-84); // ~12 weeks of daily data
-    // Estimate MMM (maximum monthly mean) as max of monthly averages
-    const byMonth={};
-    last84.forEach(d=>{const m=parseInt(d.time.slice(5,7));if(!byMonth[m])byMonth[m]=[];byMonth[m].push(d.value)});
-    const monthMeans=Object.values(byMonth).map(vs=>vs.reduce((s,x)=>s+x,0)/vs.length);
-    const mmm=monthMeans.length?Math.max(...monthMeans):27; // default tropical MMM
-    let dhw=0;
-    last84.forEach(d=>{const hs=Math.max(0,d.value-mmm);dhw+=hs});
-    dhw=dhw/7; // Convert degree-days to degree-weeks
-    S.envR.dhw={nm:'Degree Heating Weeks',value:+dhw.toFixed(2),u:'°C-weeks',
-      confidence:CONFIDENCE.PREDICTED,srcNote:'predicted:CRW_method(SST→DHW)'};
-    predicted.push('dhw');
-    console.info(`GAP-FILL predicted dhw = ${dhw.toFixed(2)} from SST timeseries (MMM=${mmm.toFixed(1)})`);
   }
 
   // Hotspot from SST

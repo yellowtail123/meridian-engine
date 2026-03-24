@@ -249,8 +249,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
   <div class="tool-group">
     <span class="tool-group-label">Extra Layers</span>
     <button class="bt sm" id="ml-sst_anom" onclick="toggleMapLayer('sst_anom')" title="SST Anomaly — deviation from 1991–2020 climatological mean">SST Anomaly</button>
-    <button class="bt sm" id="ml-par" onclick="toggleMapLayer('par')" title="Diffuse attenuation coefficient for PAR (2012–2022 only)">Kd(PAR)</button>
-    <button class="bt sm" id="ml-dhw" onclick="toggleMapLayer('dhw')" title="Degree Heating Weeks — accumulated thermal stress for coral bleaching">DHW</button>
     <button class="bt sm" id="ml-gfw" title="Fishing Effort (Global Fishing Watch)" onclick="toggleMapLayer('gfw')">Fishing</button>
   </div>
   <div class="tool-group">
@@ -280,6 +278,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     <button class="bt sm" id="mapExportBtn" onclick="exportMap()" title="Export current map view as PNG image">Export</button>
     <button class="bt sm" id="mapFullscreen" onclick="toggleMapFullscreen()" title="Toggle full-screen map view">Expand</button>
     <button class="bt sm" id="clearAreaBtn" style="display:none;color:var(--co)" onclick="clearAreaSelection()">Clear Area</button>
+    <button class="bt sm" id="clearMapBtn" onclick="clearMap()" title="Reset map: remove all layers, markers, shapes, and return to default view">&#x27F2; Clear Map</button>
   </div>
 </div>
 </div>

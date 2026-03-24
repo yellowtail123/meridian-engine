@@ -1233,7 +1233,6 @@ const EV=[
 {id:'curr_u',nm:'Current (U)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'u_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14}},
 {id:'curr_v',nm:'Current (V)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'v_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14}},
 {id:'sla',nm:'Sea Level Anomaly',u:'m',cat:'Physical',src:'e',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwBLENDEDsshDaily',v:'sla',dm:3,minDate:'2017-02-13',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14}},
-{id:'dhw',nm:'Degree Heating Weeks',u:'°C-weeks',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_DHW',dm:3,minDate:'1985-04-01',lag:5},
 {id:'baa',nm:'Bleaching Alert Area',u:'level',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_BAA',dm:3,minDate:'1985-04-01',lag:5},
 {id:'hotspot',nm:'Coral Hotspot',u:'°C',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_HOTSPOT',dm:3,minDate:'1985-04-01',lag:5},
 {id:'seaice',nm:'Sea Ice',u:'fraction',cat:'Cryosphere',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISSTIce',v:'sic',dm:3,minDate:'1870-01-16',lag:45},
@@ -1304,8 +1303,6 @@ const _fusionSources={
   npp:[
     {id:'modis_pp8',nm:'MODIS Aqua PP 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'},
     {id:'viirs_nrt_npp',nm:'VIIRS SNPP NRT Prod (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'productivity_viirs_snpp_nrt_daily',v:'productivity',dm:3,lag:2,minDate:'2017-11-01',res:'4 km'}],
-  dhw:[
-    {id:'crw_dhw',nm:'CRW DHW (PaciOOS)',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_DHW',dm:3,minDate:'1985-04-01',lag:5,res:'5 km'}],
   baa:[
     {id:'crw_baa',nm:'CRW BAA (PaciOOS)',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_BAA',dm:3,minDate:'1985-04-01',lag:5,res:'5 km'}],
   hotspot:[
@@ -1375,7 +1372,7 @@ const EV_GROUPS=[
   {name:'Physical Oceanography',ids:['sst','sst_anom','sal','sla','mld','curr_u','curr_v','wh','wd','wp','sh','ws','wdir','par','depth','slope']},
   {name:'Biogeochemical',ids:['chlor','npp','poc','dox','no3','po4','sio4','ph_est','co2','co2_keeling','pco2','omega_ar','sr']},
   {name:'Climate & Atmospheric',ids:['at','pr','pp','cl','hm','uv','oni','nao','mhw']},
-  {name:'Coral & Ecological',ids:['dhw','baa','hotspot','seaice']}
+  {name:'Coral & Ecological',ids:['baa','hotspot','seaice']}
 ];
 const EV_INFO={
   sst:{full:'Sea Surface Temperature',source:'NOAA OISST v2.1 via CoastWatch ERDDAP',res:'0.25°',cov:'1981\u2013present'},
@@ -1400,7 +1397,6 @@ const EV_INFO={
   curr_u:{full:'Eastward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
   curr_v:{full:'Northward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
   sla:{full:'Sea level anomaly from blended altimetry',source:'NOAA CoastWatch blended SSH',res:'0.25°',cov:'2017\u2013present'},
-  dhw:{full:'Degree Heating Weeks \u2014 thermal stress accumulated over 12 weeks',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
   baa:{full:'Bleaching Alert Area level (0\u20134)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
   hotspot:{full:'Coral bleaching hotspot (\u00b0C above MMM)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
   seaice:{full:'Sea ice concentration fraction',source:'HadISST / CRW',res:'1\u00b0 / 5 km',cov:'1870\u2013present'},

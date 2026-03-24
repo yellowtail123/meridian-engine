@@ -591,7 +591,6 @@ const _GLOSSARY={
   'SDM':'Species Distribution Model. Predicts geographic range of species based on environmental conditions at known occurrence locations.',
   'Mark-Recapture':'Population estimation method. Capture, mark, release, recapture — ratio of marked to unmarked estimates total population (Lincoln-Petersen).',
   'CPUE':'Catch Per Unit Effort. Standard fisheries abundance index. Assumes proportionality between catch rate and population size.',
-  'DHW':'Degree Heating Weeks. Cumulative thermal stress metric for coral bleaching. DHW ≥4 = significant bleaching likely, ≥8 = mass bleaching.',
   'SLA':'Sea Level Anomaly. Deviation of sea surface height from the long-term mean. Indicates ocean circulation patterns and eddies.',
   'ONI':'Oceanic Niño Index. 3-month running mean of SST anomalies in Niño 3.4 region. El Niño ≥+0.5°C, La Niña ≤-0.5°C.',
   'PDO':'Pacific Decadal Oscillation. Long-lived pattern of Pacific climate variability. Warm/cool phases lasting 20-30 years.',
@@ -624,10 +623,10 @@ function filterGlossary(q){
 // ═══ GUIDED WORKFLOWS ═══
 // ═══ CUSTOMIZABLE WORKFLOWS ═══
 const _DEFAULT_WORKFLOWS=[
-  {name:'Coral Bleaching Assessment',desc:'Analyze thermal stress indicators and bleaching risk using SST, SST anomaly, DHW, chlorophyll, and bleaching alert area.',
-    vars:['sst','sst_anom','dhw','baa','hotspot','chlor'],dateRange:365,
-    guidance:'Look for SST >29°C, DHW ≥4 (bleaching likely) or ≥8 (mass bleaching). Declining chlorophyll may indicate reef stress. Compare BAA levels across time.',
-    thresholds:[{var:'sst',op:'>',val:29,label:'Bleaching risk SST'},{var:'dhw',op:'>=',val:4,label:'Significant bleaching'},{var:'dhw',op:'>=',val:8,label:'Mass bleaching'}],builtin:true},
+  {name:'Coral Bleaching Assessment',desc:'Analyze thermal stress indicators and bleaching risk using SST, SST anomaly, bleaching alert area, and hotspot data.',
+    vars:['sst','sst_anom','baa','hotspot','chlor'],dateRange:365,
+    guidance:'Look for SST >29°C and elevated BAA levels. Declining chlorophyll may indicate reef stress. Compare hotspot and BAA levels across time.',
+    thresholds:[{var:'sst',op:'>',val:29,label:'Bleaching risk SST'}],builtin:true},
   {name:'Upwelling Detection',desc:'Identify coastal upwelling events via SST cooling, wind patterns, and chlorophyll blooms.',
     vars:['sst','ws','wdir','chlor','sal','curr_u','curr_v'],dateRange:180,
     guidance:'Upwelling signatures: sudden SST drops (2-5°C), elevated chlorophyll (>1 mg/m³), equatorward winds. Check current direction for offshore Ekman transport.',

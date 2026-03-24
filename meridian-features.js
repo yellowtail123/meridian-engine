@@ -220,7 +220,7 @@ const AGENT_TOOLS=[
   {name:'get_evidence_table',description:'Get accumulated evidence from extracted findings across library papers. Returns structured data about species, locations, methods, and findings.',input_schema:{type:'object',properties:{species_filter:{type:'string',description:'Filter by species name'},region_filter:{type:'string',description:'Filter by region name'}},required:[]}},
   {name:'get_screening_progress',description:'Get screening progress stats: total papers, screened count, included, excluded, maybe counts.',input_schema:{type:'object',properties:{},required:[]}},
   {name:'get_conservation_status',description:'Get conservation status of a marine species: IUCN Red List, CITES appendix, invasive status. Use when user asks about threatened/endangered status or conservation.',input_schema:{type:'object',properties:{name:{type:'string',description:'Species name (scientific or common)'}},required:['name']}},
-  {name:'get_env_data',description:'Get environmental data (SST, chlorophyll, salinity, nutrients, etc.) for a location. Returns latest values or summary of time-series.',input_schema:{type:'object',properties:{lat:{type:'number',description:'Latitude'},lon:{type:'number',description:'Longitude'},variables:{type:'array',items:{type:'string'},description:'Variable IDs: sst, sst_anom, chlor, par, sal, npp, curr_u, curr_v, sla, co2, wh, wd, wp, sh, at, ws, pr, pp, cl, sr, hm, dhw, baa, hotspot, seaice, depth, slope'},start_date:{type:'string',description:'Start date YYYY-MM-DD'},end_date:{type:'string',description:'End date YYYY-MM-DD'}},required:['lat','lon']}},
+  {name:'get_env_data',description:'Get environmental data (SST, chlorophyll, salinity, nutrients, etc.) for a location. Returns latest values or summary of time-series.',input_schema:{type:'object',properties:{lat:{type:'number',description:'Latitude'},lon:{type:'number',description:'Longitude'},variables:{type:'array',items:{type:'string'},description:'Variable IDs: sst, sst_anom, chlor, par, sal, npp, curr_u, curr_v, sla, co2, wh, wd, wp, sh, at, ws, pr, pp, cl, sr, hm, baa, hotspot, seaice, depth, slope'},start_date:{type:'string',description:'Start date YYYY-MM-DD'},end_date:{type:'string',description:'End date YYYY-MM-DD'}},required:['lat','lon']}},
   {name:'get_fisheries_data',description:'Get fisheries catch data for a species from Sea Around Us. Returns catch time-series if available.',input_schema:{type:'object',properties:{species:{type:'string',description:'Species name'}},required:['species']}},
   {name:'detect_marine_heatwaves',description:'Detect marine heatwave events from SST data at a location. Returns events with duration, intensity, and category.',input_schema:{type:'object',properties:{lat:{type:'number',description:'Latitude'},lon:{type:'number',description:'Longitude'},start_date:{type:'string',description:'Start date YYYY-MM-DD'},end_date:{type:'string',description:'End date YYYY-MM-DD'}},required:['lat','lon','start_date','end_date']}},
   {name:'compute_diversity',description:'Compute diversity indices (Shannon H\', Simpson 1-D, Pielou J, Chao1) from the current Workshop data.',input_schema:{type:'object',properties:{species_column:{type:'string',description:'Column containing species names'},abundance_column:{type:'string',description:'Column containing abundance counts'}},required:['species_column','abundance_column']}},
@@ -943,10 +943,7 @@ function initEnvMap(){
    * CartoDB basemap (dark/labels):   EPSG:3857 XYZ tiles ✓
    * ArcGIS satellite:                EPSG:3857 XYZ tiles ✓
    * GEBCO Bathymetry:                EPSG:3857 XYZ tiles ✓
-   * NOAA ERDDAP WMS (Kd490/PAR):
-   *   → Using WMS 1.3.0 — Leaflet auto-sends CRS=EPSG:3857
-   *   → Do NOT set 'crs' option on L.tileLayer.wms — inherits from map
-   * NASA GIBS WMTS (SST, SST Anom, Chlor, DHW, True Color, Sea Ice):
+   * NASA GIBS WMTS (SST, SST Anom, Chlor, True Color, Sea Ice):
    *   → Using epsg3857 WMTS endpoint (/wmts/epsg3857/best/...)
    *   → Do NOT use the epsg4326 endpoint on this map
    * Habitat WMS (Coral, Mangrove, Seagrass + supplementary):
@@ -1000,13 +997,6 @@ function initEnvMap(){
     chlor:()=>L.tileLayer(
       'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_L2_Chlorophyll_A/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
       {time:gibsDate(),maxZoom:7,maxNativeZoom:7,opacity:0.75,pane:'wmsPane',keepBuffer:2,updateWhenZooming:false,updateWhenIdle:true}),
-    par:()=>{
-      const srv='https://coastwatch.pfeg.noaa.gov';
-      const ds='nesdisVHNSQkd490Daily';
-      const vr='kd_490';
-      const layer=L.tileLayer.wms(srv+'/erddap/wms/'+ds+'/request',{...wmsErddap,layers:ds+':'+vr});
-      let errCount=0;layer.on('tileerror',()=>{if(++errCount>8){layer.setOpacity(0);toast('Kd(PAR) WMS layer unavailable','err')}});
-      return layer},
     bath:()=>L.tileLayer('https://tiles.arcgis.com/tiles/C8EMgrsFcRFL6LrL/arcgis/rest/services/GEBCO_basemap_NCEI/MapServer/tile/{z}/{y}/{x}',{
       opacity:0.5,maxZoom:10,keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
     gebco_relief:()=>L.tileLayer.wms('https://wms.gebco.net/mapserv?',{
@@ -1017,12 +1007,6 @@ function initEnvMap(){
       layers:'GEBCO_LATEST_2',format:'image/png',transparent:true,opacity:0.7,version:'1.1.1',
       attribution:'GEBCO Compilation Group (2024) GEBCO 2024 Grid',
       pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
-    dhw:()=>{
-      const layer=L.tileLayer.wms('https://pae-paha.pacioos.hawaii.edu/erddap/wms/dhw_5km/request',{
-        layers:'dhw_5km:CRW_DHW',styles:'',format:'image/png',transparent:true,opacity:0.7,version:'1.3.0',
-        tileSize:128,pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true});
-      let errCount=0;layer.on('tileerror',()=>{if(++errCount>8){toast('DHW WMS layer unavailable — Coral Reef Watch data may be delayed','err')}});
-      return layer},
     // ── GFW Fishing: auth token + generate-png workflow + wavy mask ──
     gfw:()=>{
       let token='';try{token=localStorage.getItem('meridian_gfw_token')||''}catch{}
@@ -1195,6 +1179,43 @@ function toggleGebcoLayer(mode){
   toggleMapLayer(targetId);
 }
 function clearAreaSelection(){_envBounds=null;_envPolygon=null;_areaStats=null;if(_drawnItems)_drawnItems.clearLayers();$('#area-indicator').innerHTML='';hi('#clearAreaBtn');$('#noaa-filters').style.display='none';const pf=$('#polygon-filter');if(pf)pf.style.display='none'}
+function clearMap(){
+  if(!_envMap)return;
+  // Remove all WMS/tile data layers
+  Object.keys(_mapLayers).forEach(id=>{
+    if(_mapLayers[id]&&_envMap.hasLayer(_mapLayers[id]))_envMap.removeLayer(_mapLayers[id]);
+    const btn=$('#ml-'+id);if(btn){btn.classList.remove('on','loading','layer-err')}});
+  _mapLayers={};
+  // Remove GIBS layers (True Color, Sea Ice)
+  Object.keys(_gibsLayers).forEach(id=>{
+    if(_gibsLayers[id]&&_envMap.hasLayer(_gibsLayers[id]))_envMap.removeLayer(_gibsLayers[id]);
+    const btn=$('#gibs'+id.charAt(0).toUpperCase()+id.slice(1)+'Btn');if(btn)btn.classList.remove('on')});
+  _gibsLayers={};
+  $('#gibsTCBtn')?.classList.remove('on');$('#gibsIceBtn')?.classList.remove('on');
+  // Remove drawn shapes, area selection, markers (except primary)
+  clearAreaSelection();
+  // Remove measure layers
+  if(_measureMode){_measureMode=false;$('#measureBtn')?.classList.remove('on')}
+  _measureLayers.forEach(l=>{try{_envMap.removeLayer(l)}catch{}});_measureLayers=[];_measurePoints=[];
+  // Remove isobaths
+  if(_isobathLayer){_envMap.removeLayer(_isobathLayer);_isobathLayer=null;$('#isobathBtn')?.classList.remove('on')}
+  // Remove graticule
+  if(_graticuleLayer){_envMap.removeLayer(_graticuleLayer);_graticuleLayer=null;$('#gratBtn')?.classList.remove('on')}
+  // Turn off WMS query mode
+  if(_wmsQueryMode){_wmsQueryMode=false;$('#wmsQueryBtn')?.classList.remove('on')}
+  // Reset legend
+  if(_legendControl){_envMap.removeControl(_legendControl);_legendControl=null}
+  // Close all popups
+  _envMap.closePopup();
+  // Reset opacity slider
+  const slider=$('#wmsOpacity');if(slider)slider.value='0.75';
+  // Reset zoom & center
+  _envMap.setView([20,0],2);
+  // Ensure dark basemap
+  if(!_envMap.hasLayer(_baseTileLayer))_baseTileLayer.addTo(_envMap);
+  if(_envMap.hasLayer(_satTileLayer))_envMap.removeLayer(_satTileLayer);
+  $('#base-dark')?.classList.add('on');$('#base-sat')?.classList.remove('on');
+  toast('Map cleared','ok')}
 function setPolygonMode(m){_polygonMode=m;$$('.pm-btn').forEach(b=>b.classList.toggle('sel',b.dataset.mode===m));const d={crop:'Bounding box only — data is fetched for the rectangular extent of the polygon. Fastest, may include points outside boundary.',filter:'Point-in-polygon — grid points outside the polygon boundary are excluded from analysis.',cut:'Strict clip — filtered to polygon boundary, vertices embedded in exports, summary annotated with clip region.'};H('#polygon-mode-desc',d[m]||'');toast('Polygon mode: '+m.charAt(0).toUpperCase()+m.slice(1),'info')}
 function updateFilterLabel(el,labelId,unit){const v=$('#'+labelId);if(v)v.textContent=el.value+(unit||'')}
 // ═══ HABITAT INFERENCE — suggests marine habitats from fetched environmental data ═══
@@ -1522,17 +1543,13 @@ const _mapLegendUrls={
   sst:'inline:sst',
   sst_anom:'inline:sst_anom',
   chlor:'inline:chlor',
-  par:'inline:par',
   gebco_relief:'inline:gebco',
-  gebco_color:'inline:gebco',
-  dhw:'inline:dhw'};
+  gebco_color:'inline:gebco'};
 const _inlineLegends={
   sst:{grad:'linear-gradient(90deg,#00008B,#0000FF,#00BFFF,#00FF00,#FFFF00,#FF8C00,#FF0000)',min:'0°C',max:'32°C'},
   sst_anom:{grad:'linear-gradient(90deg,#00008B,#4169E1,#B0C4DE,#FFFFFF,#F0C0C0,#DC143C,#8B0000)',min:'-5°C',max:'+5°C'},
   chlor:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0.01',max:'20 mg/m³'},
-  par:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0',max:'0.5 m⁻¹'},
-  gebco:{grad:'linear-gradient(90deg,#08306b,#2171b5,#6baed6,#c6dbef,#f7fbff,#d9f0a3,#78c679,#31a354,#006837)',min:'-11000m',max:'+8500m'},
-  dhw:{grad:'linear-gradient(90deg,#FFFFFF,#FFFFB2,#FECC5C,#FD8D3C,#F03B20,#BD0026)',min:'0',max:'20 °C-wk'}};
+  gebco:{grad:'linear-gradient(90deg,#08306b,#2171b5,#6baed6,#c6dbef,#f7fbff,#d9f0a3,#78c679,#31a354,#006837)',min:'-11000m',max:'+8500m'}};
 let _legendControl=null;
 function updateLegendControl(){
   if(!_envMap)return;
@@ -1544,7 +1561,7 @@ function updateLegendControl(){
     _legendControl=new Leg();_envMap.addControl(_legendControl)}
   const container=_legendControl.getContainer();
   container.innerHTML='<div class="ml-title">Legend</div>'+active.map(id=>{
-    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',par:'Kd(PAR)',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry',dhw:'Degree Heating Weeks'}[id]||id;
+    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry'}[id]||id;
     const url=_mapLegendUrls[id];
     if(url.startsWith('inline:')){const k=url.split(':')[1],il=_inlineLegends[k];if(!il)return'';
       return`<div style="font-size:10px;color:var(--ts);margin:4px 0 2px">${nm}</div><div class="inline-legend" style="background:${il.grad}"></div><div class="inline-legend-labels"><span>${il.min}</span><span>${il.max}</span></div>`}
@@ -1688,7 +1705,7 @@ function setWmsOpacity(val){const v=parseFloat(val);Object.keys(_mapLayers).forE
 let _wmsQueryMode=false;
 function getWmsQueryDefs(){
   const defs={};
-  ['sst','sst_anom','chlor','par'].forEach(id=>{
+  ['sst','sst_anom','chlor'].forEach(id=>{
     const v=EV.find(x=>x.id===id);if(!v)return;
     let src=v;
     if(isServerDown(v.server)&&v.alt&&!isServerDown(v.alt.server)){src={...v,...v.alt}}
