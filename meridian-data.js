@@ -1211,8 +1211,8 @@ function sendCompareToWS(){if(!window._compareResults)return;S.wsC=['Species','S
 
 // ═══ ENV DATA — verified datasets + timeouts ═══
 const EV=[
-{id:'sst',nm:'SST',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'sst',dm:3,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01'}},
-{id:'chlor',nm:'Chlorophyll-a',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01'}},
+{id:'sst',nm:'SST',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01'},
+{id:'chlor',nm:'Chlorophyll-a',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01'},
 {id:'wh',nm:'Wave Height',u:'m',cat:'Waves',src:'m',p:'wave_height',pd:'wave_height_max'},
 {id:'wd',nm:'Wave Dir',u:'°',cat:'Waves',src:'m',p:'wave_direction',pd:'wave_direction_dominant'},
 {id:'wp',nm:'Wave Period',u:'s',cat:'Waves',src:'m',p:'wave_period',pd:'wave_period_max'},
@@ -1226,62 +1226,14 @@ const EV=[
 {id:'depth',nm:'Depth',u:'m',cat:'Physical',src:'bath'},
 {id:'slope',nm:'Slope Angle',u:'°',cat:'Physical',src:'bath'},
 ];
-// ── Multi-Source Fusion Registry ──
-let _fusionMode=false;
-const _fusionSources={
-  sst:[
-    {id:'oisst_cw',nm:'OISST v2.1 (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'sst',dm:3,lag:14,minDate:'1981-09-01',res:'0.25°'},
-    {id:'oisst',nm:'OISST v2.1 (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'sst',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',res:'25 km'},
-    {id:'mur',nm:'MUR SST v4.1 (JPL)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01',res:'1 km'},
-    {id:'crw_sst',nm:'CRW CoralTemp (PIFSC)',server:'https://oceanwatch.pifsc.noaa.gov/erddap',ds:'CRW_sst_v3_1',v:'analysed_sst',dm:3,lag:3,minDate:'1985-01-01',res:'5 km'},
-    {id:'pathfinder',nm:'Pathfinder v5.3 Night (PolarWatch)',server:'https://polarwatch.noaa.gov/erddap',ds:'erdPH53sstn8day',v:'sst',dm:3,lag:14,minDate:'1981-08-25',res:'4 km'},
-    {id:'hadisst',nm:'HadISST (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,lag:45,minDate:'1870-01-16',res:'1°'}],
-  chlor:[
-    {id:'modis_chla_8d',nm:'MODIS Aqua Chl-a 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',res:'4 km'},
-    {id:'viirs_vh',nm:'VIIRS VH 2018 Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01',res:'4 km'},
-    {id:'viirs_cw',nm:'VIIRS SNPP NRT (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwNPPVIIRSchlaDaily',v:'chlor_a',dm:4,z:'(0.0)',lag:3,minDate:'2017-01-01',res:'4 km'},
-    {id:'viirs_nrt',nm:'VIIRS SNPP NRT Prod (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'productivity_viirs_snpp_nrt_daily',v:'chlor_a',dm:3,lag:2,minDate:'2017-11-01',res:'4 km'},
-    {id:'modis_chla',nm:'MODIS Aqua Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla1day',v:'chlorophyll',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'}]
-};
-// ── Cascade Fetch — tries all known sources for a variable until data is found ──
-async function _cascadeErddap(v,mode,df,dt,lat,lon,_stride,isHist,triedDS){
-  const sources=_fusionSources[v.id];
-  if(!sources)return null;
-  let merged=null;const usedSources=[];
-  for(const src of sources){
-    if(triedDS.has(src.ds))continue;
-    triedDS.add(src.ds);
-    if(isServerDown(src.server))continue;
-    if(_envAbort?.signal.aborted)return null;
-    try{
-      const srcV={...v,...src,lon360:src.lon360??false};
-      let tQ;
-      if(mode==='latest'){tQ='[(last)]'}
-      else{const cr=clampRange(df,dt,srcV);if(!cr)continue;tQ=`[(${cr.start}T00:00:00Z):${_stride}:(${cr.end}T00:00:00Z)]`}
-      const url=buildErddapUrl(srcV,tQ,lat,lon);
-      const r=await erddapFetch(url,isHist?45000:20000);
-      if(!r.ok)continue;
-      const d=await r.json();
-      const rows=(d.table?.rows||[]).filter(r=>r[r.length-1]!=null);
-      if(!rows.length)continue;
-      console.info(`ENV cascade ${v.id}: got ${rows.length} rows from ${src.nm} (${src.ds})`);
-      // Latest mode: return immediately on first success
-      if(mode==='latest')return{rows,src,srcCount:1};
-      // Timeseries mode: collect partial data and merge across sources
-      usedSources.push(src);
-      const byTime={};
-      rows.forEach(r=>{const t=r[0];if(!byTime[t])byTime[t]=[];byTime[t].push(r[r.length-1])});
-      const ts=Object.keys(byTime).sort().map(t=>({time:t,value:byTime[t].reduce((s,x)=>s+x,0)/byTime[t].length}));
-      if(!merged)merged=ts;
-      else merged=mergeTimeSeries(merged,ts);
-    }catch(e){
-      if(e.name==='AbortError')return null;
-      console.warn(`ENV cascade ${v.id}: ${src.ds} failed:`,e.message);
-      continue}
-  }
-  if(!merged||!merged.length)return null;
-  return{synthesized:true,ts:merged,srcCount:usedSources.length,
-    srcNames:usedSources.map(s=>s.nm).join(' + '),src:usedSources[0]};
+// ── Adaptive Stride — keeps results at 50-150 data points ──
+function getStride(startDate,endDate){
+  const days=(new Date(endDate)-new Date(startDate))/(86400000);
+  if(days<=90)return 1;
+  if(days<=365)return 7;
+  if(days<=365*5)return 14;
+  if(days<=365*16)return 30;
+  return 90;
 }
 
 const EC=[...new Set(EV.map(v=>v.cat))];
@@ -1395,7 +1347,7 @@ if(mode==='timeseries'&&df&&dt&&df>dt)return toast('Start date must be before en
 const isHist=df&&(new Date()-new Date(df))/(86400000)>90;
 // ── Stride: reduce server-side data volume for long historical ranges ──
 const _daySpan=mode!=='latest'&&df&&dt?Math.max(1,Math.round((new Date(dt)-new Date(df))/86400000)):1;
-const _stride=Math.max(1,Math.ceil(_daySpan/730));
+const _stride=mode!=='latest'&&df&&dt?getStride(df,dt):1;
 if(_stride>1)console.info(`ENV stride=${_stride} for ${_daySpan}-day range (≈${Math.ceil(_daySpan/_stride)} pts/var)`);
 // ── Reset module-scope concurrency limiter for this fetch batch ──
 _concActive=0;_concQueue.length=0;
@@ -1437,7 +1389,7 @@ const mV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='m');
 const wV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='w');
 const bV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='bath');
 // Pre-flight: probe all ERDDAP servers in parallel (3s max)
-const _erddapServers=[...new Set(eV.map(v=>v.server).concat(eV.filter(v=>v.alt).map(v=>v.alt.server)))];
+const _erddapServers=[...new Set(eV.map(v=>v.server))];
 await Promise.allSettled(_erddapServers.map(s=>probeServer(s)));
 // ── ERDDAP fetches (SST, Chlorophyll via new servers) ──
 _clampNotes.length=0;
@@ -1445,145 +1397,39 @@ if(_polygonMode==='cut'&&_envPolygon)_clampNotes.push('Polygon cut: '+_envPolygo
 const ep=eV.map(async v=>{
   await _acquireSlot();
   try{
-  // Promote alt to primary if server is dead
-  let effV=v;let altPromoted=false;
-  if(isServerDown(v.server)&&v.alt&&!isServerDown(v.alt.server)){
-    effV={...v,...v.alt,lon360:v.alt.lon360??false};altPromoted=true;
-    console.info(`ENV ${v.id}: ${v.server.split('//')[1]} down → using ${effV.server.split('//')[1]}/${effV.ds}`)}
+  if(_envAbort?.signal.aborted)return;
   if(mode!=='latest'){
-    const cr=clampRange(df,dt,effV);
-    if(!cr){mc(v.id,'err',`${v.nm} covers ${effV.minDate||'?'} – ${effV.maxDate||'now'} only`);up(v.nm);return}}
-  // Fire alt source fetch in parallel (non-blocking) — skip if alt was promoted or alt server is down
-  const altP=(!altPromoted&&v.alt&&!isServerDown(v.alt.server))?(async()=>{
-    try{if(_envAbort?.signal.aborted)return null;
-      const altV={...v,...v.alt,lon360:v.alt.lon360??false};
-      let tQ;
-      if(mode==='latest'){tQ='[(last)]'}
-      else{const cr=clampRange(df,dt,altV);if(!cr)return null;tQ=`[(${cr.start}T00:00:00Z):${_stride}:(${cr.end}T00:00:00Z)]`}
-      const url=buildErddapUrl(altV,tQ,lat,lon);
-      const r=await erddapFetch(url,isHist?45000:20000);
-      if(!r.ok)return null;
-      const d=await r.json();
-      return(d.table?.rows||[]).filter(r=>r[r.length-1]!=null)||null;
-    }catch{return null}
-  })():Promise.resolve(null);
-  async function tryDS(dsObj,dsId,timeQ){
-    const cr=clampRange(df,dt,effV);
-    const tQ=timeQ||(mode==='latest'?'[(last)]':`[(${cr.start}T00:00:00Z):${_stride}:(${cr.end}T00:00:00Z)]`);
-    const url=buildErddapUrl({...dsObj,ds:dsId},tQ,lat,lon);
-    const r=await erddapFetch(url,isHist?45000:20000);
-    if(!r.ok)throw new Error(`${dsId} HTTP ${r.status}`);
-    const d=await r.json();const rows=d.table?.rows||[];
-    if(!rows.length)throw new Error(`${dsId} empty`);
-    const filtered=rows.filter(r=>r[r.length-1]!=null);
-    if(!filtered.length)throw new Error(`${dsId} all null`);
-    return filtered}
-  try{let rows;
-    try{rows=await tryDS(effV,effV.ds)}catch(e1){
-      if(!altPromoted&&v.dsFb){console.warn(`ERDDAP ${v.id} primary failed (${e1.message}), trying ${v.dsFb}`);
-        try{rows=await tryDS(v,v.dsFb)}catch(e2){
-          if(mode==='latest'){const d7=new Date();d7.setDate(d7.getDate()-7);
-            const tQ7=`[(${d7.toISOString().split('T')[0]}T00:00:00Z):1:(${(v.lag>0?new Date(Date.now()-v.lag*86400000).toISOString().split('T')[0]:new Date().toISOString().split('T')[0])}T00:00:00Z)]`;
-            try{rows=await tryDS(v,v.dsFb,tQ7)}catch{throw e2}}
-          else throw e2}}
-      else if(mode==='latest'){
-        console.warn(`ERDDAP ${v.id} latest null, trying last 7 days:`,e1.message);
-        const d7=new Date();d7.setDate(d7.getDate()-7);
-        const tQ7=`[(${d7.toISOString().split('T')[0]}T00:00:00Z):1:(${(effV.lag>0?new Date(Date.now()-effV.lag*86400000).toISOString().split('T')[0]:new Date().toISOString().split('T')[0])}T00:00:00Z)]`;
-        try{rows=await tryDS(effV,effV.ds,tQ7)}catch{
-          const d30=new Date();d30.setDate(d30.getDate()-30);
-          const tQ30=`[(${d30.toISOString().split('T')[0]}T00:00:00Z):1:(${(effV.lag>0?new Date(Date.now()-effV.lag*86400000).toISOString().split('T')[0]:new Date().toISOString().split('T')[0])}T00:00:00Z)]`;
-          try{rows=await tryDS(effV,effV.ds,tQ30)}catch{throw e1}}}
-      else if(mode!=='latest'){
-        console.warn(`ERDDAP ${v.id} timeseries failed, trying [(last)]:`,e1.message);
-        const lastUrl=buildErddapUrl(effV,'[(last)]',lat,lon);
-        const lr=await erddapFetch(lastUrl,20000);
-        if(lr.ok){const ld=await lr.json();rows=(ld.table?.rows||[]).filter(r=>r[r.length-1]!=null)}
-        if(!rows?.length)throw e1}
-      else throw e1}
-    if(!rows?.length)throw new Error('No data');
-    // Apply NOAA filters if active
-    if(window._noaaFilters&&rows.length){
-      const nf=window._noaaFilters;
-      if(v.id==='sst'&&nf.sstMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.sstMin&&val<=nf.sstMax});
-      if(v.id==='chlor'&&nf.chlorMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.chlorMin&&val<=nf.chlorMax});
-      if(!rows.length)throw new Error('All data filtered out by NOAA filters')}
-    // Filter by polygon if active
-    if(_envPolygon&&_polygonMode!=='crop'&&window._areaQuery&&rows.length>1){
-      const latIdx=effV.dm===4?2:effV.dm===3?1:0,lonIdx=latIdx+1;
-      rows=rows.filter(r=>pointInPolygon(r[latIdx],r[lonIdx],_envPolygon));
-      if(!rows.length)throw new Error('No data inside polygon')}
-    // Await alt source — altP was launched at the start so no extra timeout needed
-    let altRows=await altP;
-    if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-    // Apply polygon PIP filter to alt rows too
-    if(altRows?.length&&_envPolygon&&_polygonMode!=='crop'&&window._areaQuery){
-      const altV={...v,...v.alt,lon360:v.alt?.lon360??false};
-      const aLatIdx=altV.dm===4?2:altV.dm===3?1:0,aLonIdx=aLatIdx+1;
-      altRows=altRows.filter(r=>pointInPolygon(r[aLatIdx],r[aLonIdx],_envPolygon));
-      if(!altRows.length)altRows=null}
-    const srcNote=altPromoted?'alt:'+effV.server.split('//')[1]?.split('.')[0]:undefined;
-    if(mode==='latest'){const vals=rows.map(r=>r[r.length-1]);
-      let value=vals.reduce((s,x)=>s+x,0)/vals.length;let srcCount=1;
-      if(altRows?.length){const altVals=altRows.map(r=>r[r.length-1]);
-        const altMean=altVals.reduce((s,x)=>s+x,0)/altVals.length;
-        value=(value+altMean)/2;srcCount=2}
-      S.envR[v.id]={nm:v.nm,value,u:v.u,srcCount,srcNote}}
-    else{const byTime={};rows.forEach(r=>{const t=r[0];if(!byTime[t])byTime[t]=[];byTime[t].push(r[r.length-1])});
-      let ts=Object.keys(byTime).sort().map(t=>{const vs=byTime[t];return{time:t,value:vs.reduce((s,x)=>s+x,0)/vs.length}});
-      let srcCount=1;
-      if(altRows?.length){const altByTime={};
-        altRows.forEach(r=>{const t=r[0];if(!altByTime[t])altByTime[t]=[];altByTime[t].push(r[r.length-1])});
-        const altTS=Object.keys(altByTime).sort().map(t=>{const vs=altByTime[t];return{time:t,value:vs.reduce((s,x)=>s+x,0)/vs.length}});
-        ts=mergeTimeSeries(ts,altTS);srcCount=2}
-      S.envR[v.id]={nm:v.nm,value:ts[ts.length-1]?.value,u:v.u,srcCount,srcNote};
-      if(ts.length>1){S.envTS[v.id]={nm:v.nm,u:v.u,data:ts};stampProvenance(v.id,{server:v.server,dataset:v.ds,variable:v.v,lat,lon,from:df,to:dt,source:'erddap'+(altPromoted?' (alt)':'')})}
-      else mc(v.id,'ok','Single data point (latest only)')}
-    mc(v.id,'ok',altPromoted?'(alt source)':undefined)}
+    const cr=clampRange(df,dt,v);
+    if(!cr){mc(v.id,'err',v.nm+' covers '+(v.minDate||'?')+' – '+(v.maxDate||'now')+' only');up(v.nm);return}}
+  const tQ=mode==='latest'?'[(last)]':(()=>{const cr=clampRange(df,dt,v);return'[('+ cr.start+'T00:00:00Z):'+_stride+':('+cr.end+'T00:00:00Z)]'})();
+  const url=buildErddapUrl(v,tQ,lat,lon);
+  const r=await erddapFetch(url,mode==='latest'?15000:(isHist?45000:20000));
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();
+  let rows=(d.table?.rows||[]).filter(r=>r[r.length-1]!=null);
+  if(!rows.length)throw new Error('No data at location');
+  // Apply NOAA filters if active
+  if(window._noaaFilters&&rows.length){
+    const nf=window._noaaFilters;
+    if(v.id==='sst'&&nf.sstMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.sstMin&&val<=nf.sstMax});
+    if(v.id==='chlor'&&nf.chlorMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.chlorMin&&val<=nf.chlorMax});
+    if(!rows.length)throw new Error('All data filtered out by NOAA filters')}
+  // Filter by polygon if active
+  if(_envPolygon&&_polygonMode!=='crop'&&window._areaQuery&&rows.length>1){
+    const latIdx=v.dm===4?2:v.dm===3?1:0,lonIdx=latIdx+1;
+    rows=rows.filter(r=>pointInPolygon(r[latIdx],r[lonIdx],_envPolygon));
+    if(!rows.length)throw new Error('No data inside polygon')}
+  if(mode==='latest'){const vals=rows.map(r=>r[r.length-1]);
+    S.envR[v.id]={nm:v.nm,value:vals.reduce((s,x)=>s+x,0)/vals.length,u:v.u}}
+  else{const byTime={};rows.forEach(r=>{const t=r[0];if(!byTime[t])byTime[t]=[];byTime[t].push(r[r.length-1])});
+    const ts=Object.keys(byTime).sort().map(t=>{const vs=byTime[t];return{time:t,value:vs.reduce((s,x)=>s+x,0)/vs.length}});
+    S.envR[v.id]={nm:v.nm,value:ts[ts.length-1]?.value,u:v.u};
+    if(ts.length>1){S.envTS[v.id]={nm:v.nm,u:v.u,data:ts};stampProvenance(v.id,{server:v.server,dataset:v.ds,variable:v.v,lat,lon,from:df,to:dt,source:'erddap'})}
+    else mc(v.id,'ok','Single data point (latest only)')}
+  mc(v.id,'ok')}
   catch(e){if(e.name==='AbortError')return;
-    // altP has been running in parallel — just await it, no extra timeout
-    let altFb=null;
-    try{altFb=await altP}catch{}
-    if(altFb?.length){
-      console.warn(`ERDDAP ${v.id} primary failed, using alt source`);
-      const srcNote='alt:'+(v.alt?.server?.split('//')[1]?.split('.')[0]||'?');
-      if(mode==='latest'){const vals=altFb.map(r=>r[r.length-1]);
-        S.envR[v.id]={nm:v.nm,value:vals.reduce((s,x)=>s+x,0)/vals.length,u:v.u,srcCount:1,srcNote}}
-      else{const byTime={};altFb.forEach(r=>{const t=r[0];if(!byTime[t])byTime[t]=[];byTime[t].push(r[r.length-1])});
-        const ts=Object.keys(byTime).sort().map(t=>{const vs=byTime[t];return{time:t,value:vs.reduce((s,x)=>s+x,0)/vs.length}});
-        S.envR[v.id]={nm:v.nm,value:ts[ts.length-1]?.value,u:v.u,srcCount:1,srcNote};
-        if(ts.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:ts}}
-      mc(v.id,'ok','(alt source)')}
-    else{
-      // ── CASCADE: try all known sources from fusion registry ──
-      const triedDS=new Set([v.ds,v.alt?.ds,v.dsFb].filter(Boolean));
-      const cascadeResult=await _cascadeErddap(v,mode,df,dt,lat,lon,_stride,isHist,triedDS);
-      if(cascadeResult){
-        if(cascadeResult.synthesized){
-          // Multi-source synthesis: merged time series from multiple partial sources
-          const srcNote='synthesized:'+cascadeResult.srcNames;
-          S.envR[v.id]={nm:v.nm,value:cascadeResult.ts[cascadeResult.ts.length-1]?.value,u:v.u,srcCount:cascadeResult.srcCount,srcNote};
-          if(cascadeResult.ts.length>1){S.envTS[v.id]={nm:v.nm,u:v.u,data:cascadeResult.ts};
-            stampProvenance(v.id,{server:cascadeResult.src.server,dataset:cascadeResult.src.ds,variable:cascadeResult.src.v,lat,lon,from:df,to:dt,source:'erddap (synthesized: '+cascadeResult.srcNames+')'})}
-          mc(v.id,'ok','(synthesized: '+cascadeResult.srcCount+' sources)')}
-        else{
-          // Single cascade source hit (latest mode)
-          const{rows:cRows,src:cSrc}=cascadeResult;
-          const vals=cRows.map(r=>r[r.length-1]);
-          S.envR[v.id]={nm:v.nm,value:vals.reduce((s,x)=>s+x,0)/vals.length,u:v.u,srcCount:1,srcNote:'cascade:'+cSrc.nm};
-          mc(v.id,'ok','(cascade: '+cSrc.nm+')')}}
-      else{
-        // ── GAP-FILL: spatial/temporal/climatology pipeline ──
-        const gf=typeof _gapFillPipeline==='function'?await _gapFillPipeline(v,mode,df,dt,lat,lon,_stride,isHist):null;
-        if(gf){
-          S.envR[v.id]={nm:v.nm,value:gf.value,u:v.u,confidence:gf.confidence,srcNote:'gapfill:'+gf.detail};
-          if(gf.ts?.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:gf.ts};
-          mc(v.id,'ok','(gap-fill: '+gf.confidence.label+')')}
-        else{
-          const nSrc=1+(v.alt?1:0)+(_fusionSources[v.id]?.length||0);
-          console.error(`ERDDAP ${v.id} failed all ${nSrc} sources + gap-fill:`,e);
-          mc(v.id,'err',e.message+' (tried '+nSrc+' sources + gap-fill)')}}}}up(v.nm)
-  }finally{_releaseSlot()}});
+    mc(v.id,'err',e.message);up(v.nm)}
+  finally{_releaseSlot()}});
 // ── Open-Meteo Marine (waves) ──
 const mp=mV.length?(async()=>{try{
   const marineMaxHist=new Date();marineMaxHist.setMonth(marineMaxHist.getMonth()-3);
@@ -1643,13 +1489,7 @@ try{await Promise.all([...ep,mp,wp,bp])}catch(e){
   console.error('envFetch batch error:',e)}
 if(_myAbort.signal.aborted){if(_envAbort===_myAbort){_envAbort=null;hi('#eprog')};return}
 if(_envAbort===_myAbort){_envAbort=null;hi('#eprog')}
-// ── Cross-Variable Prediction Pass (Layer D of gap-fill) ──
-if(typeof _crossVariablePredict==='function'){
-  const predicted=_crossVariablePredict();
-  if(predicted.length){
-    console.info('GAP-FILL cross-variable predicted:',predicted.join(', '));
-    predicted.forEach(id=>{if(sel.includes(id))mc(id,'ok','(predicted)')});
-    toast(predicted.length+' variable'+(predicted.length>1?'s':'')+' estimated via cross-variable prediction','info',4000)}}
+
 // Purge corrupt/empty envTS entries before rendering
 Object.keys(S.envTS).forEach(id=>{
   const ts=S.envTS[id];
@@ -1660,14 +1500,7 @@ const sfMonths=getSeasonalMonths();
 if(sfMonths&&sfMonths.length<12){const sfSet=new Set(sfMonths);Object.keys(S.envTS).forEach(id=>{
   S.envTS[id].data=S.envTS[id].data.filter(d=>{const m=parseInt(d.time.slice(5,7));return sfSet.has(m)});
   if(!S.envTS[id].data.length)delete S.envTS[id]})}
-// ── Multi-Source Fusion (when enabled) ──
 S.envFusion={};
-if(_fusionMode){
-  const fusibleIds=sel.filter(id=>_fusionSources[id]&&_fusionSources[id].length>=2);
-  if(fusibleIds.length){
-    toast('Fetching multi-source data for '+fusibleIds.length+' parameter'+(fusibleIds.length>1?'s':'')+'...','info');
-    try{S.envFusion=await fetchFusionData(fusibleIds,lat,lon,mode,df,dt,isHist)}catch(e){console.error('Fusion error:',e)}
-    if(Object.keys(S.envFusion).length)toast(Object.keys(S.envFusion).length+' parameter'+(Object.keys(S.envFusion).length>1?'s':'')+' with multi-source ensemble','ok')}}
 const fk=Object.keys(S.envR);
 const _gapIds=Object.keys(_envGaps);
 // Data Coverage Report — replaces old error diagnostic
@@ -1691,7 +1524,7 @@ const _qualScores={},_swTests={};
 Object.keys(S.envTS).forEach(id=>{_qualScores[id]=assessQuality(S.envTS[id].data);
   const vals=S.envTS[id].data.map(d=>d.value).filter(v=>typeof v==='number'&&isFinite(v));
   if(vals.length>=3&&vals.length<=5000)_swTests[id]=shapiroWilk(vals)});
-H('#esum',`<div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px"><span style="color:var(--sg);font-weight:700">${fk.length}</span>/${sel.length} · ${lat}°N ${lon}°E${_gapIds.length?' <span style="opacity:.6">· '+_gapIds.length+' data gap'+(_gapIds.length>1?'s':'')+'</span>':''}${_envBounds?(_envPolygon?' <span class="area-badge">Polygon '+_polygonMode+'</span>':' <span class="area-badge">Area avg</span>'):''} <button class="bt sm" onclick="exportReproBundle()" style="font-size:10px;padding:3px 8px">Export Bundle</button> <button class="bt sm" onclick="shareAnalysisLink()" style="font-size:10px;padding:3px 8px">Share Link</button></div><div class="eg">${fk.map((id,ci)=>{const r=S.envR[id];const mk=_mkTrends[id];const trendArrow=mk?(mk.trend==='increasing'?'↑':mk.trend==='decreasing'?'↓':'→'):'';const trendCol=mk?(mk.p<0.05?'var(--sg)':mk.p<0.1?'var(--wa)':'var(--tm)'):'var(--tm)';const spark=S.envTS[id]?sparklineSVG(S.envTS[id].data,120,28,CL[ci%8]):'';const fus=S.envFusion[id];const confBadge=r.confidence&&typeof _confidenceBadgeHTML==='function'?_confidenceBadgeHTML(r.confidence):'';const srcBadge=confBadge||(fus?.sources?.length>=2?' <span style="font-size:9px;color:var(--ac);opacity:.8">ensemble ('+fus.sources.length+')</span>':r.srcNote&&!r.confidence?' <span style="font-size:9px;color:var(--wa);opacity:.7">alt source</span>':r.srcCount>1?' <span style="font-size:9px;color:var(--sg);opacity:.7">multi-source</span>':'');const fusSub=fus?.ensemble?.length?`<div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:2px">\u03C3=${(fus.ensemble.reduce((s,d)=>s+d.std,0)/fus.ensemble.length).toFixed(3)} ${r.u}${fus.pairs?.length?' · r='+fus.pairs[0].r.toFixed(2):''}</div>`:(fus?.mode==='latest'&&fus.n>=2?`<div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:2px">\u03BC=${fus.mean.toFixed(2)} \u00B1${fus.std.toFixed(3)} ${r.u} (${fus.n} src)</div>`:'');const areaSub=r.areaStats?`<div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:2px">min ${r.areaStats.depthMin} / max ${r.areaStats.depthMax}${r.areaStats.oceanPoints?' · '+r.areaStats.oceanPoints+' pts':''}</div>`:'';const qs=_qualScores[id];const qBadge=qs?`<span class="quality-badge ${qs.color}" title="Data quality: ${qs.score}/100\n${qs.issues.join('\n')}"></span>`:'';const swt=_swTests[id];const swBadge=swt?`<span style="font-size:8px;color:${swt.normal?'var(--sg)':'var(--wa)'}"> ${swt.normal?'N':'!N'}</span>`:'';const provBadge=getProvenanceHTML(id);return`<div class="ec"><div class="el">${qBadge}${r.nm}${srcBadge}${swBadge}${trendArrow?` <span style="color:${trendCol}">${trendArrow}</span>`:''}</div><div class="ev">${typeof r.value==='number'?r.value.toFixed(r.u==='ppm'?1:r.u==='hPa'?1:2):r.value||'N/A'}<span class="eu">${r.u}</span></div>${areaSub}${fusSub}${provBadge}${spark?`<div class="sparkline-wrap">${spark}</div>`:''}</div>`}).join('')}</div>`);
+H('#esum',`<div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px"><span style="color:var(--sg);font-weight:700">${fk.length}</span>/${sel.length} · ${lat}°N ${lon}°E${_gapIds.length?' <span style="opacity:.6">· '+_gapIds.length+' data gap'+(_gapIds.length>1?'s':'')+'</span>':''}${_envBounds?(_envPolygon?' <span class="area-badge">Polygon '+_polygonMode+'</span>':' <span class="area-badge">Area avg</span>'):''} <button class="bt sm" onclick="exportReproBundle()" style="font-size:10px;padding:3px 8px">Export Bundle</button> <button class="bt sm" onclick="shareAnalysisLink()" style="font-size:10px;padding:3px 8px">Share Link</button></div><div class="eg">${fk.map((id,ci)=>{const r=S.envR[id];const mk=_mkTrends[id];const trendArrow=mk?(mk.trend==='increasing'?'↑':mk.trend==='decreasing'?'↓':'→'):'';const trendCol=mk?(mk.p<0.05?'var(--sg)':mk.p<0.1?'var(--wa)':'var(--tm)'):'var(--tm)';const spark=S.envTS[id]?sparklineSVG(S.envTS[id].data,120,28,CL[ci%8]):'';const confBadge=r.confidence&&typeof _confidenceBadgeHTML==='function'?_confidenceBadgeHTML(r.confidence):'';const srcBadge=confBadge;const fusSub='';const areaSub=r.areaStats?`<div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:2px">min ${r.areaStats.depthMin} / max ${r.areaStats.depthMax}${r.areaStats.oceanPoints?' · '+r.areaStats.oceanPoints+' pts':''}</div>`:'';const qs=_qualScores[id];const qBadge=qs?`<span class="quality-badge ${qs.color}" title="Data quality: ${qs.score}/100\n${qs.issues.join('\n')}"></span>`:'';const swt=_swTests[id];const swBadge=swt?`<span style="font-size:8px;color:${swt.normal?'var(--sg)':'var(--wa)'}"> ${swt.normal?'N':'!N'}</span>`:'';const provBadge=getProvenanceHTML(id);return`<div class="ec"><div class="el">${qBadge}${r.nm}${srcBadge}${swBadge}${trendArrow?` <span style="color:${trendCol}">${trendArrow}</span>`:''}</div><div class="ev">${typeof r.value==='number'?r.value.toFixed(r.u==='ppm'?1:r.u==='hPa'?1:2):r.value||'N/A'}<span class="eu">${r.u}</span></div>${areaSub}${fusSub}${provBadge}${spark?`<div class="sparkline-wrap">${spark}</div>`:''}</div>`}).join('')}</div>`);
 if(typeof _pushActivity==='function'){const _vars=fk.map(id=>{const r=S.envR[id];return r?.nm||id}).slice(0,3).join(', ');_pushActivity('env',_vars+' @ '+lat+'°, '+lon+'°',{lat,lon,variables:fk.length})}
 // ── Habitat inference card ──
 try {
@@ -1729,8 +1562,13 @@ try {
 // Individual time series charts + anomaly detection
 const tk=Object.keys(S.envTS);
 if(tk.length){let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div class="pcc" id="ep-${id}" style="height:240px"></div><div id="ep-${id}-anom" style="font-size:11px;font-family:var(--mf);color:var(--tm);margin:-10px 0 14px 8px"></div></div>`;
-    if(S.envFusion[id]?.ensemble){ch+=`<div style="position:relative;margin-bottom:8px"><div class="pcc" id="ep-${id}-ens" style="height:260px"></div><div id="ep-${id}-fstats" style="font-size:11px;font-family:var(--mf);color:var(--tm);margin:-6px 0 14px 8px"></div></div>`}});
-  H('#echarts',ch);
+});
+  const rangeBar='<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">'
+    +['90d','1y','5y','2010','2000','all'].map(k=>{
+      const lbl={_90d:'90 days',_1y:'1 year',_5y:'5 years',_2010:'Since 2010',_2000:'Since 2000',_all:'All'}['_'+k];
+      const active=window._envActiveRange===k?' style="color:var(--ac);border-color:var(--ac)"':'';
+      return'<button class="bt sm"'+active+' onclick="_envSetRange(\''+k+'\')">'+lbl+'</button>'}).join('')+'</div>';
+  H('#echarts',rangeBar+ch);
   // Pre-compute all chart data synchronously, then batch-render in one rAF
   const chartJobs=tk.map((id,i)=>{
     let pd=S.envTS[id].data;if(pd.length>350)pd=lttb(pd,350);
@@ -1752,7 +1590,7 @@ if(tk.length){let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div
   // Lazy chart rendering — only render charts visible in viewport via IntersectionObserver
   const _chartJobMap=new Map();
   chartJobs.forEach(job=>{_chartJobMap.set('ep-'+job.id,job);
-    if(S.envFusion[job.id]?.ensemble)_chartJobMap.set('ep-'+job.id+'-ens',job)});
+    });
   function _materializeChart(el){
     const elId=el.id;const isEns=elId.endsWith('-ens');
     const jobId=isEns?elId.replace('ep-','').replace('-ens',''):elId.replace('ep-','');
@@ -1815,7 +1653,7 @@ if(tk.length){let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div
   // Synthesis uses S.envTS data directly — render immediately (no chart DOM dependency)
   async function renderSynthesis(tk){
     // Crosshair sync across all env charts
-    const chartIds=[...tk.map(id=>'ep-'+id),...tk.filter(id=>S.envFusion[id]?.ensemble).map(id=>'ep-'+id+'-ens')];
+    const chartIds=[...tk.map(id=>'ep-'+id)];
     chartIds.forEach(srcId=>{const srcEl=document.getElementById(srcId);if(!srcEl)return;
       srcEl.on('plotly_hover',function(evData){if(!evData.points?.length)return;const xval=evData.points[0].x;
         chartIds.forEach(tgtId=>{if(tgtId===srcId)return;try{Plotly.Fx.hover(tgtId,[{xval}])}catch{}})});
@@ -1923,47 +1761,26 @@ async function retryEnvVar(id){
   const isHist=df&&(new Date()-new Date(df))/(86400000)>90;
   toast('Retrying '+v.nm+'...','info');
   $$(`[data-id="${id}"]`).forEach(e=>{e.classList.remove('err');e.classList.add('sel');e.innerHTML=escHTML(e.dataset.orig||v.nm)+' ⏳'});
-  // Re-probe server health before retry
   if(v.src==='e')await probeServer(v.server);
-  let effV=v;let altPromoted=false;
-  if(v.src==='e'&&isServerDown(v.server)&&v.alt&&!isServerDown(v.alt.server)){
-    effV={...v,...v.alt,lon360:v.alt.lon360??false};altPromoted=true;
-    console.info(`ENV retry ${v.id}: using alt ${effV.server.split('//')[1]}/${effV.ds}`)}
-  const cr=clampRange(df,dt,effV);
-  if(!cr&&mode!=='latest'){toast(v.nm+' covers '+(effV.minDate||'?')+' – '+(effV.maxDate||'now')+' only','err');return}
+  const cr=clampRange(df,dt,v);
+  if(!cr&&mode!=='latest'){toast(v.nm+' covers '+(v.minDate||'?')+' – '+(v.maxDate||'now')+' only','err');return}
   const _rDaySpan=mode!=='latest'&&cr?Math.max(1,Math.round((new Date(cr.end)-new Date(cr.start))/86400000)):1;
-  const _rStride=Math.max(1,Math.ceil(_rDaySpan/730));
+  const _rStride=mode!=='latest'&&cr?getStride(cr.start,cr.end):1;
   try{
     if(v.src==='e'){
       const tQ=mode==='latest'?'[(last)]':`[(${cr.start}T00:00:00Z):${_rStride}:(${cr.end}T00:00:00Z)]`;
-      const url=buildErddapUrl(effV,tQ,lat,lon);const r=await erddapFetch(url,isHist?45000:20000);
+      const url=buildErddapUrl(v,tQ,lat,lon);const r=await erddapFetch(url,isHist?45000:20000);
       if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();let rows=(d.table?.rows||[]).filter(r=>r[r.length-1]!=null);
       if(!rows.length)throw new Error('No data');
-      // Apply polygon PIP filter on retry
       if(_envPolygon&&_polygonMode!=='crop'&&_envBounds&&rows.length>1){
-        const latIdx=effV.dm===4?2:effV.dm===3?1:0,lonIdx=latIdx+1;
+        const latIdx=v.dm===4?2:v.dm===3?1:0,lonIdx=latIdx+1;
         rows=rows.filter(r=>pointInPolygon(r[latIdx],r[lonIdx],_envPolygon));
         if(!rows.length)throw new Error('No data inside polygon')}
-      // Try alt source — skip if alt was promoted or alt server is down
-      let altRows=null;
-      if(!altPromoted&&v.alt&&!isServerDown(v.alt.server)){try{const altV={...v,...v.alt,lon360:v.alt.lon360??false};const altCr=mode==='latest'?true:clampRange(df,dt,altV);
-        if(altCr){const altTQ=mode==='latest'?'[(last)]':`[(${altCr.start}T00:00:00Z):${_rStride}:(${altCr.end}T00:00:00Z)]`;
-          const altUrl=buildErddapUrl(altV,altTQ,lat,lon);const altR=await erddapFetch(altUrl,20000);
-          if(altR.ok){const altD=await altR.json();altRows=(altD.table?.rows||[]).filter(r=>r[r.length-1]!=null);if(!altRows.length)altRows=null;
-            // PIP filter alt rows
-            if(altRows&&_envPolygon&&_polygonMode!=='crop'&&_envBounds){const aLatIdx=altV.dm===4?2:altV.dm===3?1:0,aLonIdx=aLatIdx+1;
-              altRows=altRows.filter(r=>pointInPolygon(r[aLatIdx],r[aLonIdx],_envPolygon));if(!altRows.length)altRows=null}}}
-      }catch{}}
-      const srcNote=altPromoted?'alt:'+effV.server.split('//')[1]?.split('.')[0]:undefined;
-      if(mode==='latest'){const vals=rows.map(r=>r[r.length-1]);let value=vals.reduce((s,x)=>s+x,0)/vals.length;let srcCount=1;
-        if(altRows?.length){const altMean=altRows.map(r=>r[r.length-1]).reduce((s,x)=>s+x,0)/altRows.length;value=(value+altMean)/2;srcCount=2}
-        S.envR[v.id]={nm:v.nm,value,u:v.u,srcCount,srcNote}}
+      if(mode==='latest'){const vals=rows.map(r=>r[r.length-1]);
+        S.envR[v.id]={nm:v.nm,value:vals.reduce((s,x)=>s+x,0)/vals.length,u:v.u}}
       else{const byTime={};rows.forEach(r=>{const t=r[0];if(!byTime[t])byTime[t]=[];byTime[t].push(r[r.length-1])});
-        let ts=Object.keys(byTime).sort().map(t=>({time:t,value:byTime[t].reduce((s,x)=>s+x,0)/byTime[t].length}));let srcCount=1;
-        if(altRows?.length){const altByTime={};altRows.forEach(r=>{const t=r[0];if(!altByTime[t])altByTime[t]=[];altByTime[t].push(r[r.length-1])});
-          const altTS=Object.keys(altByTime).sort().map(t=>({time:t,value:altByTime[t].reduce((s,x)=>s+x,0)/altByTime[t].length}));
-          ts=mergeTimeSeries(ts,altTS);srcCount=2}
-        S.envR[v.id]={nm:v.nm,value:ts[ts.length-1]?.value,u:v.u,srcCount,srcNote};if(ts.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:ts}}
+        const ts=Object.keys(byTime).sort().map(t=>({time:t,value:byTime[t].reduce((s,x)=>s+x,0)/byTime[t].length}));
+        S.envR[v.id]={nm:v.nm,value:ts[ts.length-1]?.value,u:v.u};if(ts.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:ts}}
     }else if(v.src==='m'){
       const useDaily=isHist;const r=await envFetchT(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&${useDaily?'daily':'hourly'}=${useDaily?(v.pd||v.p):v.p}&${mode==='latest'?'forecast_days=1':`start_date=${df}&end_date=${dt}`}`,20000);
       if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();const pk=useDaily?(v.pd||v.p):v.p;const vs=d[useDaily?'daily':'hourly']?.[pk],ts=d[useDaily?'daily':'hourly']?.time;
@@ -1984,28 +1801,22 @@ async function retryEnvVar(id){
     $$(`[data-id="${id}"]`).forEach(e=>{e.classList.remove('sel');e.classList.add('ok');e.innerHTML=escHTML(e.dataset.orig||v.nm)+' ✓'});
     toast(v.nm+' recovered!','ok');
   }catch(e){
-    // ── CASCADE on retry: try all fusion sources before giving up ──
-    if(v.src==='e'&&_fusionSources[v.id]){
-      const triedDS=new Set([v.ds,v.alt?.ds,v.dsFb].filter(Boolean));
-      const cascadeResult=await _cascadeErddap(v,mode,df,dt,lat,lon,_rStride,isHist,triedDS);
-      if(cascadeResult){
-        if(cascadeResult.synthesized){
-          S.envR[v.id]={nm:v.nm,value:cascadeResult.ts[cascadeResult.ts.length-1]?.value,u:v.u,srcCount:cascadeResult.srcCount,srcNote:'synthesized:'+cascadeResult.srcNames};
-          if(cascadeResult.ts.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:cascadeResult.ts}}
-        else{const vals=cascadeResult.rows.map(r=>r[r.length-1]);
-          S.envR[v.id]={nm:v.nm,value:vals.reduce((s,x)=>s+x,0)/vals.length,u:v.u,srcCount:1,srcNote:'cascade:'+cascadeResult.src.nm}}
-        $$(`[data-id="${id}"]`).forEach(el=>{el.classList.remove('sel');el.classList.add('ok');el.innerHTML=escHTML(el.dataset.orig||v.nm)+' ✓'});
-        toast(v.nm+' recovered'+(cascadeResult.synthesized?' (synthesized '+cascadeResult.srcCount+' sources)':' via '+cascadeResult.src.nm),'ok');return}}
-    // ── GAP-FILL on retry: spatial/temporal/climatology pipeline ──
-    if(v.src==='e'&&typeof _gapFillPipeline==='function'){
-      const gf=await _gapFillPipeline(v,mode,df,dt,lat,lon,_rStride,isHist);
-      if(gf){
-        S.envR[v.id]={nm:v.nm,value:gf.value,u:v.u,confidence:gf.confidence,srcNote:'gapfill:'+gf.detail};
-        if(gf.ts?.length>1)S.envTS[v.id]={nm:v.nm,u:v.u,data:gf.ts};
-        $$(`[data-id="${id}"]`).forEach(el=>{el.classList.remove('sel');el.classList.add('ok');el.innerHTML=escHTML(el.dataset.orig||v.nm)+' ✓'});
-        toast(v.nm+' recovered (gap-fill: '+gf.confidence.label+')','ok');return}}
     $$(`[data-id="${id}"]`).forEach(el=>{el.classList.remove('sel');el.classList.add('err');el.innerHTML=escHTML(el.dataset.orig||v.nm)+' ✗ <button class="retry-btn" onclick="event.stopPropagation();retryEnvVar(\''+escHTML(id)+'\')">retry</button>'});toast(v.nm+' retry failed: '+e.message,'err')}}
 $('#efb').addEventListener('click',()=>envFetch());
+// ── Time Range Selector ──
+function _envSetRange(key){
+  window._envActiveRange=key;
+  const today=new Date().toISOString().split('T')[0];
+  if(key==='90d')setDateRange(90);
+  else if(key==='1y')setDateRange(365);
+  else if(key==='5y')setDateRange(365*5);
+  else if(key==='2010'){$('#edf').value='2010-01-01';$('#edt').value=today;_updateQueryMeter()}
+  else if(key==='2000'){$('#edf').value='2000-01-01';$('#edt').value=today;_updateQueryMeter()}
+  else if(key==='all'){$('#edf').value='1990-01-01';$('#edt').value=today;_updateQueryMeter()}
+  $('#emode').value='timeseries';$('#edts').style.display='';
+  envFetch()}
+// Default to 1 year if no dates set
+if(!$('#edf').value&&!$('#edt').value){window._envActiveRange='1y';setDateRange(365)}
 function bldET(){const tk=Object.keys(S.envTS);if(!tk.length){const cols=['Lat','Lon',...Object.keys(S.envR).map(id=>S.envR[id].nm)];const row={Lat:+$('#elat').value,Lon:+$('#elon').value};Object.keys(S.envR).forEach(id=>{row[S.envR[id].nm]=S.envR[id].value});return{cols,rows:[row]}}const at=new Set();tk.forEach(id=>S.envTS[id].data.forEach(d=>at.add(d.time)));const st=[...at].sort();const hr=st.length>400;if(hr){const dm={};st.forEach(t=>{const d=t.slice(0,10);if(!dm[d])dm[d]={}});tk.forEach(id=>{const lk={};S.envTS[id].data.forEach(d=>{const dy=d.time.slice(0,10);if(!lk[dy])lk[dy]=[];lk[dy].push(d.value)});Object.keys(dm).forEach(dy=>{dm[dy][id]=lk[dy]?lk[dy].reduce((s,v)=>s+v,0)/lk[dy].length:null})});return{cols:['Date',...tk.map(id=>S.envTS[id].nm)],rows:Object.keys(dm).sort().map(d=>{const r={Date:d};tk.forEach(id=>{r[S.envTS[id].nm]=dm[d][id]!=null?+dm[d][id].toFixed(4):null});return r})}}const lk={};tk.forEach(id=>{lk[id]={};S.envTS[id].data.forEach(d=>{lk[id][d.time]=d.value})});return{cols:['Date',...tk.map(id=>S.envTS[id].nm)],rows:st.map(t=>{const r={Date:t};tk.forEach(id=>{r[S.envTS[id].nm]=lk[id][t]!=null?+lk[id][t].toFixed(4):null});return r})}}
 function sendEnvWS(){const{cols,rows}=bldET();S.wsC=cols;S.wsD=rows;autoTypes();initWS();goTab('workshop')}
 function dlEnvCSV(){const{cols,rows}=bldET();
@@ -2019,8 +1830,7 @@ function dlEnvCSV(){const{cols,rows}=bldET();
     else if(v.src==='m')hdr.push(`#   ${v.nm}: Open-Meteo Marine, param=${v.p}`);
     else if(v.src==='w')hdr.push(`#   ${v.nm}: Open-Meteo Weather, param=${v.p}`);
     else if(v.src==='bath')hdr.push(`#   ${v.nm}: GMRT / GEBCO bathymetry`)
-    if(S.envFusion[id]?.sources?.length>=2)hdr.push(`#     Ensemble sources: ${S.envFusion[id].sources.map(s=>s.nm).join(', ')}`)}});
-  if(Object.keys(S.envFusion).length)hdr.push('# Multi-Source Fusion: enabled');
+}});
   hdr.push('#');
   dl([...hdr,cols.join(','),...rows.map(r=>cols.map(c=>r[c]??'').join(','))].join('\n'),'env.csv','text/csv')}
 

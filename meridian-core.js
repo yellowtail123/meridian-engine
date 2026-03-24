@@ -464,7 +464,7 @@ function buildErddapUrl(v,tQ,lat,lon){
     let bw=v.lon360&&b.west<0?360+b.west:b.west,be=v.lon360&&b.east<0?360+b.east:b.east;
     if(bw>be){bw=b.west;be=b.east}
     url+=`[(${b.south}):1:(${b.north})][(${bw}):1:(${be})]`}
-  else url+=`[(${lat}):1:(${lat})][(${lonVal}):1:(${lonVal})]`;
+  else url+=`[(${(lat-0.1).toFixed(2)}):1:(${(lat+0.1).toFixed(2)})][(${(lonVal-0.1).toFixed(2)}):1:(${(lonVal+0.1).toFixed(2)})]`;
   return url}
 function encErddap(url){return url.replace(/\[/g,'%5B').replace(/\]/g,'%5D')}
 // Response cache — keyed by URL, TTL 5 minutes
