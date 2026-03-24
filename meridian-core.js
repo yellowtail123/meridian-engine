@@ -442,11 +442,11 @@ function hi(e){if(typeof e==='string')e=$(e);if(e)e.style.display='none'}
 const mkL=()=>'<div class="ld">'+[0,1,2,3].map(i=>`<div class="ld-d" style="animation:glow 1.4s ease ${i*.15}s infinite"></div>`).join('')+'</div>';
 function dl(c,f,t){const b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function recAbs(inv){if(!inv)return null;const w=[];for(const[word,pos]of Object.entries(inv))for(const p of pos)w[p]=word;return w.join(' ').slice(0,500)}
-function goTab(id,subtab){_errPipeline.crumb('nav','Tab → '+id+(subtab?' / '+subtab:''));$$('.sb-item').forEach(x=>{x.classList.remove('active');x.classList.remove('sub-active')});$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`.sb-item[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn)tabBtn.classList.add('active');if(tabPane)tabPane.classList.add('on');_autoExpandSbGroup(id);if(window.innerWidth<768){const _sb=$('#sidebar');const _bd=$('#sidebar-backdrop');if(_sb)_sb.classList.remove('mobile-open');if(_bd)_bd.classList.remove('show')}if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign();if(id==='research'&&typeof initResearch==='function')initResearch();if(id==='research'&&subtab&&typeof _rpShowTool==='function')_rpShowTool(subtab);if(id==='settings'&&typeof initSettings==='function')initSettings();if(id==='home'&&typeof initHome==='function')initHome()}
+function goTab(id,subtab){_errPipeline.crumb('nav','Tab → '+id+(subtab?' / '+subtab:''));$$('.sb-item').forEach(x=>{x.classList.remove('active');x.classList.remove('sub-active');x.setAttribute('aria-selected','false')});$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`.sb-item[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn){tabBtn.classList.add('active');tabBtn.setAttribute('aria-selected','true')}if(tabPane)tabPane.classList.add('on');_autoExpandSbGroup(id);if(window.innerWidth<768){const _sb=$('#sidebar');const _bd=$('#sidebar-backdrop');if(_sb)_sb.classList.remove('mobile-open');if(_bd)_bd.classList.remove('show')}if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign();if(id==='research'&&typeof initResearch==='function')initResearch();if(id==='research'&&subtab&&typeof _rpShowTool==='function')_rpShowTool(subtab);if(id==='settings'&&typeof initSettings==='function')initSettings();if(id==='home'&&typeof initHome==='function')initHome()}
 // Sidebar collapsible groups
 const _sbGroupMap={lit:'literature',library:'literature',gaps:'literature',graph:'literature',research:'research',publications:'publish',archive:'publish',workshop:'analysis',ecostats:'analysis',studydesign:'analysis',ai:'tools'};
-function _autoExpandSbGroup(tabId){const grp=_sbGroupMap[tabId];if(!grp)return;$$('.sb-collapsible').forEach(g=>{const isTarget=g.dataset.group===grp;g.dataset.expanded=isTarget?'true':'false';})}
-function toggleSbGroup(groupId){const el=document.querySelector(`.sb-collapsible[data-group="${groupId}"]`);if(!el)return;const isOpen=el.dataset.expanded==='true';$$('.sb-collapsible').forEach(g=>g.dataset.expanded='false');if(!isOpen)el.dataset.expanded='true'}
+function _autoExpandSbGroup(tabId){const grp=_sbGroupMap[tabId];if(!grp)return;$$('.sb-collapsible').forEach(g=>{const isTarget=g.dataset.group===grp;g.dataset.expanded=isTarget?'true':'false';const h=g.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded',isTarget?'true':'false')})}
+function toggleSbGroup(groupId){const el=document.querySelector(`.sb-collapsible[data-group="${groupId}"]`);if(!el)return;const isOpen=el.dataset.expanded==='true';$$('.sb-collapsible').forEach(g=>{g.dataset.expanded='false';const h=g.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded','false')});if(!isOpen){el.dataset.expanded='true';const h=el.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded','true')}}
 function fetchT(url,ms=15000,externalSignal){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);if(externalSignal){externalSignal.addEventListener('abort',()=>c.abort(),{once:true});if(externalSignal.aborted)c.abort()}return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t))}
 function envFetchT(url,ms=15000){
   if(_envAbort?.signal.aborted)return Promise.reject(new DOMException('','AbortError'));
@@ -835,15 +835,32 @@ function _showAccountMenu(){
 }
 
 // ═══ AUTH MODAL ═══
+// ── Modal A11y: focus trap + Escape ──
+function _trapFocus(modalEl){
+  const focusable=modalEl.querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])');
+  if(!focusable.length)return;
+  const first=focusable[0],last=focusable[focusable.length-1];
+  first.focus();
+  modalEl._trapHandler=function(e){
+    if(e.key==='Escape'){e.preventDefault();modalEl._onEsc?.();return}
+    if(e.key!=='Tab')return;
+    if(e.shiftKey){if(document.activeElement===first){e.preventDefault();last.focus()}}
+    else{if(document.activeElement===last){e.preventDefault();first.focus()}}
+  };
+  modalEl.addEventListener('keydown',modalEl._trapHandler);
+}
+function _releaseFocusTrap(modalEl){if(modalEl?._trapHandler)modalEl.removeEventListener('keydown',modalEl._trapHandler)}
+
 function showAuthModal(){
   if(_supaUser)return;
   const existing=$('#supa-auth-modal');if(existing)return;
   const m=document.createElement('div');m.id='supa-auth-modal';
+  m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-labelledby','auth-modal-title');
   m.style.cssText='position:fixed;inset:0;z-index:10006;background:rgba(6,5,14,.88);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto';
   m.innerHTML=`<div style="background:var(--bs);border:1px solid var(--ab);border-radius:14px;padding:32px 30px 24px;max-width:380px;width:100%;animation:fadeIn .3s;position:relative">
     <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1" onclick="closeAuthModal()">&times;</button>
     <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:28px;font-family:var(--sf);color:var(--ac);font-weight:700;letter-spacing:.5px">Meridian</div>
+      <div id="auth-modal-title" style="font-size:28px;font-family:var(--sf);color:var(--ac);font-weight:700;letter-spacing:.5px">Meridian</div>
       <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px;letter-spacing:1px">Marine Research Engine</div>
     </div>
     <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5;text-align:center">Sign in to sync your library and settings across devices.</p>
@@ -874,10 +891,11 @@ function showAuthModal(){
   </div>`;
   m.addEventListener('click',e=>{if(e.target===m)closeAuthModal()});
   document.body.appendChild(m);
+  m._onEsc=closeAuthModal;_trapFocus(m);
 }
 
 function closeAuthModal(){
-  const m=$('#supa-auth-modal');if(m)m.remove();
+  const m=$('#supa-auth-modal');if(m){_releaseFocusTrap(m);m.remove()}
 }
 
 // ═══ AUTH FORM HELPERS ═══
@@ -1526,4 +1544,8 @@ function _admFormatAction(log){
 
 // ═══ INIT — hook data layer after all scripts loaded ═══
 const _ab=$('#auth-btn');if(_ab)_ab.onclick=showAuthModal;
-document.addEventListener('DOMContentLoaded',()=>{_hookDataLayer()});
+document.addEventListener('DOMContentLoaded',()=>{_hookDataLayer();
+  // ARIA init: set role/aria-selected on tabs, aria-expanded on group headers
+  $$('.sb-item').forEach(btn=>{btn.setAttribute('role','tab');btn.setAttribute('aria-selected',btn.classList.contains('active')?'true':'false')});
+  $$('.sb-ghdr').forEach(btn=>{const grp=btn.closest('.sb-collapsible');btn.setAttribute('aria-expanded',grp?.dataset.expanded==='true'?'true':'false')});
+});

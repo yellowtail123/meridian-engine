@@ -2598,10 +2598,11 @@ function showSaveAnnotationModal(prefill){
   const varSummary=Object.keys(S.envR).map(id=>{const r=S.envR[id];return`<tr><td style="padding:2px 8px;color:var(--ac)">${escHTML(r.nm)}</td><td style="padding:2px 8px">${typeof r.value==='number'?r.value.toFixed(2):r.value||'N/A'}</td><td style="padding:2px 8px;opacity:.6">${r.u||''}</td></tr>`}).join('');
   const colorOpts=Object.entries(_annColors).map(([k,v])=>`<label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ann-color" value="${k}" ${k==='amber'?'checked':''}><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${v};border:2px solid rgba(255,255,255,.3)"></span><span style="font-size:11px;color:var(--ts)">${k}</span></label>`).join('');
   const modal=document.createElement('div');modal.id='ann-save-modal';
+  modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','ann-save-title');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10006;display:flex;align-items:center;justify-content:center';
   modal.innerHTML=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;width:min(520px,92vw);max-height:88vh;overflow-y:auto;padding:24px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h3 style="margin:0;font-size:16px;color:var(--tf)">&#x1F4CC; Save Map Annotation</h3>
+      <h3 id="ann-save-title" style="margin:0;font-size:16px;color:var(--tf)">&#x1F4CC; Save Map Annotation</h3>
       <button onclick="document.getElementById('ann-save-modal').remove()" style="background:none;border:none;color:var(--tm);font-size:18px;cursor:pointer">&times;</button>
     </div>
     <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:14px;padding:8px 10px;background:var(--bs);border-radius:6px">
@@ -2625,9 +2626,9 @@ function showSaveAnnotationModal(prefill){
       <button class="bt bt-pri" onclick="_doSaveAnnotation()">Save Annotation</button>
     </div>
   </div>`;
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
+  modal.addEventListener('click',e=>{if(e.target===modal){_releaseFocusTrap(modal);modal.remove()}});
   document.body.appendChild(modal);
-  document.getElementById('ann-name').focus();
+  modal._onEsc=function(){_releaseFocusTrap(modal);modal.remove()};_trapFocus(modal);
 }
 
 async function _doSaveAnnotation(){
@@ -2747,9 +2748,10 @@ function _editAnnotation(annId){
   const existing=document.getElementById('ann-edit-modal');if(existing)existing.remove();
   const colorOpts=Object.entries(_annColors).map(([k,v])=>`<label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ann-edit-color" value="${k}" ${k===ann.color?'checked':''}><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${v};border:2px solid rgba(255,255,255,.3)"></span><span style="font-size:11px;color:var(--ts)">${k}</span></label>`).join('');
   const modal=document.createElement('div');modal.id='ann-edit-modal';
+  modal.setAttribute('role','dialog');modal.setAttribute('aria-modal','true');modal.setAttribute('aria-labelledby','ann-edit-title');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10006;display:flex;align-items:center;justify-content:center';
   modal.innerHTML=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;width:min(460px,92vw);max-height:80vh;overflow-y:auto;padding:24px">
-    <h3 style="margin:0 0 16px;font-size:15px;color:var(--tf)">Edit Annotation</h3>
+    <h3 id="ann-edit-title" style="margin:0 0 16px;font-size:15px;color:var(--tf)">Edit Annotation</h3>
     <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Name <span style="color:var(--co)">*</span></label>
     <input type="text" id="ann-edit-name" class="fs" value="${escHTML(ann.name)}" style="width:100%;margin-bottom:12px">
     <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Notes</label>
@@ -2763,8 +2765,9 @@ function _editAnnotation(annId){
       <button class="bt bt-pri" onclick="_doEditAnnotation('${ann.id}')">Save Changes</button>
     </div>
   </div>`;
-  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
+  modal.addEventListener('click',e=>{if(e.target===modal){_releaseFocusTrap(modal);modal.remove()}});
   document.body.appendChild(modal);
+  modal._onEsc=function(){_releaseFocusTrap(modal);modal.remove()};_trapFocus(modal);
 }
 
 async function _doEditAnnotation(annId){
