@@ -420,16 +420,11 @@ let _baseTileLayer=null,_satTileLayer=null,_labelsLayer=null,_landMaskLayer=null
 let _coordDMS=false,_measureMode=false,_measurePoints=[],_measureLayers=[],_isobathLayer=null,_isobathCache=null;
 let _graticuleLayer=null,_gibsLayers={},_areaStats=null,_polygonMode='filter';
 let _envAbort=null;
-// ── DEPLOY: Set this to your Cloudflare Worker URL before going live ──
-// e.g. 'https://proxy.meridian-engine.com/?url='
-// When set, all ERDDAP/external fetches route through this proxy (CORS-safe, cached, rate-limited).
-// When empty, falls back to public CORS proxies (development only — will fail under real traffic).
-const _CORS_WORKER='';
-const CORS_PROXIES=_CORS_WORKER?[url=>_CORS_WORKER+encodeURIComponent(url)]:[
-  url=>'https://corsproxy.org/?url='+encodeURIComponent(url),
-  url=>'https://corsproxy.io/?'+encodeURIComponent(url),
-  url=>'https://api.allorigins.win/raw?url='+encodeURIComponent(url)];
-let _proxyHit=-1,_proxyHitT=0;
+// ── ERDDAP Proxy — same-origin Cloudflare Worker ──
+// Deploy: npx wrangler deploy --config workers/erddap-proxy/wrangler.toml
+// Routes to meridian-engine.com/api/erddap/proxy — no CORS issues (same origin).
+const _CORS_WORKER='/api/erddap/proxy?url=';
+const CORS_PROXIES=[url=>_CORS_WORKER+encodeURIComponent(url)];
 // ── Server Health Registry ──
 const _serverHealth=new Map();
 const _SERVER_HEALTH_TTL=60000;
@@ -482,26 +477,16 @@ async function erddapFetch(url,ms){
   const cached=getCached(eu);if(cached)return new Response(JSON.stringify(cached),{status:200});
   const serverBase=url.match(/^https?:\/\/[^/]+\/erddap/)?.[0]||url.match(/^https?:\/\/[^/]+/)?.[0];
   if(serverBase&&isServerDown(serverBase))throw new Error('Server '+serverBase.split('//')[1]+' unreachable');
-  // Direct fetch runs in background — resolves to Response or null on CORS/network failure
-  const directP=(async()=>{try{const r=await envFetchT(eu,ms);
-    if(r.ok)r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}catch{return null}})();
-  // Give direct a 1.5s head start before trying proxies
-  const quick=await Promise.race([directP,new Promise(r=>setTimeout(()=>r(null),1500))]);
-  if(quick)return quick;
-  if(!quick)console.info('ERDDAP direct fetch slow — falling through to proxies for: '+serverBase);
-  // Direct still pending or failed (CORS/network) — cascade through proxies
-  const si=(_proxyHit>=0&&Date.now()-_proxyHitT<300000)?_proxyHit:0;
-  for(let i=0;i<CORS_PROXIES.length;i++){
-    const idx=(si+i)%CORS_PROXIES.length;
-    if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-    try{const r=await envFetchT(CORS_PROXIES[idx](eu),20000);
-      if(r.ok){_proxyHit=idx;_proxyHitT=Date.now();
-        r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}
-    }catch(e){if(_envAbort?.signal.aborted)throw new DOMException('','AbortError')}}
-  // All proxies failed — wait for direct as last resort
-  try{const d=await directP;if(d)return d}catch{}
   if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-  throw new Error('Data unavailable — could not reach '+(serverBase?.split('//')[1]||'server')+' (tried direct + '+CORS_PROXIES.length+' proxies). Check your network connection or try again in a few minutes.')}
+  // Try direct first (works for CORS-enabled servers like NCEI)
+  try{const r=await envFetchT(eu,ms);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
+  if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
+  // Route through same-origin ERDDAP proxy (Cloudflare Worker)
+  try{const r=await envFetchT(CORS_PROXIES[0](eu),ms+5000);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}
+  catch(e){if(_envAbort?.signal.aborted)throw new DOMException('','AbortError')}
+  throw new Error('Data unavailable — could not reach '+(serverBase?.split('//')[1]||'server')+'. Check your network connection or try again in a few minutes.')}
 // ── Bathymetry cascade sources (best → fallback) ──
 const _BATHY_SOURCES=[
   {ds:'ETOPO_2022_v1_15s',v:'z',res:0.00417},
@@ -550,23 +535,13 @@ async function _bathyFetchDirect(url,ms=15000){
   const eu=encErddap(url);
   const cached=getCached(eu);
   if(cached)return new Response(JSON.stringify(cached),{status:200});
-  // Direct fetch runs in background — ERDDAP supports CORS *
-  const directP=(async()=>{try{const r=await fetchT(eu,ms);
-    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}return null})();
-  // Give direct 1.5s head start
-  const quick=await Promise.race([directP,new Promise(r=>setTimeout(()=>r(null),1500))]);
-  if(quick)return quick;
-  // Direct still pending — cascade proxies with shorter timeout
-  const si=(_proxyHit>=0&&Date.now()-_proxyHitT<300000)?_proxyHit:0;
-  for(let i=0;i<CORS_PROXIES.length;i++){
-    const idx=(si+i)%CORS_PROXIES.length;
-    try{const r=await fetchT(CORS_PROXIES[idx](eu),8000);
-      if(r.ok){_proxyHit=idx;_proxyHitT=Date.now();
-        r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}
-    }catch{}}
-  // All proxies failed — wait for direct as last resort
-  try{const d=await directP;if(d)return d}catch{}
-  throw new Error('Bathymetry fetch failed (direct + '+CORS_PROXIES.length+' proxies)')}
+  // Try direct first (works for CORS-enabled servers)
+  try{const r=await fetchT(eu,ms);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
+  // Route through same-origin ERDDAP proxy
+  try{const r=await fetchT(CORS_PROXIES[0](eu),ms+5000);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
+  throw new Error('Bathymetry fetch failed')}
 // ── Bathymetry helper — cache → GMRT → ERDDAP fallback ──
 async function fetchBathymetry(lat,lon){
   const la=parseFloat(lat),lo=parseFloat(lon);

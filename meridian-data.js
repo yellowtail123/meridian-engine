@@ -2401,9 +2401,11 @@ function getSeasonalMonths(){
 
 // ═══ CLIMATE INDEX OVERLAYS ═══
 const _climateIndices={};const _activeIndices=new Set();
-async function corsFetchT(url,ms){try{const r=await fetchT(url,ms);if(r.ok)return r}catch{}
-  for(const pf of CORS_PROXIES){try{const r=await fetchT(pf(url),ms);if(r.ok)return r}catch{}}
-  throw new Error('All sources failed')}
+async function corsFetchT(url,ms){
+  // Try direct first, then same-origin proxy
+  try{const r=await fetchT(url,ms);if(r.ok)return r}catch{}
+  try{const r=await fetchT(CORS_PROXIES[0](url),ms+5000);if(r.ok)return r}catch{}
+  throw new Error('Fetch failed for '+url.split('/')[2])}
 // Parse year + 12 monthly columns format (used by PSL ONI, NAO, PDO files)
 // Skips header/footer lines, treats values ≥90 as missing (-99.90 sentinel)
 function _parseYearMonthCols(text){
@@ -2421,29 +2423,26 @@ function _parseNceiOni(text){
       const yr=p[0],mo=p[1],v=parseFloat(p[4]); // column 5 = Nino 3.4 anomaly
       if(!isNaN(v)&&Math.abs(v)<90)data.push({time:`${yr}-${mo.padStart(2,'0')}-15`,value:v})}});
   return data}
-// Fetch strategy: same-origin Pages Function first (/api/climate?type=X),
-// then NCEI direct (has CORS for oni/pdo), then public CORS proxies as last resort
+// Fetch strategy: NCEI direct (has CORS for oni/pdo), then ERDDAP proxy for all
 const _ciDirect={
   oni:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.el_nino.dat',
   pdo:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat'};
+const _ciProxy={
+  oni:'https://psl.noaa.gov/data/correlation/oni.data',
+  nao:'https://psl.noaa.gov/data/correlation/nao.data',
+  pdo:'https://psl.noaa.gov/data/correlation/pdo.data'};
 const _ciNames={oni:'ONI (ENSO)',nao:'NAO',pdo:'PDO'};
 const _ciUnits={oni:'°C',nao:'index',pdo:'index'};
 async function fetchClimateIndex(type){
   if(_climateIndices[type])return _climateIndices[type];
   let text=null;
-  // 1) Try same-origin Pages Function (no CORS needed)
-  try{const r=await fetchT('/api/climate?type='+type,12000);
-    if(r.ok)text=await r.text()}catch{}
-  // 2) For ONI/PDO: try NCEI direct (has Access-Control-Allow-Origin: *)
-  if(!text&&_ciDirect[type]){
+  // 1) For ONI/PDO: try NCEI direct (has Access-Control-Allow-Origin: *)
+  if(_ciDirect[type]){
     try{const r=await fetchT(_ciDirect[type],12000);
       if(r.ok)text=await r.text()}catch{}}
-  // 3) Last resort: CORS proxies (unreliable but sometimes work)
-  if(!text){
-    const urls={oni:'https://psl.noaa.gov/data/correlation/oni.data',
-      nao:'https://psl.noaa.gov/data/correlation/nao.data',
-      pdo:'https://psl.noaa.gov/data/correlation/pdo.data'};
-    try{const r=await corsFetchT(urls[type],15000);
+  // 2) PSL via same-origin ERDDAP proxy (handles NAO and fallback for ONI/PDO)
+  if(!text&&_ciProxy[type]){
+    try{const r=await fetchT(CORS_PROXIES[0](_ciProxy[type]),15000);
       if(r.ok)text=await r.text()}catch{}}
   if(!text){console.error('Climate index fetch failed: '+type);return null}
   // Parse — NCEI ONI has a different format, all PSL/NCEI-PDO use year+12cols

@@ -1,0 +1,8 @@
+name = "erddap-proxy"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+routes = [
+  { pattern = "meridian-engine.com/api/erddap/*", zone_name = "meridian-engine.com" },
+  { pattern = "www.meridian-engine.com/api/erddap/*", zone_name = "meridian-engine.com" }
+]
