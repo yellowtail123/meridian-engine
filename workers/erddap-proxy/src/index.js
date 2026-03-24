@@ -167,10 +167,19 @@ export default {
     }
 
     try {
-      const resp = await fetch(target, {
-        headers: { 'User-Agent': 'Meridian-Engine/1.0 (ERDDAP Proxy)' },
-        cf: { cacheTtl: 3600, cacheEverything: true },
-      });
+      // 15-second timeout — prevents hanging on overloaded upstream servers
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      let resp;
+      try {
+        resp = await fetch(target, {
+          headers: { 'User-Agent': 'Meridian-Engine/1.0 (ERDDAP Proxy)' },
+          signal: controller.signal,
+          cf: { cacheTtl: 3600, cacheEverything: true },
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
 
       if (!resp.ok) {
         return new Response(JSON.stringify({ error: 'Upstream returned ' + resp.status }), {
@@ -193,6 +202,12 @@ export default {
         headers: newHeaders,
       });
     } catch (e) {
+      if (e.name === 'AbortError') {
+        return new Response(JSON.stringify({ error: 'Upstream server did not respond within 15 seconds. Try a shorter date range or fewer variables.' }), {
+          status: 504,
+          headers: { ...cors, 'Content-Type': 'application/json' },
+        });
+      }
       return new Response(JSON.stringify({ error: 'Proxy fetch failed: ' + e.message }), {
         status: 502,
         headers: { ...cors, 'Content-Type': 'application/json' },

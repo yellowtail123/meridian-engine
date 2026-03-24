@@ -2673,7 +2673,7 @@ async function loadMapAnnotations(){
     _renderAnnotationMarkers();
     _renderAnnotationsList();
     const ctx=$('#env-annotations-ctx');if(ctx)ctx.textContent=_mapAnnotations.length?'· '+_mapAnnotations.length+' saved':'';
-  }catch(e){console.error('Load annotations error:',e)}}
+  }catch(e){if(e?.code==='PGRST205'||e?.message?.includes('does not exist'))return;console.warn('Load annotations:',e?.message||e)}}
 
 // ── Render Markers on Map ──
 function _renderAnnotationMarkers(){
