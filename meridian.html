@@ -246,14 +246,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <div class="map-toolbar-drawer" id="env-secondary-tools" style="display:none">
   <div class="tool-group">
     <span class="tool-group-label">Extra Layers</span>
-    <button class="bt sm" id="ml-sst_anom" onclick="toggleMapLayer('sst_anom')" title="SST Anomaly — deviation from 1991–2020 climatological mean">SST Anomaly</button>
     <button class="bt sm" id="ml-gfw" title="Fishing Effort (Global Fishing Watch)" onclick="toggleMapLayer('gfw')">Fishing</button>
-  </div>
-  <div class="tool-group">
-    <span class="tool-group-label">Climate Indices</span>
-    <button class="bt sm" id="idx-oni" onclick="toggleClimateIndex('oni')" title="ONI/ENSO — time series overlay applied during data fetch. Not a spatial map layer.">ONI/ENSO</button>
-    <button class="bt sm" id="idx-nao" onclick="toggleClimateIndex('nao')" title="NAO — time series overlay applied during data fetch. Not a spatial map layer.">NAO</button>
-    <button class="bt sm" id="idx-pdo" onclick="toggleClimateIndex('pdo')" title="PDO — time series overlay applied during data fetch. Not a spatial map layer.">PDO</button>
   </div>
   <div class="tool-group">
     <span class="tool-group-label">Map Tools</span>
@@ -266,7 +259,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
   <div class="tool-group">
     <span class="tool-group-label">Imagery</span>
     <button class="bt sm" id="gibsTCBtn" onclick="toggleGIBSLayer('truecolor')" title="NASA GIBS True Color satellite imagery (MODIS Terra)">True Color</button>
-    <button class="bt sm" id="gibsIceBtn" onclick="toggleGIBSLayer('seaice')" title="NASA GIBS sea ice extent overlay">Sea Ice</button>
   </div>
   <div class="tool-group">
     <span class="tool-group-label">Opacity</span>
@@ -289,17 +281,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 </div>
 <div id="envMap"></div>
-<div id="climate-index-panel" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px 4px">
-    <span id="climate-index-desc" style="font-size:11px;color:var(--tm);font-family:var(--mf)"></span>
-    <div style="display:flex;gap:6px;align-items:center">
-      <button class="bt sm" id="ciRangeFull" onclick="setClimateRange('full')" style="font-size:10px">Full Record</button>
-      <button class="bt sm on" id="ciRange30" onclick="setClimateRange('30')" style="font-size:10px">Last 30 yr</button>
-      <button class="bt sm" onclick="closeClimatePanel()" style="font-size:10px" title="Close panel">&times;</button>
-    </div>
-  </div>
-  <div id="climate-index-chart" style="height:280px"></div>
-</div>
 <div id="noaa-filters" class="noaa-panel" style="display:none">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="lbl">NOAA Environmental Filters — select area on map</div><button class="bt sm" onclick="applyNoaaFilters()">Apply to Fetch</button></div>
 <div class="range-slider"><span style="font-size:11px;color:var(--tm);width:50px">SST</span><input type="range" id="noaa-sst-min" min="-2" max="35" value="0" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-min-v','°C')"/><span class="rv" id="noaa-sst-min-v">0°C</span><span style="color:var(--tm)">–</span><input type="range" id="noaa-sst-max" min="-2" max="35" value="30" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-max-v','°C')"/><span class="rv" id="noaa-sst-max-v">30°C</span></div>
@@ -424,7 +405,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 </div></div>
 <!-- Progress & results stay outside groups (always visible) -->
-<div id="eprog" style="display:none"></div><div id="esum"></div><div id="echarts"></div><div id="env-mhw"></div><div id="eannotations"></div><div id="ethresholds"></div><div id="esyn"></div><div id="elagcorr"></div><div id="eseason"></div><div id="edepthchart"></div><div id="env-plankton" style="margin-top:10px"></div><div id="eact" style="display:none"></div></div>
+<div id="eprog" style="display:none"></div><div id="esum"></div><div id="echarts"></div><div id="eannotations"></div><div id="ethresholds"></div><div id="esyn"></div><div id="elagcorr"></div><div id="eseason"></div><div id="edepthchart"></div><div id="eact" style="display:none"></div></div>
 <div class="tp" id="tab-workshop"><div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Plotly analysis.</b> 10 chart types. Export CSV/R/Python/TSV/JSON.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div><div id="wcon"><div class="empty-state" style="text-align:center;padding:40px 20px;color:var(--tm);font-family:var(--sf);font-size:13px;line-height:1.6"><div style="font-size:24px;margin-bottom:12px;opacity:0.3">&#x1F4CA;</div>No data loaded. Compile papers from Literature search results, or upload data in the Field Data tab.</div></div></div>
 <div class="tp" id="tab-graph">
 <div class="tip-wrap"><button class="tip-toggle" onclick="toggleTipPopover(this)" title="About this tab">i</button><div class="tip tip-pop"><b>Citation Graph.</b> Select a seed paper from your Library. Explore forward (cited by) and backward (references) citation chains. Visualize as a force-directed network.<button class="dx" onclick="this.closest('.tip').style.display='none'">×</button></div></div>

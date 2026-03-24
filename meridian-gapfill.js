@@ -106,24 +106,13 @@ async function _temporalRelax(v,lat,lon,isHist){
 // ── C4: Layer C — Climatological Fallback ──
 // Uses long-term monthly averages from coarse-resolution datasets.
 const _climatologySources={
-  sst:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,minDate:'1870-01-16'},
-  sst_anom:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,minDate:'1870-01-16',isProxy:true}
+  sst:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,minDate:'1870-01-16'}
 };
 
 // Global ocean mean values by month (absolute last resort)
 const _globalOceanMeans={
-  sst:     [20.5,20.2,20.0,19.8,19.8,20.0,20.3,20.7,21.0,21.1,21.0,20.7],
-  sst_anom:[0,0,0,0,0,0,0,0,0,0,0,0],
-  chlor:   [0.30,0.32,0.35,0.38,0.36,0.28,0.22,0.20,0.22,0.25,0.28,0.29],
-  sal:     [34.7,34.7,34.7,34.7,34.7,34.7,34.7,34.7,34.7,34.7,34.7,34.7],
-  par:     [0.06,0.06,0.06,0.05,0.05,0.05,0.05,0.05,0.05,0.06,0.06,0.06],
-  npp:     [400,420,450,480,460,380,320,300,320,360,380,390],
-  curr_u:  [0,0,0,0,0,0,0,0,0,0,0,0],
-  curr_v:  [0,0,0,0,0,0,0,0,0,0,0,0],
-  baa:     [0,0,0,0,0,0,0,0,0,0,0,0],
-  hotspot: [0,0,0,0,0.2,0.5,0.8,1.0,0.8,0.3,0,0],
-  seaice:  [0.08,0.09,0.09,0.08,0.07,0.06,0.05,0.05,0.06,0.07,0.08,0.08],
-  sla:     [0,0,0,0,0,0,0,0,0,0,0,0]
+  sst:   [20.5,20.2,20.0,19.8,19.8,20.0,20.3,20.7,21.0,21.1,21.0,20.7],
+  chlor: [0.30,0.32,0.35,0.38,0.36,0.28,0.22,0.20,0.22,0.25,0.28,0.29]
 };
 
 async function _climatologyFallback(v,mode,df,dt,lat,lon){
@@ -158,59 +147,7 @@ async function _climatologyFallback(v,mode,df,dt,lat,lon){
   return null;
 }
 
-// ── C5: Layer D — Cross-Variable Empirical Prediction ──
-// Runs as a post-fetch pass — pure computation, no network calls.
-function _crossVariablePredict(){
-  const predicted=[];
-
-  // Kd490 from Chlorophyll (Morel 2007)
-  if(!S.envR.par&&S.envR.chlor?.value!=null){
-    const chl=S.envR.chlor.value;
-    const kd=0.0166+0.07242*Math.pow(Math.max(chl,0.01),0.69);
-    S.envR.par={nm:'Kd490',value:+kd.toFixed(4),u:'m⁻¹',confidence:CONFIDENCE.PREDICTED,
-      srcNote:'predicted:Morel2007(Chl→Kd490)'};
-    predicted.push('par');
-    console.info(`GAP-FILL predicted par (Kd490) = ${kd.toFixed(4)} from Chl = ${chl}`);
-  }
-
-  // NPP from SST + Chlorophyll (simplified VGPM, Behrenfeld & Falkowski 1997)
-  if(!S.envR.npp&&S.envR.sst?.value!=null&&S.envR.chlor?.value!=null){
-    const sst=S.envR.sst.value,chl=S.envR.chlor.value;
-    // Simplified VGPM: Pb_opt as function of SST
-    const pbOpt=-3.27e-8*Math.pow(sst,7)+3.4132e-6*Math.pow(sst,6)-1.348e-4*Math.pow(sst,5)
-      +2.462e-3*Math.pow(sst,4)-0.0205*Math.pow(sst,3)+0.0617*Math.pow(sst,2)+0.2749*sst+1.2956;
-    const dirr=33.0; // avg daily irradiance (Einstein/m²/day) estimate
-    const zeu=4.6/Math.max(0.01,0.0166+0.07242*Math.pow(Math.max(chl,0.01),0.69));
-    const npp=Math.max(0,pbOpt*chl*dirr*zeu*0.66125);
-    S.envR.npp={nm:'Net Primary Productivity',value:+npp.toFixed(1),u:'mgC/m²/day',
-      confidence:CONFIDENCE.PREDICTED,srcNote:'predicted:VGPM(SST+Chl→NPP)'};
-    predicted.push('npp');
-    console.info(`GAP-FILL predicted npp = ${npp.toFixed(1)} from SST=${sst}, Chl=${chl}`);
-  }
-
-  // Hotspot from SST
-  if(!S.envR.hotspot&&S.envR.sst?.value!=null){
-    const sst=S.envR.sst.value;
-    const mmm=27; // tropical default — if better estimate available, use it
-    const hotspot=Math.max(0,sst-mmm);
-    S.envR.hotspot={nm:'Coral Hotspot',value:+hotspot.toFixed(2),u:'°C',
-      confidence:CONFIDENCE.PREDICTED,srcNote:'predicted:SST−MMM'};
-    predicted.push('hotspot');
-  }
-
-  // Chlorophyll from SST (rough inverse relationship, low confidence)
-  if(!S.envR.chlor&&S.envR.sst?.value!=null){
-    const sst=S.envR.sst.value;
-    // Empirical: tropical warm waters = oligotrophic, cold upwelling = productive
-    const chl=Math.max(0.01,Math.min(20,Math.exp(-0.1*(sst-15)+Math.log(0.5))));
-    S.envR.chlor={nm:'Chlorophyll-a',value:+chl.toFixed(3),u:'mg/m³',
-      confidence:CONFIDENCE.PREDICTED,srcNote:'predicted:empirical(SST→Chl)'};
-    predicted.push('chlor');
-    console.info(`GAP-FILL predicted chlor = ${chl.toFixed(3)} from SST=${sst}`);
-  }
-
-  return predicted;
-}
+function _crossVariablePredict(){return[]}
 
 // ── C6: Orchestrator — called when all cascade sources fail for a variable ──
 async function _gapFillPipeline(v,mode,df,dt,lat,lon,stride,isHist){

@@ -56,12 +56,6 @@ async function buildSessionSummary() {
       s += `\n- Variables fetched: ${vars.join(', ')}`;
       if (df && dt) s += `\n- Date range: ${df} to ${dt}`;
       if (sources.size) s += `\n- Source: ${[...sources].join(', ')}`;
-      // Carbon chemistry summary
-      const carbonVars = [];
-      if (S.envR.co2_keeling) carbonVars.push('CO2=' + S.envR.co2_keeling.value + 'ppm');
-      if (S.envR.pco2) carbonVars.push('pCO2=' + S.envR.pco2.value + '\u00b5atm');
-      if (S.envR.omega_ar) carbonVars.push('\u03a9arag=' + S.envR.omega_ar.value + ' (' + (S.envR.omega_ar.interpretation || '') + ')');
-      if (carbonVars.length) s += '\n- Carbon chemistry: ' + carbonVars.join(', ');
       sections.push(s);
     }
   } catch (e) {}

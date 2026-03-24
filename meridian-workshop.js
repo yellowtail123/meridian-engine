@@ -1557,7 +1557,7 @@ function openMethodWizard(){
       {label:'Regime shifts / breakpoints',rec:['runRegimeShift'],note:'Rodionov STARS algorithm'},
       {label:'Seasonal decomposition',rec:['runSeasonalDecomp'],note:'Additive decomposition: trend + seasonal + residual'},
       {label:'Trend detection',rec:['runMannKendall'],note:'Mann-Kendall monotonic trend test'},
-      {label:'Marine heatwave events',rec:['detectMHW'],note:'Hobday et al. (2016) — requires SST time series in Env Data tab'}]},
+      {label:'Trend detection (seasonal)',rec:['runSeasonalDecomp','runMannKendall'],note:'Decompose then test for monotonic trend'}]},
     {q:'Which meta-analysis tool?',opts:[
       {label:'Pool effect sizes',rec:['runMetaAnalysis'],note:'DerSimonian-Laird random-effects forest plot'},
       {label:'Check publication bias',rec:['runFunnelPlot'],note:'Funnel plot + Egger regression test'},

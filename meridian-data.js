@@ -1212,10 +1212,7 @@ function sendCompareToWS(){if(!window._compareResults)return;S.wsC=['Species','S
 // ═══ ENV DATA — verified datasets + timeouts ═══
 const EV=[
 {id:'sst',nm:'SST',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'sst',dm:3,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41',v:'analysed_sst',dm:3,lag:2,minDate:'2002-06-01'}},
-{id:'sst_anom',nm:'SST Anomaly',u:'°C',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'anom',dm:3,lag:14,minDate:'1981-09-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41anom',v:'sstAnom',dm:3,lag:2,minDate:'2002-06-01'}},
 {id:'chlor',nm:'Chlorophyll-a',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01'}},
-{id:'par',nm:'Kd490',u:'m⁻¹',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4901day',v:'kd_490',dm:3,lag:8,minDate:'2002-07-01',alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4901day',v:'k490',dm:3,lag:2,minDate:'2012-01-01'}},
-{id:'co2',nm:'CO₂',u:'ppm',cat:'Biogeochem',src:'co2'},
 {id:'wh',nm:'Wave Height',u:'m',cat:'Waves',src:'m',p:'wave_height',pd:'wave_height_max'},
 {id:'wd',nm:'Wave Dir',u:'°',cat:'Waves',src:'m',p:'wave_direction',pd:'wave_direction_dominant'},
 {id:'wp',nm:'Wave Period',u:'s',cat:'Waves',src:'m',p:'wave_period',pd:'wave_period_max'},
@@ -1226,35 +1223,8 @@ const EV=[
 {id:'pr',nm:'Pressure',u:'hPa',cat:'Atmos',src:'w',p:'pressure_msl',pd:'pressure_msl_mean'},
 {id:'pp',nm:'Precip',u:'mm',cat:'Atmos',src:'w',p:'precipitation',pd:'precipitation_sum'},
 {id:'cl',nm:'Cloud',u:'%',cat:'Atmos',src:'w',p:'cloud_cover',pd:'cloud_cover_mean'},
-{id:'sr',nm:'Solar (PAR)',u:'einstein/m²/day',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1par01day',v:'par',dm:3,lag:8,minDate:'2002-07-01'},
-{id:'hm',nm:'Humidity',u:'%',cat:'Atmos',src:'w',p:'relative_humidity_2m',pd:'relative_humidity_2m_mean'},
-{id:'sal',nm:'Salinity',u:'PSU',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaacwSMAPsss3day',v:'sss',dm:3,minDate:'2015-04-01',lag:3,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'coastwatchSMOSv662SSS3day',v:'sss',dm:4,z:'(0.0)',lag:3,minDate:'2010-06-01'}},
-{id:'npp',nm:'Net Primary Productivity',u:'mgC/m²/day',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8}},
-{id:'curr_u',nm:'Current (U)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'u_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14}},
-{id:'curr_v',nm:'Current (V)',u:'m/s',cat:'Physical',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'v_current',dm:3,minDate:'1993-01-01',lag:30,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14}},
-{id:'sla',nm:'Sea Level Anomaly',u:'m',cat:'Physical',src:'e',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwBLENDEDsshDaily',v:'sla',dm:3,minDate:'2017-02-13',lag:14,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14}},
-{id:'baa',nm:'Bleaching Alert Area',u:'level',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_BAA',dm:3,minDate:'1985-04-01',lag:5},
-{id:'hotspot',nm:'Coral Hotspot',u:'°C',cat:'Coral',src:'e',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_HOTSPOT',dm:3,minDate:'1985-04-01',lag:5},
-{id:'seaice',nm:'Sea Ice',u:'fraction',cat:'Cryosphere',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISSTIce',v:'sic',dm:3,minDate:'1870-01-16',lag:45},
 {id:'depth',nm:'Depth',u:'m',cat:'Physical',src:'bath'},
 {id:'slope',nm:'Slope Angle',u:'°',cat:'Physical',src:'bath'},
-{id:'co2_keeling',nm:'Atmos CO\u2082 (Keeling)',u:'ppm',cat:'Carbon',src:'co2_keeling'},
-{id:'pco2',nm:'Surface pCO\u2082',u:'\u00b5atm',cat:'Carbon',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaa_psl_5b56_2d90_a498',v:'fco2_ave_weighted',dm:3,minDate:'1970-01-01',lag:365,alt:{server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaa_psl_5b56_2d90_a498',v:'fco2_ave_weighted',dm:3}},
-{id:'omega_ar',nm:'\u03a9arag (estimated)',u:'',cat:'Carbon',src:'calc'},
-// ── New: Physical Oceanography ──
-{id:'mld',nm:'Mixed Layer Depth',u:'m',cat:'Physical',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'mixed_layer_thickness',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14},
-// ── New: Biogeochemistry ──
-{id:'poc',nm:'Particulate Organic Carbon',u:'mg/m³',cat:'Biogeochem',src:'e',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1poc8day',v:'poc',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8},
-{id:'dox',nm:'Dissolved Oxygen',u:'mL/L',cat:'Biogeochem',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'noaacwWOA18o_t00an01',v:'o_an',dm:4,z:'(0.0)',lag:365,minDate:'1955-01-01'},
-{id:'no3',nm:'Nitrate',u:'\u00b5mol/kg',cat:'Biogeochem',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'noaacwWOA18n_t00an01',v:'n_an',dm:4,z:'(0.0)',lag:365,minDate:'1955-01-01'},
-{id:'po4',nm:'Phosphate',u:'\u00b5mol/kg',cat:'Biogeochem',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'noaacwWOA18p_t00an01',v:'p_an',dm:4,z:'(0.0)',lag:365,minDate:'1955-01-01'},
-{id:'sio4',nm:'Silicate',u:'\u00b5mol/kg',cat:'Biogeochem',src:'e',server:'https://www.ncei.noaa.gov/erddap',ds:'noaacwWOA18i_t00an01',v:'i_an',dm:4,z:'(0.0)',lag:365,minDate:'1955-01-01'},
-{id:'ph_est',nm:'pH (estimated)',u:'',cat:'Biogeochem',src:'calc'},
-// ── New: Climate & Atmospheric ──
-{id:'uv',nm:'UV Index',u:'',cat:'Climate',src:'w',p:'uv_index',pd:'uv_index_max'},
-{id:'oni',nm:'ENSO ONI',u:'\u00b0C',cat:'Climate',src:'oni'},
-{id:'nao',nm:'NAO Index',u:'',cat:'Climate',src:'nao'},
-{id:'mhw',nm:'Marine Heatwave',u:'\u00b0C above 90th pct',cat:'Climate',src:'mhw'},
 ];
 // ── Multi-Source Fusion Registry ──
 let _fusionMode=false;
@@ -1266,50 +1236,12 @@ const _fusionSources={
     {id:'crw_sst',nm:'CRW CoralTemp (PIFSC)',server:'https://oceanwatch.pifsc.noaa.gov/erddap',ds:'CRW_sst_v3_1',v:'analysed_sst',dm:3,lag:3,minDate:'1985-01-01',res:'5 km'},
     {id:'pathfinder',nm:'Pathfinder v5.3 Night (PolarWatch)',server:'https://polarwatch.noaa.gov/erddap',ds:'erdPH53sstn8day',v:'sst',dm:3,lag:14,minDate:'1981-08-25',res:'4 km'},
     {id:'hadisst',nm:'HadISST (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISST',v:'sst',dm:3,lag:45,minDate:'1870-01-16',res:'1°'}],
-  sst_anom:[
-    {id:'oisst_anom_cw',nm:'OISST Anomaly (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'ncdcOisst21Agg_LonPM180',v:'anom',dm:3,lag:14,minDate:'1981-09-01',res:'0.25°'},
-    {id:'oisst_anom',nm:'OISST Anomaly (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'ncdc_oisst_v2_avhrr_by_time_zlev_lat_lon',v:'anom',dm:4,z:'(0)',lon360:true,lag:14,minDate:'1981-09-01',res:'25 km'},
-    {id:'mur_anom',nm:'MUR SST Anomaly (JPL)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplMURSST41anom',v:'sstAnom',dm:3,lag:2,minDate:'2002-06-01',res:'1 km'},
-    {id:'crw_anom',nm:'CRW SST Anomaly (PIFSC)',server:'https://oceanwatch.pifsc.noaa.gov/erddap',ds:'CRW_sst_anom_v1_0',v:'sst_anomaly',dm:3,lag:3,minDate:'1985-01-01',res:'5 km'}],
   chlor:[
     {id:'modis_chla_8d',nm:'MODIS Aqua Chl-a 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla8day',v:'chlorophyll',dm:3,lag:8,minDate:'2003-01-01',res:'4 km'},
     {id:'viirs_vh',nm:'VIIRS VH 2018 Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018chla1day',v:'chla',dm:3,lag:2,minDate:'2012-01-01',res:'4 km'},
     {id:'viirs_cw',nm:'VIIRS SNPP NRT (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwNPPVIIRSchlaDaily',v:'chlor_a',dm:4,z:'(0.0)',lag:3,minDate:'2017-01-01',res:'4 km'},
     {id:'viirs_nrt',nm:'VIIRS SNPP NRT Prod (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'productivity_viirs_snpp_nrt_daily',v:'chlor_a',dm:3,lag:2,minDate:'2017-11-01',res:'4 km'},
-    {id:'modis_chla',nm:'MODIS Aqua Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla1day',v:'chlorophyll',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'}],
-  par:[
-    {id:'modis_kd_1d',nm:'MODIS Aqua Kd490 1-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4901day',v:'kd_490',dm:3,lag:8,minDate:'2002-07-01',res:'4 km'},
-    {id:'viirs_kd_vh',nm:'VIIRS VH 2018 Kd490 (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4901day',v:'k490',dm:3,lag:2,minDate:'2012-01-01',res:'4 km'},
-    {id:'viirs_kd_8d',nm:'VIIRS VH 2018 Kd490 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdVH2018k4908day',v:'k490',dm:3,lag:8,minDate:'2012-01-01',res:'4 km'},
-    {id:'viirs_kd_wk',nm:'VIIRS SQ Kd490 Weekly (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisVHNSQkd490Weekly',v:'kd_490',dm:3,lag:8,minDate:'2012-01-01',res:'4 km'},
-    {id:'modis_kd_r22',nm:'MODIS Kd490 R2022 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1kd4908day_R2022SQ',v:'k490',dm:3,minDate:'2003-01-01',res:'4 km'}],
-  sal:[
-    {id:'smap_3d',nm:'SMAP SSS 3-day (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'noaacwSMAPsss3day',v:'sss',dm:3,lag:3,minDate:'2015-04-01',res:'0.25°'},
-    {id:'smos',nm:'SMOS SSS 3-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'coastwatchSMOSv662SSS3day',v:'sss',dm:4,z:'(0.0)',lag:3,minDate:'2010-06-01',res:'25 km'},
-    {id:'smap',nm:'SMAP SSS Daily (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwSMAPsssDaily',v:'sss',dm:4,z:'(0.0)',minDate:'2015-04-01',res:'40 km'}],
-  curr_u:[
-    {id:'oscar_u_cw',nm:'OSCAR Currents U (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'u_current',dm:3,minDate:'1993-01-01',lag:30,res:'1/3°'},
-    {id:'nesdis_u',nm:'NESDIS SSH ugos (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'ugos',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'},
-    {id:'oscar_u',nm:'OSCAR Currents U (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'u',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30,res:'0.33°'},
-    {id:'hycom_u',nm:'HYCOM Global U (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'water_u',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14,res:'0.08°'}],
-  curr_v:[
-    {id:'oscar_v_cw',nm:'OSCAR Currents V (CoastWatch)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdOSCURssta',v:'v_current',dm:3,minDate:'1993-01-01',lag:30,res:'1/3°'},
-    {id:'nesdis_v',nm:'NESDIS SSH vgos (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'vgos',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'},
-    {id:'oscar_v',nm:'OSCAR Currents V (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'jplOscar',v:'v',dm:4,z:'(15.0)',lon360:true,minDate:'1992-10-06',lag:30,res:'0.33°'},
-    {id:'hycom_v',nm:'HYCOM Global V (NCEI)',server:'https://www.ncei.noaa.gov/erddap',ds:'Hycom_sfc_3d',v:'water_v',dm:4,z:'(0)',lon360:true,minDate:'1994-01-01',lag:14,res:'0.08°'}],
-  sla:[
-    {id:'blended_sla',nm:'Blended SSH SLA (CoastWatch)',server:'https://coastwatch.noaa.gov/erddap',ds:'noaacwBLENDEDsshDaily',v:'sla',dm:3,minDate:'2017-02-13',lag:14,res:'0.25°'},
-    {id:'nesdis_sla',nm:'NESDIS SSH SLA (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'nesdisSSH1day',v:'sla',dm:3,minDate:'2017-02-13',lag:14,res:'25 km'}],
-  npp:[
-    {id:'modis_pp8',nm:'MODIS Aqua PP 8-day (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1pp8day',v:'productivity',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'},
-    {id:'viirs_nrt_npp',nm:'VIIRS SNPP NRT Prod (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'productivity_viirs_snpp_nrt_daily',v:'productivity',dm:3,lag:2,minDate:'2017-11-01',res:'4 km'}],
-  baa:[
-    {id:'crw_baa',nm:'CRW BAA (PaciOOS)',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_BAA',dm:3,minDate:'1985-04-01',lag:5,res:'5 km'}],
-  hotspot:[
-    {id:'crw_hotspot',nm:'CRW Hotspot (PaciOOS)',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_HOTSPOT',dm:3,minDate:'1985-04-01',lag:5,res:'5 km'}],
-  seaice:[
-    {id:'hadisst_ice',nm:'HadISST Ice (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdHadISSTIce',v:'sic',dm:3,lag:45,minDate:'1870-01-16',res:'1°'},
-    {id:'crw_seaice',nm:'CRW Sea Ice (PaciOOS)',server:'https://pae-paha.pacioos.hawaii.edu/erddap',ds:'dhw_5km',v:'CRW_SEAICE',dm:3,minDate:'1985-04-01',lag:5,res:'5 km'}]
+    {id:'modis_chla',nm:'MODIS Aqua Chl-a (PFEG)',server:'https://coastwatch.pfeg.noaa.gov/erddap',ds:'erdMH1chla1day',v:'chlorophyll',dm:4,z:'(0.0)',minDate:'2003-01-01',lag:8,res:'4 km'}]
 };
 // ── Cascade Fetch — tries all known sources for a variable until data is found ──
 async function _cascadeErddap(v,mode,df,dt,lat,lon,_stride,isHist,triedDS){
@@ -1351,35 +1283,16 @@ async function _cascadeErddap(v,mode,df,dt,lat,lon,_stride,isHist,triedDS){
   return{synthesized:true,ts:merged,srcCount:usedSources.length,
     srcNames:usedSources.map(s=>s.nm).join(' + '),src:usedSources[0]};
 }
-// ═══ Aragonite Saturation Estimation (Jiang et al. 2015 / simplified) ═══
-function estimateAragoniteSaturation(sst,sal){
-  sal=sal||35;
-  // Empirical polynomial fit from Jiang et al. 2015 for surface open ocean
-  // Omega_arag = f(SST, SSS) — simplified from full carbonate chemistry
-  // Coefficients calibrated to global surface ocean data
-  const omega=(-0.0081*sst*sst+0.3673*sst-0.4304)*(sal/35);
-  const clamped=Math.max(0,Math.round(omega*100)/100);
-  let interpretation,thresholdColor;
-  if(clamped<1){interpretation='Undersaturated (corrosive to aragonite shells)';thresholdColor='var(--co)'}
-  else if(clamped<1.5){interpretation='Marginal';thresholdColor='var(--wa)'}
-  else{interpretation='Supersaturated (favourable)';thresholdColor='var(--sg)'}
-  return{omega_ar:clamped,interpretation,thresholdColor,note:'Empirical estimate from SST'+(sal!==35?' & SSS':'')+'. For accurate values, use measured DIC/TA data from GLODAP or CO2SYS.'}
-}
 
 const EC=[...new Set(EV.map(v=>v.cat))];
 // ── Grouped variable selector with collapsible sections ──
 const EV_GROUPS=[
-  {name:'Physical Oceanography',ids:['sst','sst_anom','sal','sla','mld','curr_u','curr_v','wh','wd','wp','sh','ws','wdir','par','depth','slope']},
-  {name:'Biogeochemical',ids:['chlor','npp','poc','dox','no3','po4','sio4','ph_est','co2','co2_keeling','pco2','omega_ar','sr']},
-  {name:'Climate & Atmospheric',ids:['at','pr','pp','cl','hm','uv','oni','nao','mhw']},
-  {name:'Coral & Ecological',ids:['baa','hotspot','seaice']}
+  {name:'Ocean & Waves',ids:['sst','chlor','wh','wd','wp','sh','ws','wdir','depth','slope']},
+  {name:'Atmosphere',ids:['at','pr','pp','cl']}
 ];
 const EV_INFO={
   sst:{full:'Sea Surface Temperature',source:'NOAA OISST v2.1 via CoastWatch ERDDAP',res:'0.25°',cov:'1981\u2013present'},
-  sst_anom:{full:'SST Anomaly (departure from climatology)',source:'NOAA OISST v2.1 via CoastWatch ERDDAP',res:'0.25°',cov:'1981\u2013present'},
   chlor:{full:'Chlorophyll-a concentration',source:'NASA MODIS Aqua 8-day composite',res:'4 km',cov:'2003\u2013present'},
-  par:{full:'Diffuse attenuation at 490nm (water clarity/turbidity)',source:'NASA MODIS Aqua Kd490',res:'4 km',cov:'2002\u2013present'},
-  co2:{full:'Global atmospheric CO\u2082 (Mauna Loa)',source:'NOAA GML / Scripps',res:'daily',cov:'1958\u2013present'},
   wh:{full:'Significant wave height',source:'Open-Meteo Marine',res:'~5 km',cov:'90 days'},
   wd:{full:'Mean wave direction',source:'Open-Meteo Marine',res:'~5 km',cov:'90 days'},
   wp:{full:'Peak wave period',source:'Open-Meteo Marine',res:'~5 km',cov:'90 days'},
@@ -1390,32 +1303,8 @@ const EV_INFO={
   pr:{full:'Mean sea level pressure',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
   pp:{full:'Total precipitation',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
   cl:{full:'Cloud cover',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
-  sr:{full:'Photosynthetically Active Radiation (PAR)',source:'NASA MODIS Aqua via CoastWatch ERDDAP',res:'4 km',cov:'2002\u2013present'},
-  hm:{full:'Relative humidity at 2m',source:'Open-Meteo Archive',res:'~11 km',cov:'1940\u2013present'},
-  sal:{full:'Sea surface salinity',source:'NASA SMAP via CoastWatch ERDDAP',res:'0.25°',cov:'2015\u2013present'},
-  npp:{full:'Net Primary Productivity (VGPM model)',source:'MODIS Aqua / VIIRS',res:'4 km',cov:'2003\u2013present'},
-  curr_u:{full:'Eastward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
-  curr_v:{full:'Northward ocean surface current velocity',source:'OSCAR via CoastWatch ERDDAP',res:'1/3°',cov:'1993\u2013present'},
-  sla:{full:'Sea level anomaly from blended altimetry',source:'NOAA CoastWatch blended SSH',res:'0.25°',cov:'2017\u2013present'},
-  baa:{full:'Bleaching Alert Area level (0\u20134)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
-  hotspot:{full:'Coral bleaching hotspot (\u00b0C above MMM)',source:'NOAA Coral Reef Watch',res:'5 km',cov:'1985\u2013present'},
-  seaice:{full:'Sea ice concentration fraction',source:'HadISST / CRW',res:'1\u00b0 / 5 km',cov:'1870\u2013present'},
   depth:{full:'Bottom depth at coordinates',source:'GMRT / GEBCO via ERDDAP',res:'~100 m',cov:'static'},
-  slope:{full:'Seafloor slope angle',source:'Derived from bathymetry',res:'~100 m',cov:'static'},
-  co2_keeling:{full:'Atmospheric CO\u2082 (Keeling Curve, Scripps)',source:'Scripps CO2 Program',res:'daily',cov:'1958\u2013present'},
-  pco2:{full:'Surface ocean partial pressure of CO\u2082',source:'SOCAT / NOAA PSL',res:'1\u00b0',cov:'1970\u2013present'},
-  omega_ar:{full:'Aragonite saturation state (estimated from SST + salinity)',source:'Empirical (Jiang et al. 2015)',res:'computed',cov:'requires SST'},
-  mld:{full:'Mixed layer depth from ocean reanalysis',source:'HYCOM global reanalysis',res:'0.08\u00b0',cov:'1994\u2013present'},
-  poc:{full:'Particulate Organic Carbon from ocean colour',source:'MODIS Aqua satellite',res:'4 km',cov:'2003\u2013present'},
-  dox:{full:'Dissolved oxygen concentration (WOA climatology)',source:'World Ocean Atlas 2018',res:'1\u00b0',cov:'climatology (1955\u20132017)'},
-  no3:{full:'Nitrate concentration (WOA climatology)',source:'World Ocean Atlas 2018',res:'1\u00b0',cov:'climatology (1955\u20132017)'},
-  po4:{full:'Phosphate concentration (WOA climatology)',source:'World Ocean Atlas 2018',res:'1\u00b0',cov:'climatology (1955\u20132017)'},
-  sio4:{full:'Silicate concentration (WOA climatology)',source:'World Ocean Atlas 2018',res:'1\u00b0',cov:'climatology (1955\u20132017)'},
-  ph_est:{full:'Ocean pH (estimated from SST + salinity)',source:'Empirical estimation',res:'computed',cov:'requires SST'},
-  uv:{full:'UV index (solar ultraviolet radiation)',source:'Open-Meteo Archive/Forecast',res:'~11 km',cov:'1940\u2013present'},
-  oni:{full:'ENSO Oceanic Ni\u00f1o Index \u2014 3-month running mean SST anomaly in Ni\u00f1o 3.4 region',source:'NOAA CPC',res:'global index',cov:'1950\u2013present'},
-  nao:{full:'North Atlantic Oscillation index \u2014 pressure difference between Azores and Iceland',source:'NOAA CPC',res:'global index',cov:'1950\u2013present'},
-  mhw:{full:'Marine heatwave flag \u2014 SST exceeding local 90th percentile (Hobday et al. 2016)',source:'Computed from fetched SST',res:'computed',cov:'requires SST time series'}
+  slope:{full:'Seafloor slope angle',source:'Derived from bathymetry',res:'~100 m',cov:'static'}
 };
 let _evGroupState={};
 function renderEV(){
@@ -1433,7 +1322,7 @@ function renderEV(){
       ${open?`<div style="padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px">${vars.map(v=>{
         const info=EV_INFO[v.id];
         const tip=info?`${info.full}\nSource: ${info.source}\nResolution: ${info.res}\nCoverage: ${info.cov}\nUnits: ${v.u||'dimensionless'}`:'';
-        const tag=v.src==='bath'?' <span style="font-size:8px;opacity:.45">static</span>':v.src==='calc'||v.src==='mhw'?' <span style="font-size:8px;opacity:.45">computed</span>':v.src==='oni'||v.src==='nao'?' <span style="font-size:8px;opacity:.45">index</span>':'';
+        const tag=v.src==='bath'?' <span style="font-size:8px;opacity:.45">static</span>':'';
         return`<span class="vc ${S.envSel.has(v.id)?'sel':''}" data-id="${v.id}" onclick="tEV('${v.id}',this)" title="${escHTML(tip)}">${v.nm}${tag}${info?' <span style="font-size:9px;opacity:.4;cursor:help" title="'+escHTML(tip)+'">i</span>':''}</span>`}).join('')}</div>`:''}</div>`}).join('');
   // Append any vars not in groups (safety net)
   const grouped=new Set(EV_GROUPS.flatMap(g=>g.ids));
@@ -1547,7 +1436,6 @@ const eV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='e');
 const mV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='m');
 const wV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='w');
 const bV=sel.map(id=>EV.find(v=>v.id===id)).filter(v=>v&&v.src==='bath');
-const hC=sel.includes('co2');
 // Pre-flight: probe all ERDDAP servers in parallel (3s max)
 const _erddapServers=[...new Set(eV.map(v=>v.server).concat(eV.filter(v=>v.alt).map(v=>v.alt.server)))];
 await Promise.allSettled(_erddapServers.map(s=>probeServer(s)));
@@ -1557,10 +1445,6 @@ if(_polygonMode==='cut'&&_envPolygon)_clampNotes.push('Polygon cut: '+_envPolygo
 const ep=eV.map(async v=>{
   await _acquireSlot();
   try{
-  // Sea ice: not applicable in tropical latitudes
-  if(v.id==='seaice'&&Math.abs(parseFloat(lat))<=35){
-    S.envR.seaice={nm:'Sea Ice',value:0,u:'fraction',note:'Not applicable — no sea ice at this latitude'};
-    mc('seaice','ok','Tropical latitude');up(v.nm);return}
   // Promote alt to primary if server is dead
   let effV=v;let altPromoted=false;
   if(isServerDown(v.server)&&v.alt&&!isServerDown(v.alt.server)){
@@ -1621,7 +1505,7 @@ const ep=eV.map(async v=>{
     // Apply NOAA filters if active
     if(window._noaaFilters&&rows.length){
       const nf=window._noaaFilters;
-      if((v.id==='sst'||v.id==='sst_anom')&&nf.sstMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.sstMin&&val<=nf.sstMax});
+      if(v.id==='sst'&&nf.sstMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.sstMin&&val<=nf.sstMax});
       if(v.id==='chlor'&&nf.chlorMin!=null)rows=rows.filter(r=>{const val=r[r.length-1];return val>=nf.chlorMin&&val<=nf.chlorMax});
       if(!rows.length)throw new Error('All data filtered out by NOAA filters')}
     // Filter by polygon if active
@@ -1735,134 +1619,6 @@ const wp=wV.length?(async()=>{try{
       else mc(v.id,'err','All null values for '+v.nm)}else mc(v.id,'err','Parameter not available at this location');up(v.nm)})
 }catch(e){if(e.name==='AbortError')return;console.error('Weather API error:',e);
   wV.forEach(v=>{mc(v.id,'err',e.message);up(v.nm)})}})():Promise.resolve();
-// ── CO2 (global — with fallback URL) ──
-const _CO2_URLS=['https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv','https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/daily/daily_in_situ_co2_mlo.csv'];
-const cp=hC?(async()=>{try{
-  let t=null;
-  for(const co2Url of _CO2_URLS){
-    try{const r=await envFetchT(proxyUrl(co2Url),15000);if(r.ok){t=await r.text();break}}catch{}}
-  if(!t)throw new Error('All CO2 sources failed');
-  const allData=t.trim().split('\n').filter(l=>!l.startsWith('#')&&l.includes(',')).slice(1)
-    .map(l=>{const p=l.split(',');return{time:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`,value:parseFloat(p[p.length-1])||parseFloat(p[4])}}).filter(r=>r.value>0);
-  const data=(df&&dt)?allData.filter(d=>d.time>=df&&d.time<=dt):allData;
-  if(!data.length)throw new Error('No CO2 data in range');
-  S.envR.co2={nm:'CO₂',value:data[data.length-1]?.value,u:'ppm'};
-  if(mode==='timeseries')S.envTS.co2={nm:'CO₂',u:'ppm',data};mc('co2','ok')
-}catch(e){if(e.name==='AbortError')return;console.error('CO2 error:',e);mc('co2','err',e.message)}up('CO\u2082')})():Promise.resolve();
-// ── Keeling Curve CO2 (from Scripps — higher resolution) ──
-const hKeeling=sel.includes('co2_keeling');
-const kp=hKeeling?(async()=>{try{
-  const kUrl='https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/daily/daily_in_situ_co2_mlo.csv';
-  const r=await envFetchT(proxyUrl(kUrl),15000);if(!r.ok)throw new Error('Scripps CO2 HTTP '+r.status);
-  const t=await r.text();
-  const allData=t.trim().split('\n').filter(l=>!l.startsWith('"')&&l.includes(',')).slice(1)
-    .map(l=>{const p=l.split(',');const date=p[0]?.trim();const ppm=parseFloat(p[p.length-1]);return date&&ppm>0?{time:date,value:ppm}:null}).filter(Boolean);
-  const data=(df&&dt)?allData.filter(d=>d.time>=df&&d.time<=dt):allData;
-  if(!data.length)throw new Error('No Keeling data in range');
-  S.envR.co2_keeling={nm:'Atmos CO\u2082 (Keeling)',value:data[data.length-1]?.value,u:'ppm'};
-  if(mode==='timeseries')S.envTS.co2_keeling={nm:'Atmos CO\u2082 (Keeling)',u:'ppm',data};
-  stampProvenance('co2_keeling',{server:'scrippsco2.ucsd.edu',dataset:'Scripps CO2 Program Mauna Loa',variable:'co2_ppm',lat:'19.5',lon:'-155.6',from:df,to:dt,source:'scripps-co2'});
-  mc('co2_keeling','ok')
-}catch(e){if(e.name==='AbortError')return;console.error('Keeling error:',e);mc('co2_keeling','err',e.message)}up('Keeling CO\u2082')})():Promise.resolve();
-// ── Aragonite Saturation (computed from SST) ──
-const hOmega=sel.includes('omega_ar');
-const op=hOmega?(async()=>{try{
-  // Wait for SST to be available
-  await Promise.all(ep);
-  const sst=S.envR.sst?.value;
-  if(sst==null)throw new Error('SST required — fetch SST first');
-  const sal=S.envR.sal?.value||35;
-  const est=estimateAragoniteSaturation(sst,sal);
-  S.envR.omega_ar={nm:'\u03a9arag (estimated)',value:est.omega_ar,u:'',interpretation:est.interpretation,note:'Empirical estimate from SST'+(sal!==35?' & salinity':'')};
-  if(mode==='timeseries'&&S.envTS.sst){
-    S.envTS.omega_ar={nm:'\u03a9arag (estimated)',u:'',data:S.envTS.sst.data.map(d=>({time:d.time,value:estimateAragoniteSaturation(d.value,sal).omega_ar}))};
-  }
-  mc('omega_ar','ok')
-}catch(e){if(e.name==='AbortError')return;console.error('Omega_ar error:',e);mc('omega_ar','err',e.message)}up('\u03a9arag')})():Promise.resolve();
-// ── pH Estimation (from SST + Salinity — Takahashi et al. empirical) ──
-const hPh=sel.includes('ph_est');
-const php=hPh?(async()=>{try{
-  await Promise.all(ep);
-  const sst=S.envR.sst?.value;
-  if(sst==null)throw new Error('SST required \u2014 select SST to estimate pH');
-  const salV=S.envR.sal?.value||35;
-  // Empirical: pH decreases ~0.015 per °C increase, baseline 8.1 at 25°C, 35 PSU
-  const phVal=Math.round((8.1-0.015*(sst-25)+0.004*(salV-35))*1000)/1000;
-  S.envR.ph_est={nm:'pH (estimated)',value:phVal,u:'',note:'Empirical estimate from SST'+(salV!==35?' & salinity':'')};
-  if(mode==='timeseries'&&S.envTS.sst){
-    S.envTS.ph_est={nm:'pH (estimated)',u:'',data:S.envTS.sst.data.map(d=>{
-      const sv=S.envTS.sal?.data?.find(x=>x.time===d.time)?.value||salV;
-      return{time:d.time,value:Math.round((8.1-0.015*(d.value-25)+0.004*(sv-35))*1000)/1000}})}}
-  mc('ph_est','ok')
-}catch(e){if(e.name==='AbortError')return;mc('ph_est','err',e.message)}up('pH')})():Promise.resolve();
-// ── ENSO ONI Index (NOAA CPC) ──
-const hOni=sel.includes('oni');
-const onip=hOni?(async()=>{try{
-  const oniUrl='https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt';
-  const r=await envFetchT(proxyUrl(oniUrl),15000);
-  if(!r.ok)throw new Error('ONI HTTP '+r.status);
-  const t=await r.text();
-  const lines=t.trim().split('\n').filter(l=>l.trim()&&!/^SEAS|^APTS/i.test(l.trim()));
-  const seasonMap={DJF:'01',JFM:'02',FMA:'03',MAM:'04',AMJ:'05',MJJ:'06',JJA:'07',JAS:'08',ASO:'09',SON:'10',OND:'11',NDJ:'12'};
-  const allData=[];
-  for(const line of lines){
-    const p=line.trim().split(/\s+/);if(p.length<4)continue;
-    const seas=p[0],yr=p[1],anom=parseFloat(p[p.length-1]);
-    if(isNaN(anom)||!seasonMap[seas])continue;
-    allData.push({time:`${yr}-${seasonMap[seas]}-15`,value:anom})}
-  const data=(df&&dt)?allData.filter(d=>d.time>=df&&d.time<=dt):allData;
-  if(!data.length)throw new Error('No ONI data in range');
-  S.envR.oni={nm:'ENSO ONI',value:data[data.length-1]?.value,u:'\u00b0C'};
-  if(mode==='timeseries'){S.envTS.oni={nm:'ENSO ONI',u:'\u00b0C',data};
-    stampProvenance('oni',{server:'cpc.ncep.noaa.gov',dataset:'ONI Index',variable:'oni_anom',lat:'global',lon:'Ni\u00f1o 3.4',from:df,to:dt,source:'noaa-cpc'})}
-  mc('oni','ok')
-}catch(e){if(e.name==='AbortError')return;mc('oni','err',e.message)}up('ONI')})():Promise.resolve();
-// ── NAO Index (NOAA CPC) ──
-const hNao=sel.includes('nao');
-const naop=hNao?(async()=>{try{
-  const naoUrl='https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii';
-  const r=await envFetchT(proxyUrl(naoUrl),15000);
-  if(!r.ok)throw new Error('NAO HTTP '+r.status);
-  const t=await r.text();
-  const lines=t.trim().split('\n').filter(l=>l.trim()&&!/^\s*$/.test(l));
-  const allData=[];
-  for(const line of lines){
-    const p=line.trim().split(/\s+/);
-    if(p.length>=3&&p.length<13){
-      // CPC 3-column format: year month value
-      const yr=p[0],mo=p[1],val=parseFloat(p[2]);
-      if(isNaN(parseInt(yr))||isNaN(parseInt(mo)))continue;
-      if(!isNaN(val)&&Math.abs(val)<90)allData.push({time:`${yr}-${String(parseInt(mo)).padStart(2,'0')}-15`,value:val})
-    }else if(p.length>=13){
-      // PSL 13-column format: year val1..val12
-      const yr=p[0];if(isNaN(parseInt(yr)))continue;
-      for(let m=1;m<=12;m++){const val=parseFloat(p[m]);
-        if(!isNaN(val)&&Math.abs(val)<90)allData.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:val})}}}
-  const data=(df&&dt)?allData.filter(d=>d.time>=df&&d.time<=dt):allData;
-  if(!data.length)throw new Error('No NAO data in range');
-  S.envR.nao={nm:'NAO Index',value:data[data.length-1]?.value,u:''};
-  if(mode==='timeseries'){S.envTS.nao={nm:'NAO Index',u:'',data};
-    stampProvenance('nao',{server:'cpc.ncep.noaa.gov',dataset:'NAO Index',variable:'nao_monthly',lat:'global',lon:'Atlantic',from:df,to:dt,source:'noaa-cpc'})}
-  mc('nao','ok')
-}catch(e){if(e.name==='AbortError')return;mc('nao','err',e.message)}up('NAO')})():Promise.resolve();
-// ── Marine Heatwave Detection (computed from SST time series) ──
-const hMhw=sel.includes('mhw');
-const mhwp=hMhw?(async()=>{try{
-  await Promise.all(ep);
-  if(!S.envTS.sst?.data?.length)throw new Error('SST time series required \u2014 select SST with a date range');
-  const sstData=S.envTS.sst.data;
-  // Calculate climatological 90th percentile by day-of-year (Hobday et al. 2016)
-  const byDOY={};sstData.forEach(d=>{const doy=d.time.slice(5,10);if(!byDOY[doy])byDOY[doy]=[];byDOY[doy].push(d.value)});
-  const pct90={};Object.keys(byDOY).forEach(doy=>{const vs=byDOY[doy].sort((a,b)=>a-b);pct90[doy]=vs[Math.floor(vs.length*0.9)]||vs[vs.length-1]});
-  // Flag MHW days: SST > 90th percentile for that day-of-year
-  const mhwData=sstData.map(d=>{const doy=d.time.slice(5,10);const thresh=pct90[doy]||0;
-    return{time:d.time,value:d.value>thresh?Math.round((d.value-thresh)*100)/100:0}});
-  const mhwDays=mhwData.filter(d=>d.value>0).length;
-  S.envR.mhw={nm:'Marine Heatwave',value:mhwDays,u:'days above 90th pct',note:mhwDays+' MHW days detected in period'};
-  if(mode==='timeseries'){S.envTS.mhw={nm:'Marine Heatwave (\u00b0C above 90th pct)',u:'\u00b0C',data:mhwData};
-    stampProvenance('mhw',{server:'computed',dataset:'MHW from SST',variable:'sst_exceedance_90pct',lat,lon,from:df,to:dt,source:'hobday2016'})}
-  mc('mhw','ok',mhwDays+' MHW days')
-}catch(e){if(e.name==='AbortError')return;mc('mhw','err',e.message)}up('MHW')})():Promise.resolve();
 // ── Bathymetry (Depth + Slope from ETOPO1) ──
 const bp=bV.length?(async()=>{try{
   _areaStats=null;
@@ -1882,7 +1638,7 @@ const bp=bV.length?(async()=>{try{
   bV.forEach(v=>{mc(v.id,'err',e.message);up(v.nm)})}})():Promise.resolve();
 // ── Await all, render results ──
 const _myAbort=_envAbort;
-try{await Promise.all([...ep,mp,wp,cp,kp,op,php,onip,naop,mhwp,bp])}catch(e){
+try{await Promise.all([...ep,mp,wp,bp])}catch(e){
   if(e.name==='AbortError')throw e;
   console.error('envFetch batch error:',e)}
 if(_myAbort.signal.aborted){if(_envAbort===_myAbort){_envAbort=null;hi('#eprog')};return}
@@ -1980,18 +1736,7 @@ if(tk.length){let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div
     let pd=S.envTS[id].data;if(pd.length>350)pd=lttb(pd,350);
     const times=pd.map(d=>d.time),vals=pd.map(d=>d.value);
     let trcs;
-    // Special rendering for ONI (red/blue bars) and MHW (red fill)
-    if(id==='oni'){
-      const colors=vals.map(v=>v>=0.5?'#C27878':v<=-0.5?'#6BA3C9':'#888');
-      trcs=[{x:times,y:vals,type:'bar',marker:{color:colors},name:'ENSO ONI',
-        hovertemplate:'%{x}<br>ONI: %{y:.2f}°C<br>%{text}<extra></extra>',
-        text:vals.map(v=>v>=0.5?'El Niño':v<=-0.5?'La Niña':'Neutral')}];
-    }else if(id==='mhw'){
-      trcs=[{x:times,y:vals,type:'scatter',mode:'lines',fill:'tozeroy',
-        line:{color:'#C27878',width:1.5},fillcolor:'rgba(194,120,120,0.35)',name:'MHW Exceedance'}];
-    }else{
-      trcs=[{x:times,y:vals,type:'scatter',mode:'lines',line:{color:CL[i%8],width:2},fill:'tozeroy',fillcolor:CL[i%8]+'15',name:S.envTS[id].nm}];
-    }
+    trcs=[{x:times,y:vals,type:'scatter',mode:'lines',line:{color:CL[i%8],width:2},fill:'tozeroy',fillcolor:CL[i%8]+'15',name:S.envTS[id].nm}];
     // Moving average — batch into initial traces
     if(pd.length>14){const win=Math.min(30,Math.floor(pd.length/5));
       const ma=new Array(pd.length);let rsum=0;
@@ -2002,16 +1747,8 @@ if(tk.length){let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div
     const anoms=detectAnomalies(S.envTS[id].data);
     if(anoms.length){const ad=anoms.length>200?lttb(anoms,200):anoms;
       trcs.push({x:ad.map(d=>d.time),y:ad.map(d=>d.value),type:'scatter',mode:'markers',marker:{color:'#C27878',size:6,symbol:'diamond'},name:`Anomalies (${anoms.length})`,text:ad.map(d=>`z=${d.zScore.toFixed(1)}`)})}
-    // Climate index traces — prepare inline
-    const idxTraces=[];
-    if(_activeIndices.size){const minT=S.envTS[id].data[0]?.time,maxT=S.envTS[id].data[S.envTS[id].data.length-1]?.time;
-      if(minT&&maxT)_activeIndices.forEach(type=>{const idx=_climateIndices[type];if(!idx?.data?.length)return;
-        const filtered=idx.data.filter(d=>d.time>=minT&&d.time<=maxT);if(!filtered.length)return;
-        idxTraces.push({x:filtered.map(d=>d.time),y:filtered.map(d=>d.value),type:'scatter',mode:'lines',
-          line:{color:type==='oni'?'#D4A04A':type==='nao'?'#9B8EC4':'#6BA3C9',width:1.5,dash:'dashdot'},
-          name:_climateIndices[type].nm,yaxis:'y2',opacity:0.7})})}
     const mk=_mkTrends[id]||null;
-    return{id,trcs:[...trcs,...idxTraces],anoms,hasIdx:idxTraces.length>0,mk}});
+    return{id,trcs,anoms,hasIdx:false,mk}});
   // Lazy chart rendering — only render charts visible in viewport via IntersectionObserver
   const _chartJobMap=new Map();
   chartJobs.forEach(job=>{_chartJobMap.set('ep-'+job.id,job);
@@ -2124,7 +1861,7 @@ renderAnnotationsPanel(tk);
 renderThresholdPanel(tk);
 // Action buttons
 try{sessionStorage.setItem('meridian_env_meta',JSON.stringify({lat,lon,keys:fk}))}catch{}
-H('#eact',`<div style="display:flex;gap:6px;margin:12px 0;flex-wrap:wrap"><button class="bt bt-pri" onclick="sendEnvWS()">→ Workshop</button><button class="bt sm" onclick="dlEnvCSV()">CSV</button><button class="bt sm" onclick="dlReproScript('python')">Python</button><button class="bt sm" onclick="dlReproScript('r')">R Script</button><button class="bt sm" onclick="exportReproBundle()" style="color:var(--sg);border-color:var(--sb)">Export Bundle</button><button class="bt sm" onclick="shareAnalysisLink()">Share Link</button><button class="bt sm" onclick="saveCurrentAsWorkflow()" style="color:var(--ac)">Save as Workflow</button>${S.envTS.sst?'<button class="bt sm" style="color:var(--co)" onclick="detectMHW()">Detect Marine Heatwaves</button>':''}<button class="bt sm" onclick="fetchArgoProfiles()">Argo Profiles</button>${tk.length?tk.map(id=>`<button class="bt sm" onclick="exportChart('ep-${id}')">📷 ${S.envTS[id].nm}</button>`).join(''):''}</div>
+H('#eact',`<div style="display:flex;gap:6px;margin:12px 0;flex-wrap:wrap"><button class="bt bt-pri" onclick="sendEnvWS()">→ Workshop</button><button class="bt sm" onclick="dlEnvCSV()">CSV</button><button class="bt sm" onclick="dlReproScript('python')">Python</button><button class="bt sm" onclick="dlReproScript('r')">R Script</button><button class="bt sm" onclick="exportReproBundle()" style="color:var(--sg);border-color:var(--sb)">Export Bundle</button><button class="bt sm" onclick="shareAnalysisLink()">Share Link</button><button class="bt sm" onclick="saveCurrentAsWorkflow()" style="color:var(--ac)">Save as Workflow</button><button class="bt sm" onclick="fetchArgoProfiles()">Argo Profiles</button>${tk.length?tk.map(id=>`<button class="bt sm" onclick="exportChart('ep-${id}')">📷 ${S.envTS[id].nm}</button>`).join(''):''}</div>
 ${window._activeWorkflow?`<div class="tip" style="margin-top:8px"><b>Workflow: ${escHTML(window._activeWorkflow.name)}</b><br>${escHTML(window._activeWorkflow.guidance)}<button class="dx" onclick="this.closest('.tip').remove();window._activeWorkflow=null">×</button></div>`:''}
 <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Normality & Quality Assessment</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none">
 <table class="dt"><thead><tr><th>Variable</th><th>n</th><th>W</th><th>p</th><th>Normal?</th><th>Quality</th><th>Coverage</th><th>Max Gap</th></tr></thead>
@@ -2136,9 +1873,6 @@ ${window._activeWorkflow?`<div class="tip" style="margin-top:8px"><b>Workflow: $
 <button class="bt sm" onclick="runEnvForecast()">Forecast (90d)</button>
 <button class="bt sm" onclick="runEnvGLM()">GLM</button></div>
 <div id="envAnovaResult"></div><div class="pcc" id="envForecastChart" style="height:280px;display:none"></div><div id="envGLMResult"></div></div></div>`);sh('#eact');
-// Plankton/productivity links panel (P2.9)
-const plnk=$('#env-plankton');if(plnk&&(S.envSel.has('npp')||S.envSel.has('chlor'))){const plat=$('#elat').value,plon=$('#elon').value;
-plnk.innerHTML=`<div class="sec"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'"><h4>Plankton & Productivity Resources</h4><span style="color:var(--tm)">▸</span></div><div class="sb" style="display:none"><div style="display:flex;gap:8px;flex-wrap:wrap"><a href="https://www.st.nmfs.noaa.gov/copepod/atlas/html/ptindx_00_000000.html" target="_blank" class="bt sm">COPEPOD Atlas</a><a href="https://www.marine.copernicus.eu/" target="_blank" class="bt sm">Copernicus Marine</a><a href="https://oceancolor.gsfc.nasa.gov/" target="_blank" class="bt sm">NASA Ocean Color</a></div><div style="font-size:11px;color:var(--tm);margin-top:6px;font-family:var(--mf)">Coordinates: ${plat}°N, ${plon}°E · Selected: NPP + Chlorophyll data</div></div></div>`}
 // ── Location 2 comparison ──
 const loc2=$('#eloc2');
 if(loc2&&loc2.style.display!=='none'){
@@ -2284,7 +2018,7 @@ function dlEnvCSV(){const{cols,rows}=bldET();
     if(v.src==='e')hdr.push(`#   ${v.nm}: ERDDAP dataset=${v.ds}, server=${v.server}, var=${v.v}`);
     else if(v.src==='m')hdr.push(`#   ${v.nm}: Open-Meteo Marine, param=${v.p}`);
     else if(v.src==='w')hdr.push(`#   ${v.nm}: Open-Meteo Weather, param=${v.p}`);
-    else if(v.src==='co2')hdr.push(`#   ${v.nm}: NOAA GML Mauna Loa CO2`)
+    else if(v.src==='bath')hdr.push(`#   ${v.nm}: GMRT / GEBCO bathymetry`)
     if(S.envFusion[id]?.sources?.length>=2)hdr.push(`#     Ensemble sources: ${S.envFusion[id].sources.map(s=>s.nm).join(', ')}`)}});
   if(Object.keys(S.envFusion).length)hdr.push('# Multi-Source Fusion: enabled');
   hdr.push('#');
@@ -2405,113 +2139,6 @@ function getSeasonalMonths(){
   if(f<=t){for(let m=f;m<=t;m++)months.push(m)}
   else{for(let m=f;m<=12;m++)months.push(m);for(let m=1;m<=t;m++)months.push(m)}
   return months.length?months:null}
-
-// ═══ CLIMATE INDEX OVERLAYS ═══
-const _climateIndices={};const _activeIndices=new Set();
-async function corsFetchT(url,ms){
-  const r=await fetchT(proxyUrl(url),ms);
-  if(r.ok)return r;
-  throw new Error('Fetch failed for '+url.split('/')[2])}
-// Parse year + 12 monthly columns format (used by PSL ONI, NAO, PDO files)
-// Skips header/footer lines, treats values ≥90 as missing (-99.90 sentinel)
-function _parseYearMonthCols(text){
-  const data=[];
-  text.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);
-    if(p.length>=13&&!isNaN(parseInt(p[0]))){
-      const yr=p[0];for(let m=1;m<=12;m++){const v=parseFloat(p[m]);
-        if(!isNaN(v)&&Math.abs(v)<90)data.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:v})}}});
-  return data}
-// Parse NCEI el_nino.dat: year month nino12 nino3 nino34 nino4 — extract Nino3.4 (col 5)
-function _parseNceiOni(text){
-  const data=[];
-  text.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);
-    if(p.length>=5&&!isNaN(parseInt(p[0]))&&!isNaN(parseInt(p[1]))){
-      const yr=p[0],mo=p[1],v=parseFloat(p[4]); // column 5 = Nino 3.4 anomaly
-      if(!isNaN(v)&&Math.abs(v)<90)data.push({time:`${yr}-${mo.padStart(2,'0')}-15`,value:v})}});
-  return data}
-// Fetch strategy: NCEI direct (has CORS for oni/pdo), then ERDDAP proxy for all
-const _ciDirect={
-  oni:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.el_nino.dat',
-  pdo:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat'};
-const _ciProxy={
-  oni:'https://psl.noaa.gov/data/correlation/oni.data',
-  nao:'https://psl.noaa.gov/data/correlation/nao.data',
-  pdo:'https://psl.noaa.gov/data/correlation/pdo.data'};
-const _ciNames={oni:'ONI (ENSO)',nao:'NAO',pdo:'PDO'};
-const _ciUnits={oni:'°C',nao:'index',pdo:'index'};
-async function fetchClimateIndex(type){
-  if(_climateIndices[type])return _climateIndices[type];
-  let text=null;
-  // 1) For ONI/PDO: try NCEI via proxy
-  if(_ciDirect[type]){
-    try{const r=await fetchT(proxyUrl(_ciDirect[type]),12000);
-      if(r.ok)text=await r.text()}catch{}}
-  // 2) PSL via same-origin ERDDAP proxy (handles NAO and fallback for ONI/PDO)
-  if(!text&&_ciProxy[type]){
-    try{const r=await fetchT(proxyUrl(_ciProxy[type]),15000);
-      if(r.ok)text=await r.text()}catch{}}
-  if(!text){console.error('Climate index fetch failed: '+type);return null}
-  // Parse — NCEI ONI has a different format, all PSL/NCEI-PDO use year+12cols
-  const data=(type==='oni'&&text.trim().split('\n')[0].trim().split(/\s+/).length<13)
-    ?_parseNceiOni(text):_parseYearMonthCols(text);
-  _climateIndices[type]={nm:_ciNames[type],data,u:_ciUnits[type]};
-  return _climateIndices[type]}
-let _ciActiveType=null,_ciRange='30';
-const _ciDesc={
-  oni:'ONI: Oceanic Niño Index — positive values indicate El Niño, negative indicate La Niña.',
-  nao:'NAO: North Atlantic Oscillation — positive phase brings mild wet winters to Europe, negative brings cold dry winters.',
-  pdo:'PDO: Pacific Decadal Oscillation — warm/cool phases lasting 20–30 years that modulate ENSO effects.'};
-function toggleClimateIndex(type){
-  const btn=$('#idx-'+type);const panel=$('#climate-index-panel');
-  // Toggle off if same button clicked again
-  if(_activeIndices.has(type)&&_ciActiveType===type){
-    _activeIndices.delete(type);btn?.classList.remove('on');_ciActiveType=null;
-    if(panel)panel.style.display='none';return}
-  // Deselect previous standalone button (keep overlay set for env charts)
-  if(_ciActiveType){$('#idx-'+_ciActiveType)?.classList.remove('on');_activeIndices.delete(_ciActiveType)}
-  _activeIndices.add(type);btn?.classList.add('on');_ciActiveType=type;
-  btn?.classList.add('loading');
-  fetchClimateIndex(type).then(idx=>{
-    btn?.classList.remove('loading');
-    if(!idx?.data?.length){toast('No data returned for '+type.toUpperCase(),'err');return}
-    if(panel)panel.style.display='block';
-    H('#climate-index-desc',_ciDesc[type]||'');
-    renderClimateChart(type,_ciRange);
-  }).catch(()=>{btn?.classList.remove('loading');toast('Failed to fetch '+type.toUpperCase()+' data','err')})}
-function renderClimateChart(type,range){
-  const idx=_climateIndices[type];if(!idx?.data?.length)return;
-  let data=idx.data;
-  if(range==='30'){const cutoff=new Date().getFullYear()-30;data=data.filter(d=>parseInt(d.time)>=cutoff)}
-  const x=data.map(d=>d.time),y=data.map(d=>d.value);
-  const colors=y.map(v=>v>=0?'rgba(220,80,60,0.7)':'rgba(70,130,210,0.7)');
-  Plotly.newPlot('climate-index-chart',[
-    {x,y,type:'bar',marker:{color:colors},name:idx.nm,hovertemplate:'%{x|%b %Y}: %{y:.2f}<extra></extra>'},
-    {x:[x[0],x[x.length-1]],y:[0,0],type:'scatter',mode:'lines',line:{color:'rgba(169,157,145,0.5)',width:1,dash:'dot'},showlegend:false,hoverinfo:'skip'}
-  ],{...PL,height:280,
-    title:{text:idx.nm+(idx.u?' ('+idx.u+')':''),font:{size:13}},
-    xaxis:{...PL.xaxis,type:'date'},
-    yaxis:{...PL.yaxis,title:{text:idx.u||'index',font:{size:11}},zeroline:true,zerolinecolor:'rgba(169,157,145,0.3)'},
-    bargap:0.05,showlegend:false
-  },{responsive:true});
-  // Update range button states
-  $('#ciRange30')?.classList.toggle('on',range==='30');
-  $('#ciRangeFull')?.classList.toggle('on',range==='full')}
-function setClimateRange(range){_ciRange=range;if(_ciActiveType)renderClimateChart(_ciActiveType,range)}
-function closeClimatePanel(){
-  if(_ciActiveType){$('#idx-'+_ciActiveType)?.classList.remove('on');_activeIndices.delete(_ciActiveType);_ciActiveType=null}
-  const p=$('#climate-index-panel');if(p)p.style.display='none'}
-function renderClimateOverlays(chartId,chartData){
-  if(!_activeIndices.size)return;
-  const minT=chartData[0]?.time,maxT=chartData[chartData.length-1]?.time;
-  if(!minT||!maxT)return;
-  _activeIndices.forEach(type=>{
-    const idx=_climateIndices[type];if(!idx?.data?.length)return;
-    const filtered=idx.data.filter(d=>d.time>=minT&&d.time<=maxT);
-    if(!filtered.length)return;
-    try{Plotly.addTraces(chartId,[{x:filtered.map(d=>d.time),y:filtered.map(d=>d.value),type:'scatter',mode:'lines',
-      line:{color:type==='oni'?'#D4A04A':type==='nao'?'#9B8EC4':'#6BA3C9',width:1.5,dash:'dashdot'},
-      name:idx.nm,yaxis:'y2',opacity:0.7}]);
-    const el=document.getElementById(chartId);if(el){Plotly.relayout(chartId,{yaxis2:{overlaying:'y',side:'right',showgrid:false,title:{text:idx.nm,font:{size:10}},color:type==='oni'?'#D4A04A':type==='nao'?'#9B8EC4':'#6BA3C9'}})}}catch{}})}
 
 // ═══ LAG CROSS-CORRELATION PANEL ═══
 function renderLagCorrPanel(tk){
@@ -2636,47 +2263,6 @@ async function fetchDepthProfiles(lat,lon,sel,date){
   if(charts)H('#edepthchart',`<div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px">Depth Profiles — ${lat}°N ${lon}°E — ${date}</div>`+charts);
   else H('#edepthchart','<div style="padding:20px;text-align:center;color:var(--co)">No depth profile data available for these variables/location. Depth profiles work best with gridded ocean datasets.</div>')}
 
-// ═══ P2.6 MARINE HEATWAVE DETECTION ═══
-function detectMHW(){
-  if(!S.envTS.sst||!S.envTS.sst.data||S.envTS.sst.data.length<365){toast('Need at least 1 year of SST data for MHW detection','err');return}
-  const data=S.envTS.sst.data.map(d=>({time:new Date(d.time),val:d.value})).filter(d=>!isNaN(d.val)&&d.time instanceof Date&&!isNaN(d.time));
-  if(data.length<365){toast('Not enough valid SST data points','err');return}
-  // Compute day-of-year climatology + 90th percentile threshold (Hobday et al. 2016)
-  const byDOY={};data.forEach(d=>{const doy=Math.floor((d.time-new Date(d.time.getFullYear(),0,0))/(86400000));if(!byDOY[doy])byDOY[doy]=[];byDOY[doy].push(d.val)});
-  const clim={},thresh={};
-  for(let doy=1;doy<=366;doy++){const vals=[];for(let w=-5;w<=5;w++){const k=((doy+w-1+366)%366)+1;if(byDOY[k])vals.push(...byDOY[k])}
-  if(vals.length<3){clim[doy]=vals.length?vals.reduce((a,v)=>a+v,0)/vals.length:NaN;thresh[doy]=clim[doy];continue}
-  vals.sort((a,b)=>a-b);clim[doy]=vals.reduce((a,v)=>a+v,0)/vals.length;thresh[doy]=vals[Math.floor(vals.length*0.9)]}
-  // Detect events: consecutive days above threshold
-  const events=[];let evt=null;
-  data.forEach(d=>{const doy=Math.floor((d.time-new Date(d.time.getFullYear(),0,0))/(86400000))||1;const t90=thresh[doy]||thresh[1];const anom=d.val-(clim[doy]||clim[1]);
-  if(d.val>t90){if(!evt)evt={start:d.time,end:d.time,maxInt:anom,cumInt:anom,days:1,maxVal:d.val};
-  else{evt.end=d.time;evt.days++;evt.maxInt=Math.max(evt.maxInt,anom);evt.cumInt+=anom;evt.maxVal=Math.max(evt.maxVal,d.val)}}
-  else{if(evt&&evt.days>=5)events.push(evt);evt=null}});
-  if(evt&&evt.days>=5)events.push(evt);
-  // Categorize (Hobday): I=moderate, II=strong, III=severe, IV=extreme
-  events.forEach(e=>{const cat=e.maxInt>4*1?4:e.maxInt>3*1?3:e.maxInt>2*1?2:1;e.category=['I','II','III','IV'][cat-1];e.catName=['Moderate','Strong','Severe','Extreme'][cat-1];e.meanInt=(e.cumInt/e.days)});
-  window._mhwEvents=events;
-  // Render on SST chart
-  const shapes=events.map(e=>{const catColors={I:'rgba(255,200,50,.2)',II:'rgba(255,150,50,.3)',III:'rgba(255,80,50,.3)',IV:'rgba(200,30,30,.4)'};
-  return{type:'rect',xref:'x',yref:'paper',x0:e.start.toISOString(),x1:e.end.toISOString(),y0:0,y1:1,fillcolor:catColors[e.category]||'rgba(255,100,50,.2)',line:{width:0}}});
-  const sstChart=$('#ep-sst');if(sstChart){Plotly.relayout(sstChart,{shapes})}
-  // Summary
-  let sumH=`<div class="sec" style="margin-top:14px"><div class="sh"><h4>Marine Heatwave Detection (Hobday et al. 2016)</h4></div><div class="sb">`;
-  sumH+=`<div class="eg"><div class="ec"><div class="el">Events</div><div class="ev">${events.length}</div></div>`;
-  if(events.length){const maxDur=Math.max(...events.map(e=>e.days));const maxInt=Math.max(...events.map(e=>e.maxInt));const cumI=events.reduce((s,e)=>s+e.cumInt,0);
-  sumH+=`<div class="ec"><div class="el">Max Duration</div><div class="ev">${maxDur}<span class="eu">days</span></div></div>`;
-  sumH+=`<div class="ec"><div class="el">Max Intensity</div><div class="ev">${maxInt.toFixed(2)}<span class="eu">°C</span></div></div>`;
-  sumH+=`<div class="ec"><div class="el">Cumulative</div><div class="ev">${cumI.toFixed(1)}<span class="eu">°C·days</span></div></div></div>`}
-  // Event table
-  if(events.length){sumH+=`<table class="dt" style="margin-top:10px"><thead><tr><th>Start</th><th>End</th><th>Duration</th><th>Max Intensity</th><th>Mean Intensity</th><th>Category</th></tr></thead><tbody>`;
-  events.forEach(e=>{sumH+=`<tr><td>${e.start.toISOString().split('T')[0]}</td><td>${e.end.toISOString().split('T')[0]}</td><td>${e.days} d</td><td>${e.maxInt.toFixed(2)}°C</td><td>${e.meanInt.toFixed(2)}°C</td><td style="color:${e.category==='IV'?'var(--co)':e.category==='III'?'var(--wa)':'var(--ts)'}">${e.category} (${e.catName})</td></tr>`});
-  sumH+=`</tbody></table>`;sumH+=`<div style="margin-top:8px"><button class="bt sm" onclick="sendMHWToWS()">MHW Events → Workshop</button></div>`}
-  sumH+=`</div></div>`;
-  const mhwDiv=document.getElementById('env-mhw');if(mhwDiv)mhwDiv.innerHTML=sumH;else{const cont=document.getElementById('echarts');if(cont)cont.insertAdjacentHTML('afterend','<div id="env-mhw">'+sumH+'</div>')}}
-// P3.8 MHW Export to Workshop
-function sendMHWToWS(){if(!window._mhwEvents)return;S.wsC=['Event','Start','End','Duration_days','Max_Intensity_C','Mean_Intensity_C','Cumulative_C_days','Category'];
-S.wsD=window._mhwEvents.map((e,i)=>({Event:i+1,Start:e.start.toISOString().split('T')[0],End:e.end.toISOString().split('T')[0],Duration_days:e.days,Max_Intensity_C:+e.maxInt.toFixed(2),Mean_Intensity_C:+e.meanInt.toFixed(2),Cumulative_C_days:+e.cumInt.toFixed(1),Category:e.category+' ('+e.catName+')'}));autoTypes();initWS();goTab('workshop')}
 // ═══ P1.8 ARGO FLOAT PROFILES ═══
 async function fetchArgoProfiles(){
   const lat=$('#elat').value,lon=$('#elon').value;
@@ -2730,7 +2316,7 @@ results = {}
       else if(v.src==='w'){
         const base=df&&(new Date()-new Date(df))/(86400000)>90?'https://archive-api.open-meteo.com/v1/archive':'https://api.open-meteo.com/v1/forecast';
         sc+=`\n# ${v.nm} (Open-Meteo Weather)\nurl_${v.id} = "${base}?latitude=${lat}&longitude=${lon}&hourly=${v.p}&start_date=${df}&end_date=${dt}"\nr = requests.get(url_${v.id}, timeout=20)\nif r.ok:\n    d = r.json()\n    results['${v.nm}'] = pd.DataFrame({'time': d['hourly']['time'], '${v.nm}': d['hourly']['${v.p}']})\n    print(f"${v.nm}: {len(results['${v.nm}'])} rows")\n`}
-      else if(v.src==='co2'){sc+=`\n# CO2 (NOAA Mauna Loa)\nurl_co2 = "https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv"\nresults['CO2'] = pd.read_csv(url_co2, comment='#')\nprint(f"CO2: {len(results['CO2'])} rows")\n`}});
+      });
     sc+=`\nprint("\\nDone. Available datasets:", list(results.keys()))\n`;
     dl(sc,`meridian_repro_${df||'latest'}.py`,'text/x-python')}
   else if(lang==='r'){
