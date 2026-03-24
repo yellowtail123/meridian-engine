@@ -875,7 +875,7 @@ function showAuthModal(){
     <button style="position:absolute;top:12px;right:16px;background:0;border:0;color:var(--tm);font-size:22px;cursor:pointer;line-height:1" onclick="closeAuthModal()">&times;</button>
     <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:28px;font-family:var(--sf);color:var(--ac);font-weight:700;letter-spacing:.5px">Meridian</div>
-      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px;letter-spacing:1px;text-transform:uppercase">Marine Research Engine</div>
+      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px;letter-spacing:1px">Marine Research Engine</div>
     </div>
     <p style="font-size:12px;color:var(--tm);margin-bottom:18px;line-height:1.5;text-align:center">Sign in to sync your library and settings across devices.</p>
     <div id="supa-auth-error" style="display:none;padding:8px 12px;background:var(--cm);border:1px solid rgba(194,120,120,.3);border-radius:6px;font-size:12px;color:var(--co);margin-bottom:12px"></div>
@@ -897,7 +897,7 @@ function showAuthModal(){
     <div style="display:flex;flex-direction:column;gap:8px">
       <input class="si" id="supa-email" type="email" placeholder="Email" style="font-size:13px;padding:10px 12px">
       <input class="si" id="supa-pass" type="password" placeholder="Password" style="font-size:13px;padding:10px 12px">
-      <button type="button" class="bt on" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_handleAuthSubmit()">Sign In</button>
+      <button type="button" class="bt bt-pri" id="supa-submit" style="padding:10px;font-size:13px;margin-top:4px" onclick="_handleAuthSubmit()">Sign In</button>
     </div>
     <div style="text-align:center;margin-top:16px">
       <a href="#" onclick="event.preventDefault();closeAuthModal()" style="font-size:12px;color:var(--tm);text-decoration:none;opacity:.8">Continue without account</a>
@@ -1204,17 +1204,18 @@ function showAdminDashboard(){
 #admin-overlay .adm-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--bd)}
 #admin-overlay .adm-stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:28px}
 #admin-overlay .adm-stat{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:16px;text-align:center;animation:fadeIn .3s}
-#admin-overlay .adm-stat .val{font-size:26px;font-weight:700;color:var(--ac);font-family:var(--mf)}
-#admin-overlay .adm-stat .lbl{font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:4px;text-transform:uppercase;letter-spacing:.5px}
+#admin-overlay .adm-stat .val{font-size:24px;font-weight:700;color:var(--ac);font-family:var(--mf)}
+#admin-overlay .adm-stat .lbl{font-size:12px;color:var(--tm);font-family:var(--mf);margin-top:4px;letter-spacing:.3px}
 #admin-overlay .adm-card{background:var(--bs);border:1px solid var(--ab);border-radius:var(--rd);padding:20px;margin-bottom:20px;animation:fadeIn .3s}
 #admin-overlay .adm-card h2{font-size:16px;color:var(--ac);margin-bottom:14px;font-family:var(--sf);display:flex;align-items:center;gap:8px}
 #admin-overlay .adm-count{font-size:11px;color:var(--tm);font-family:var(--mf);font-weight:400}
 #admin-overlay table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mf)}
-#admin-overlay th{text-align:left;padding:8px 10px;color:var(--tm);border-bottom:1px solid var(--ab);font-weight:500;text-transform:uppercase;letter-spacing:.5px;font-size:10px;white-space:nowrap;cursor:pointer;user-select:none}
+#admin-overlay th{text-align:left;padding:8px 10px;color:var(--tm);border-bottom:1px solid var(--ab);font-weight:500;letter-spacing:.5px;font-size:10px;white-space:nowrap;cursor:pointer;user-select:none}
 #admin-overlay th:hover{color:var(--ac)}
 #admin-overlay th.sorted{color:var(--ac)}
 #admin-overlay td{padding:8px 10px;border-bottom:1px solid var(--bd);color:var(--ts);max-width:200px;overflow:hidden;text-overflow:ellipsis}
-#admin-overlay tr:hover td{background:rgba(201,149,107,.03)}
+#admin-overlay tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+#admin-overlay tr:hover td{background:rgba(201,149,107,.06)}
 #admin-overlay .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600}
 #admin-overlay .badge.admin{background:var(--am);color:var(--ac)}
 #admin-overlay .badge.user{background:rgba(123,158,135,.10);color:var(--sg)}

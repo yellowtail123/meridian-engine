@@ -2189,7 +2189,7 @@ function bmSelectNode(node) {
           '</div>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">' +
-          '<button class="bt sm on" onclick="bmSaveToLib(\'' + safeId + '\')">' + (node.isInLibrary ? '✓ Saved' : '+ Library') + '</button>' +
+          '<button class="bt sm bt-pri" onclick="bmSaveToLib(\'' + safeId + '\')">' + (node.isInLibrary ? '✓ Saved' : '+ Library') + '</button>' +
           '<button class="bt sm" onclick="expandFromNode(\'' + safeId + '\')">Expand map</button>' +
           (node.doi ? '<a class="bt sm" href="https://doi.org/' + escHTML(node.doi.replace(/^https?:\/\/doi\.org\//, '')) + '" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">DOI</a>' : '') +
         '</div>' +

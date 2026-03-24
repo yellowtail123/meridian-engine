@@ -10,7 +10,7 @@ function hideUndoBar(){const bar=$('#wsUndoBar');if(bar)bar.style.display='none'
 function autoTypes(){const t={};S.wsC.forEach(h=>{const vs=S.wsD.map(r=>r[h]);t[h]=vs.every(v=>typeof v==='number'&&v!=null)?(new Set(vs).size<=10?'ordinal':'continuous'):(vs.every(v=>typeof v==='string'&&/^\d{4}-\d{2}/.test(v))?'datetime':'categorical')});S.wsCT=t}
 function initWS(){const has=S.wsD.length>0;H('#wcon',`
 <div id="wsDrop" style="border:2px dashed var(--bd);border-radius:var(--rd);padding:18px;text-align:center;margin-bottom:14px;transition:all .2s;cursor:pointer" ondragover="event.preventDefault();this.style.borderColor='var(--ac)';this.style.background='var(--am)'" ondragleave="this.style.borderColor='var(--bd)';this.style.background=''" ondrop="event.preventDefault();this.style.borderColor='var(--bd)';this.style.background='';handleFileDrop(event.dataTransfer.files)" onclick="document.getElementById('wsFileIn').click()"><input type="file" id="wsFileIn" accept=".csv,.tsv,.xlsx,.xls,.json" style="display:none" onchange="handleFileDrop(this.files)"/><div style="font-size:14px;color:var(--ts);margin-bottom:3px">Drop file here or click to import</div><div style="font-size:11px;color:var(--tm);font-family:var(--mf)">CSV · TSV · Excel (.xlsx/.xls) · JSON</div></div>
-<div class="sec"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Data ${has?'('+S.wsD.length+' × '+S.wsC.length+')':'— paste or import'}</h4><span style="color:var(--tm)">▾</span></div><div class="sb"><textarea id="wd" rows="5" style="width:100%;padding:10px;background:var(--be);border:1px solid var(--bd);border-radius:4px;color:var(--tx);font-size:13px;font-family:var(--mf);outline:none;resize:vertical">${has?S.wsC.join(',')+'\n'+S.wsD.slice(0,100).map(r=>S.wsC.map(c=>typeof r[c]==='string'&&String(r[c]).includes(',')?'"'+r[c]+'"':r[c]??'').join(',')).join('\n'):"Year,SST,Chlor,CPUE\n2018,18.2,0.45,12.3\n2019,18.7,0.38,11.1\n2020,19.1,0.42,10.8"}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="bt on" onclick="parseWS()">Parse</button><span id="wpi" style="font-size:12px;color:var(--tm);font-family:var(--mf)">${has?S.wsD.length+' × '+S.wsC.length:''}</span></div></div></div><div id="wst"></div><div id="wclean"></div><div id="wtb"></div><div id="wch"></div><div id="wstat"></div><div id="wtests"></div><div id="wex"></div>`);if(has)setTimeout(renderWP,50);else setTimeout(parseWS,50)}
+<div class="sec"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Data ${has?'('+S.wsD.length+' × '+S.wsC.length+')':'— paste or import'}</h4><span style="color:var(--tm)">▾</span></div><div class="sb"><textarea id="wd" rows="5" style="width:100%;padding:10px;background:var(--be);border:1px solid var(--bd);border-radius:4px;color:var(--tx);font-size:13px;font-family:var(--mf);outline:none;resize:vertical">${has?S.wsC.join(',')+'\n'+S.wsD.slice(0,100).map(r=>S.wsC.map(c=>typeof r[c]==='string'&&String(r[c]).includes(',')?'"'+r[c]+'"':r[c]??'').join(',')).join('\n'):"Year,SST,Chlor,CPUE\n2018,18.2,0.45,12.3\n2019,18.7,0.38,11.1\n2020,19.1,0.42,10.8"}</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="bt bt-pri" onclick="parseWS()">Parse</button><span id="wpi" style="font-size:12px;color:var(--tm);font-family:var(--mf)">${has?S.wsD.length+' × '+S.wsC.length:''}</span></div></div></div><div id="wst"></div><div id="wclean"></div><div id="wtb"></div><div id="wch"></div><div id="wstat"></div><div id="wtests"></div><div id="wex"></div>`);if(has)setTimeout(renderWP,50);else setTimeout(parseWS,50)}
 function handleFileDrop(files){if(!files||!files.length)return;const file=files[0];const ext=file.name.split('.').pop().toLowerCase();const reader=new FileReader();
 if(ext==='csv'||ext==='tsv'){reader.onload=e=>{const txt=e.target.result;$('#wd').value=ext==='tsv'?txt.replace(/\t/g,','):txt;parseWS()};reader.readAsText(file)}
 else if(ext==='xlsx'||ext==='xls'){if(typeof XLSX==='undefined'){toast('Excel support unavailable — try CSV instead','err');return}reader.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const csv=XLSX.utils.sheet_to_csv(ws);$('#wd').value=csv;parseWS()}catch(err){toast('Error reading Excel: '+err.message,'err')}};reader.readAsArrayBuffer(file)}
@@ -41,28 +41,28 @@ H('#wtests',`<div class="sec"><div class="sh" onclick="this.nextElementSibling.s
 <button class="bt sm" onclick="runMannKendall()">Mann-Kendall Trend</button>
 <button class="bt sm" onclick="runTTest()">Two-Sample t-test</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Community Ecology</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Community Ecology</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runDiversity()">Diversity Indices</button>
 <button class="bt sm" onclick="runRarefaction()">Rarefaction Curve</button>
 <button class="bt sm" onclick="runDissimilarity()">Dissimilarity Matrix</button>
 <button class="bt sm" onclick="runNMDS()">NMDS Ordination</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Fisheries Models</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Fisheries Models</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runVBGF()">Von Bertalanffy Growth</button>
 <button class="bt sm" onclick="runLengthFreq()">Length-Frequency</button>
 <button class="bt sm" onclick="runCatchCurve()">Catch Curve / Mortality</button>
 <button class="bt sm" onclick="runSurplusProduction()">Surplus Production (Schaefer)</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Multivariate</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Multivariate</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runPCA()">PCA</button>
 <button class="bt sm" onclick="runPERMANOVA()">PERMANOVA</button>
 <button class="bt sm" onclick="runANOSIM()">ANOSIM</button>
 <button class="bt sm" onclick="runIndicatorSpecies()">Indicator Species</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Time Series & Temporal</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Time Series & Temporal</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runACF()">ACF / PACF</button>
 <button class="bt sm" onclick="runRegimeShift()">Regime Shift (STARS)</button>
@@ -70,7 +70,7 @@ H('#wtests',`<div class="sec"><div class="sh" onclick="this.nextElementSibling.s
 <button class="bt sm" onclick="runChiSquared()">Chi-Squared</button>
 <button class="bt sm" onclick="runPowerAnalysis()">Power Analysis</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Fisheries Advanced</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Fisheries Advanced</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runWeightLength()">Weight-Length (W=aLb)</button>
 <button class="bt sm" onclick="runSelectivity()">Selectivity Curve</button>
@@ -79,14 +79,14 @@ H('#wtests',`<div class="sec"><div class="sh" onclick="this.nextElementSibling.s
 <button class="bt sm" onclick="runMaturityOgive()">Maturity Ogive</button>
 <button class="bt sm" onclick="runMarkRecapture()">Mark-Recapture</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Normality & Group Comparison</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Normality & Group Comparison</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runWSShapiroWilk()">Shapiro-Wilk</button>
 <button class="bt sm" onclick="runWSAnova()">One-Way ANOVA</button>
 <button class="bt sm" onclick="runWSExpandedPower()">Power Analysis (Expanded)</button>
 <button class="bt sm" onclick="runWSGLM()">GLM</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Ecology & Genetics</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Ecology & Genetics</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runWSDiversity()">Shannon/Simpson Diversity</button>
 <button class="bt sm" onclick="runWSRarefaction()">Rarefaction Curve</button>
@@ -94,23 +94,120 @@ H('#wtests',`<div class="sec"><div class="sh" onclick="this.nextElementSibling.s
 <button class="bt sm" onclick="runWSFStats()">F-Statistics (Fst)</button>
 <button class="bt sm" onclick="runWSPopDyn()">Population Dynamics</button>
 </div>
-<div style="font-size:11px;color:var(--ac);font-family:var(--mf);text-transform:uppercase;margin:10px 0 4px;letter-spacing:.5px">Forecasting</div>
+<div style="font-size:11px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;letter-spacing:.5px">Forecasting</div>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
 <button class="bt sm" onclick="runWSForecast()">Holt-Winters Forecast</button>
 </div>
-<div style="margin-top:6px"><span style="font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px">Meta-Analysis & QC</span></div>
+<div style="margin-top:6px"><span style="font-size:10px;color:var(--tm);letter-spacing:1px">Meta-Analysis & QC</span></div>
 <button class="bt sm" onclick="runMetaAnalysis()">Meta-Analysis (RE)</button>
 <button class="bt sm" onclick="runFunnelPlot()">Funnel Plot</button>
 <button class="bt sm" onclick="detectDataQuality()">Data Quality Check</button>
 <button class="bt sm" onclick="exportSVG()">Export SVG</button>
-<div style="margin-top:6px"><span style="font-size:10px;color:var(--tm);text-transform:uppercase;letter-spacing:1px">Modeling & Simulation</span></div>
+<div style="margin-top:6px"><span style="font-size:10px;color:var(--tm);letter-spacing:1px">Modeling & Simulation</span></div>
 <button class="bt sm" onclick="runSDM()">Habitat Suitability (SDM)</button>
 <button class="bt sm" onclick="runTrophicNetwork()">Trophic Network</button>
 <button class="bt sm" onclick="runLarvalDispersal()">Larval Dispersal</button>
 <div style="margin-top:8px;border-top:1px solid var(--brd);padding-top:8px"><button class="bt" style="width:100%;background:var(--s2)" onclick="openMethodWizard()">🧭 Method Selector Wizard</button></div>
 <div id="wtest-result" style="font-size:13px;color:var(--ts);font-family:var(--mf)"></div>
 </div></div>`);
+_enhanceStatGrid();
+_enhanceWorkshop();
 }
+/* ── 2E: Analysis Tools Grid Enhancement ── */
+const _STAT_TOOLTIPS={
+'Pearson r':'Measures linear correlation between two continuous variables (−1 to +1). Assumes normality and homoscedasticity.',
+'Spearman ρ':'Rank-based monotonic correlation. Robust to non-normality and outliers; ideal for ordinal data.',
+'Correlation Matrix':'Pairwise correlation heatmap across all numeric columns. Quickly reveals collinear predictors.',
+'Mann-Kendall':'Non-parametric trend test for monotonic increases or decreases in time series data.',
+'t-test':'Compares means of two groups assuming approximate normality. Reports p-value, effect size (Cohen\'s d), and CI.',
+'Diversity':'Shannon (H′) and Simpson (1−D) diversity indices for community composition data.',
+'Rarefaction':'Estimates expected species richness at standardised sample sizes; compare sites with unequal effort.',
+'Dissimilarity':'Bray-Curtis or Jaccard dissimilarity between sites/samples based on species abundances.',
+'NMDS':'Non-metric multidimensional scaling — ordination that preserves rank-order distances in 2-D.',
+'VBGF':'Von Bertalanffy Growth Function — fits L∞, K, and t₀ to length-at-age data for fish growth modelling.',
+'Length-Freq':'Length-frequency histogram with optional modal progression analysis (Bhattacharya method).',
+'Catch Curve':'Age- or length-based catch curve to estimate total instantaneous mortality (Z).',
+'Surplus Prod':'Schaefer or Fox surplus-production model — estimates MSY, B_MSY, and F_MSY from catch and effort.',
+'PCA':'Principal Component Analysis — reduces dimensionality and reveals dominant gradients in multivariate data.',
+'PERMANOVA':'Permutational MANOVA — tests multivariate group differences using distance matrices; non-parametric.',
+'ANOSIM':'Analysis of Similarities — tests whether between-group dissimilarity exceeds within-group dissimilarity.',
+'Indicator Spp':'Indicator Species Analysis (IndVal) — identifies taxa significantly associated with site groups.',
+'ACF / PACF':'Auto- and partial-autocorrelation plots to diagnose temporal dependence and guide ARIMA model selection.',
+'Regime Shift':'Sequential t-test (STARS) algorithm to detect abrupt shifts in mean level of a time series.',
+'Kruskal-Wallis':'Non-parametric one-way ANOVA by ranks — compares medians of ≥3 independent groups.',
+'Chi-Squared':'Tests independence between two categorical variables using a contingency table.',
+'Power Analysis':'Estimates required sample size, detectable effect size, or achievable power for a planned study design.',
+'Weight-Length':'Fits W = a·Lᵇ allometric relationship; reports a, b, r², and condition indices.',
+'Selectivity':'Estimates gear selectivity curve (logistic or normal) from catch-at-length data.',
+'Yield per Recruit':'Beverton-Holt YPR model — evaluates yield trade-offs across fishing mortality and age at first capture.',
+'Stock-Recruit':'Fits Ricker or Beverton-Holt stock-recruitment curves; estimates steepness and unfished recruitment.',
+'Maturity Ogive':'Logistic regression of maturity stage on length or age to estimate L₅₀ / A₅₀.',
+'Mark-Recapture':'Lincoln-Petersen, Schnabel, or Jolly-Seber abundance estimators from capture-recapture data.',
+'Shapiro-Wilk':'Tests whether a sample comes from a normal distribution. Essential pre-check for parametric tests.',
+'ANOVA':'One-way Analysis of Variance — compares means of ≥3 groups; reports F-statistic and post-hoc tests.',
+'Power (Expanded)':'Extended power analysis with multiple test families: t-test, ANOVA, correlation, regression.',
+'GLM':'Generalised Linear Model — fits Gaussian, Poisson, Binomial, or Gamma families with link functions.',
+'Shannon/Simpson':'Computes Shannon H′, Simpson 1−D, and evenness from species-by-site abundance data.',
+'Rarefaction (Eco)':'Individual- and sample-based rarefaction with extrapolation and 95% confidence bands.',
+'Hardy-Weinberg':'Chi-squared test of Hardy-Weinberg equilibrium for genotype frequency data at one locus.',
+'F-Statistics':'Hierarchical F-statistics (F_IS, F_ST, F_IT) for population genetic structure analysis.',
+'Pop Dynamics':'Discrete logistic population growth model with harvest — projects N(t) under varying F scenarios.',
+'Holt-Winters':'Triple exponential smoothing for seasonal time-series forecasting with trend and seasonality.',
+'Meta RE':'Random-effects meta-analysis — pools effect sizes across studies with DerSimonian-Laird estimator.',
+'Funnel Plot':'Plots effect size vs precision to visually detect publication bias; includes Egger\'s regression test.',
+'Data Quality':'Audits dataset completeness, detects outliers (IQR & Z-score), and flags suspicious patterns.',
+'Export SVG':'Exports the current chart as a publication-ready SVG vector graphic.',
+'SDM':'Species Distribution Model — fits presence/absence or abundance to environmental predictors (GLM/GAM).',
+'Trophic Network':'Builds a food-web network diagram from predator-prey or diet composition data.',
+'Larval Dispersal':'Simple 2-D advection-diffusion particle tracking model for larval connectivity estimation.'
+};
+const _pinnedTests=JSON.parse(localStorage.getItem('meridian_pinned_tests')||'[]');
+function _enhanceStatGrid(){
+const wrap=$('#wtest-body');if(!wrap)return;
+/* search bar */
+let sb=wrap.querySelector('.stat-search');
+if(!sb){sb=document.createElement('div');sb.className='stat-search';sb.style.cssText='margin-bottom:10px';sb.innerHTML='<input class="si" placeholder="Search tests\u2026" style="width:100%;font-size:13px" oninput="_filterStatTests(this.value)">';wrap.prepend(sb)}
+/* pinned row */
+_buildPinRow(wrap);
+/* tooltips + header restyle */
+const btns=wrap.querySelectorAll('button.bt.sm');
+btns.forEach(b=>{const nm=b.textContent.trim().replace(/^[\u{1F4CA}\u{1F9EA}\u{1F4D0}\u{1F30A}\u{1F3AF}\u{1F52C}\u{1F4C8}\u{2696}\u{1F333}\u{1F9EC}\u{1F52E}\u{1F9F0}\u{2699}\u{FE0F}\u{26A1}\u{1F4C9}\u{1F4D1}\u{1F4BE}\u{1F3A8}\u{2728}\u{1F4DD}\u{1F4C3}]\s*/u,'');
+const tip=_STAT_TOOLTIPS[nm];if(tip){b.classList.add('m-tip');b.setAttribute('data-tip',tip)}
+b.addEventListener('contextmenu',e=>{e.preventDefault();_pinTest(nm)})});
+/* category headers */
+wrap.querySelectorAll('div[style*="font-weight:600"]').forEach(h=>{h.style.cssText='font-weight:600;font-size:15px;margin:10px 0 4px;padding-left:12px;border-left:3px solid var(--ac)'});
+}
+function _filterStatTests(q){const wrap=$('#wtest-body');if(!wrap)return;const lq=q.toLowerCase();
+wrap.querySelectorAll('button.bt.sm').forEach(b=>{const nm=b.textContent.toLowerCase();const tip=(b.getAttribute('data-tip')||'').toLowerCase();b.style.display=(nm.includes(lq)||tip.includes(lq))?'':'none'});
+wrap.querySelectorAll('div[style*="border-left"]').forEach(h=>{const sec=h.nextElementSibling;if(!sec)return;const vis=[...sec.querySelectorAll('button.bt.sm')].some(b=>b.style.display!=='none');h.style.display=vis?'':'none'})}
+function _pinTest(name){const i=_pinnedTests.indexOf(name);if(i>-1){_pinnedTests.splice(i,1)}else{if(_pinnedTests.length>=8)return;_pinnedTests.push(name)}
+localStorage.setItem('meridian_pinned_tests',JSON.stringify(_pinnedTests));const wrap=$('#wtest-body');if(wrap)_buildPinRow(wrap)}
+function _buildPinRow(wrap){let row=wrap.querySelector('.stat-pinned');
+if(!_pinnedTests.length){if(row)row.remove();return}
+if(!row){row=document.createElement('div');row.className='stat-pinned';row.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:8px;margin-bottom:8px;border-radius:var(--rd);background:var(--s2);border:1px dashed var(--ac)';const sb=wrap.querySelector('.stat-search');if(sb)sb.after(row);else wrap.prepend(row)}
+row.innerHTML='<span style="font-size:11px;color:var(--tm);width:100%;margin-bottom:2px">📌 Pinned Tests (right-click to unpin)</span>'+_pinnedTests.map(nm=>{const allBtns=[...wrap.querySelectorAll('button.bt.sm')];const src=allBtns.find(b=>b.textContent.trim().replace(/^[\u{1F4CA}\u{1F9EA}\u{1F4D0}\u{1F30A}\u{1F3AF}\u{1F52C}\u{1F4C8}\u{2696}\u{1F333}\u{1F9EC}\u{1F52E}\u{1F9F0}\u{2699}\u{FE0F}\u{26A1}\u{1F4C9}\u{1F4D1}\u{1F4BE}\u{1F3A8}\u{2728}\u{1F4DD}\u{1F4C3}]\s*/u,'')===nm);
+if(!src)return'';const cl=src.cloneNode(true);cl.addEventListener('contextmenu',e=>{e.preventDefault();_pinTest(nm)});return cl.outerHTML}).join('')}
+/* ── end 2E ── */
+/* ── 2H: Workshop Enhancement ── */
+const _WS_TITLES={'Stats':'Summary Statistics','Clean & Transform':'Clean & Transform','Export':'Export Data','Chart':'Chart','Statistical Tests':'Statistical Tests'};
+function _enhanceWorkshop(){
+const con=$('#wcon');if(!con)return;
+/* Title Case headers & chevrons */
+con.querySelectorAll('.sec > .sh').forEach(sh=>{
+  const h4=sh.querySelector('h4');if(!h4)return;
+  const key=h4.textContent.replace(/\s*\(.*\)/,'').trim();
+  if(_WS_TITLES[key])h4.textContent=h4.textContent.replace(key,_WS_TITLES[key]);
+  /* replace text ▾ with SVG chevron */
+  const arrow=sh.querySelector('span[style*="color:var(--tm)"]');
+  if(arrow&&arrow.textContent.trim()==='▾'){arrow.className='sh-chevron';arrow.innerHTML='<svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'}
+});
+/* Zebra striping on data table */
+con.querySelectorAll('table.dt tbody tr').forEach((tr,i)=>{tr.style.background=i%2?'var(--s2)':''});
+/* Style file drop zone */
+const drop=$('#wsDrop');
+if(drop){drop.style.borderColor='var(--ab)';drop.style.borderRadius='var(--rd)';drop.style.padding='24px 18px'}
+}
+/* ── end 2H ── */
 function toggleY(c){if(S.yC.includes(c))S.yC=S.yC.filter(x=>x!==c);else S.yC.push(c);rPC()}
 function mergeToWS(){const raw=prompt('Paste CSV to merge (same columns, or new columns will be added):');if(!raw)return;const lines=raw.trim().split('\n');if(lines.length<2)return;const hd=parseCSVLine(lines[0]).map(h=>h.trim());const newRows=lines.slice(1).map(l=>{const vs=parseCSVLine(l).map(v=>v.trim());const o={};hd.forEach((h,i)=>{const v=vs[i]||'';o[h]=isNaN(v)||v===''?v:parseFloat(v)});return o});const allCols=[...new Set([...S.wsC,...hd])];S.wsC=allCols;S.wsD=[...S.wsD,...newRows];autoTypes();initWS()}
 function rPC(){const el=$('#wpl');if(!el)return;const rows=S.wsD,xC=S.xC,yC=S.yC,ct=S.cT;if(!rows.length||(!yC.length&&ct!=='histogram')){el.innerHTML='<p style="text-align:center;color:var(--tm);padding:40px">Select columns.</p>';return}
@@ -866,7 +963,7 @@ function runWSExpandedPower(){
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Effect:</span><input class="fi" id="pwrEffect" value="0.5" style="width:60px" type="number" step="0.1"/>
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">α:</span><input class="fi" id="pwrAlpha" value="0.05" style="width:60px" type="number" step="0.01"/>
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Groups (ANOVA):</span><input class="fi" id="pwrK" value="3" style="width:50px" type="number"/>
-    <button class="bt on" onclick="computeExpandedPower()">Compute</button></div>
+    <button class="bt bt-pri" onclick="computeExpandedPower()">Compute</button></div>
     <div class="pcc" id="pwrExpandedPlot" style="height:300px"></div><div id="pwrExpandedResult" style="font-size:12px;font-family:var(--mf);color:var(--ts);margin-top:6px"></div>`;
   H('#wtest-result',html)}
 function computeExpandedPower(){
@@ -976,7 +1073,7 @@ function runWSPopDyn(){
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">r:</span><input class="fi" id="pdR" value="0.3" style="width:60px" type="number" step="0.05"/>
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">K:</span><input class="fi" id="pdK" value="1000" style="width:70px" type="number"/>
     <span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Years:</span><input class="fi" id="pdYrs" value="50" style="width:60px" type="number"/>
-    <button class="bt on" onclick="computePopDyn()">Simulate</button></div>
+    <button class="bt bt-pri" onclick="computePopDyn()">Simulate</button></div>
     <div class="pcc" id="pdPlot" style="height:300px"></div>`;
   H('#wtest-result',html)}
 function computePopDyn(){

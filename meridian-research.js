@@ -119,12 +119,12 @@ function _rpKeywords() {
       <button class="bt sm" onclick="_rpKwView('network')">Co-occurrence</button>
       <button class="bt sm" style="margin-left:auto" onclick="_rpExportKeywords()">Export CSV</button>
     </div>
-    <div id="rp-kw-cloud" style="padding:16px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);line-height:2;text-align:center">${tagCloud}</div>
-    <div id="rp-kw-table" style="display:none;max-height:500px;overflow:auto">
+    <div id="rp-kw-cloud" style="padding:16px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);line-height:2;text-align:center;min-height:300px">${tagCloud}</div>
+    <div id="rp-kw-table" style="display:none;max-height:500px;overflow:auto;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:12px">
       <table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--bd)"><th></th><th style="text-align:left;font-size:11px;color:var(--tm);font-family:var(--mf)">Keyword</th><th style="text-align:right;font-size:11px;color:var(--tm);font-family:var(--mf)">Count</th><th></th></tr></thead><tbody>${tableRows}</tbody></table>
     </div>
-    <div id="rp-kw-trend" style="display:none"></div>
-    <div id="rp-kw-network" style="display:none"></div>
+    <div id="rp-kw-trend" style="display:none;min-height:300px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:12px"></div>
+    <div id="rp-kw-network" style="display:none;min-height:400px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:12px"></div>
     <div style="margin-top:10px;font-size:11px;color:var(--tm);font-family:var(--mf)">${sorted.length} unique keywords from ${lib.length} papers</div>
   `;
 }
@@ -251,7 +251,7 @@ function _rpQuestionBuilder() {
             <option value="descriptive">Descriptive</option>
           </select>
         </label>
-        <button class="bt on" onclick="_rpGenerateQuestion()">Generate Question</button>
+        <button class="bt bt-pri" onclick="_rpGenerateQuestion()">Generate Question</button>
       </div>
       <div id="rp-question-output" style="margin-top:12px"></div>
     </div>
@@ -673,7 +673,7 @@ function _rpMethods() {
           </select>
         </label>
       </div>
-      <button class="bt on" onclick="_rpGetRecommendation()" style="margin-top:14px">Get Recommendation</button>
+      <button class="bt bt-pri" onclick="_rpGetRecommendation()" style="margin-top:14px">Get Recommendation</button>
     </div>
     <div id="rp-ma-result" style="margin-top:14px"></div>
   `;
@@ -721,11 +721,13 @@ function _rpGetRecommendation() {
   const el = $('#rp-ma-result');
   if (!el) return;
   el.innerHTML = results.map((m, i) => `
-    <div style="padding:14px;background:var(--bs);border:1px solid ${i === 0 ? 'var(--ab)' : 'var(--bd)'};border-radius:var(--rd);margin-bottom:10px">
-      <h4 style="font-size:14px;color:var(--ac);font-family:var(--sf);margin-bottom:4px">${i === 0 ? '&#x2713; ' : ''}${m.name}</h4>
-      <p style="font-size:12px;color:var(--ts);font-family:var(--mf);line-height:1.5;margin-bottom:8px">${m.when}</p>
-      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:8px"><b>Assumptions:</b> ${m.assumptions}</div>
-      <div style="font-size:11px;color:var(--sg);font-family:var(--mf);margin-bottom:10px"><b>Marine example:</b> ${m.ex}</div>
+    <div style="padding:16px 20px;background:var(--bs);border:1px solid ${i === 0 ? 'var(--ab)' : 'var(--bd)'};border-radius:var(--rd);margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06)">
+      <h4 style="font-size:16px;font-weight:600;color:var(--ac);font-family:var(--sf);margin-bottom:4px">${i === 0 ? '&#x2713; ' : ''}${m.name}</h4>
+      <p style="font-size:14px;color:var(--tm);line-height:1.5;margin-bottom:8px">${m.when}</p>
+      <details style="margin-bottom:8px"><summary style="font-size:12px;color:var(--ts);cursor:pointer;user-select:none;font-family:var(--mf)">Code &amp; details</summary>
+      <div style="margin-top:8px">
+      <div style="font-size:12px;color:var(--tm);font-family:var(--mf);margin-bottom:8px"><b>Assumptions:</b> ${m.assumptions}</div>
+      <div style="font-size:12px;color:var(--sg);font-family:var(--mf);margin-bottom:10px"><b>Marine example:</b> ${m.ex}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div>
           <div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-bottom:3px">R code:</div>
@@ -735,7 +737,8 @@ function _rpGetRecommendation() {
           <div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-bottom:3px">Python code:</div>
           <pre style="padding:8px;background:var(--bi);border:1px solid var(--bd);border-radius:6px;font-size:11px;color:var(--lv);font-family:var(--mf);white-space:pre-wrap;line-height:1.5;margin:0">${m.py}</pre>
         </div>
-      </div>
+      </div></div></details>
+      <button class="bt bt-sec" style="font-size:12px;padding:6px 14px" onclick="goTab('workshop')">Use This Test</button>
     </div>
   `).join('');
 }
@@ -769,12 +772,12 @@ function _rpSampleSize() {
     <div style="${_box}">
       <h4 style="font-size:13px;color:var(--ac);font-family:var(--mf);margin-bottom:6px">Power-Based Sample Size Calculator</h4>
       <p style="${_s};line-height:1.5;margin-bottom:12px">Calculate the sample size needed to detect an effect with specified power and significance level.</p>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-        <button class="bt on" data-ss="ttest" onclick="_rpSSCalc('ttest')">t-test</button>
-        <button class="bt sm" data-ss="anova" onclick="_rpSSCalc('anova')">ANOVA</button>
-        <button class="bt sm" data-ss="chi2" onclick="_rpSSCalc('chi2')">Chi-square</button>
-        <button class="bt sm" data-ss="corr" onclick="_rpSSCalc('corr')">Correlation</button>
-        <button class="bt sm" data-ss="regression" onclick="_rpSSCalc('regression')">Regression</button>
+      <div class="seg-ctrl" style="margin-bottom:14px">
+        <button class="seg-btn on" data-ss="ttest" onclick="_rpSSCalc('ttest')">t-test / Means</button>
+        <button class="seg-btn" data-ss="anova" onclick="_rpSSCalc('anova')">ANOVA</button>
+        <button class="seg-btn" data-ss="chi2" onclick="_rpSSCalc('chi2')">Chi-square</button>
+        <button class="seg-btn" data-ss="corr" onclick="_rpSSCalc('corr')">Correlation</button>
+        <button class="seg-btn" data-ss="regression" onclick="_rpSSCalc('regression')">Regression</button>
       </div>
       <div id="rp-ss-form"></div>
     </div>
@@ -785,7 +788,7 @@ function _rpSampleSize() {
 }
 
 function _rpSSCalc(type) {
-  $$('#rp-tool-content .bt[data-ss]').forEach(b=>b.classList.toggle('on',b.dataset.ss===type));
+  $$('#rp-tool-content .seg-btn[data-ss]').forEach(b=>b.classList.toggle('on',b.dataset.ss===type));
   const _s='font-size:11px;color:var(--tm);font-family:var(--mf)';
   const form=$('#rp-ss-form');
   if(!form)return;
@@ -809,7 +812,7 @@ function _rpSSCalc(type) {
         <input type="range" id="rp-ss-pow" min="0.50" max="0.99" step="0.01" value="0.80" oninput="$('#rp-ss-pow-v').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;accent-color:var(--ac)"></label>
     </div>
     <div style="margin-top:8px;${_s};line-height:1.5">${effectGuide.ttest}</div>
-    <button class="bt on" onclick="_rpCalcSS('ttest')" style="margin-top:10px">Calculate</button>`;
+    <button class="bt bt-pri" onclick="_rpCalcSS('ttest')" style="margin-top:10px">Calculate</button>`;
   } else if(type==='anova'){
     form.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:540px">
       <label style="${_s}">Number of groups (k):<input type="number" class="si" id="rp-ss-k" value="3" min="2" max="20" style="width:100%;margin-top:2px"></label>
@@ -820,7 +823,7 @@ function _rpSSCalc(type) {
         <input type="range" id="rp-ss-pow" min="0.50" max="0.99" step="0.01" value="0.80" oninput="$('#rp-ss-pow-v').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;accent-color:var(--ac)"></label>
     </div>
     <div style="margin-top:8px;${_s};line-height:1.5">${effectGuide.anova}</div>
-    <button class="bt on" onclick="_rpCalcSS('anova')" style="margin-top:10px">Calculate</button>`;
+    <button class="bt bt-pri" onclick="_rpCalcSS('anova')" style="margin-top:10px">Calculate</button>`;
   } else if(type==='chi2'){
     form.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:540px">
       <label style="${_s}">Degrees of freedom (df):<input type="number" class="si" id="rp-ss-df" value="1" min="1" max="100" style="width:100%;margin-top:2px"></label>
@@ -831,7 +834,7 @@ function _rpSSCalc(type) {
         <input type="range" id="rp-ss-pow" min="0.50" max="0.99" step="0.01" value="0.80" oninput="$('#rp-ss-pow-v').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;accent-color:var(--ac)"></label>
     </div>
     <div style="margin-top:8px;${_s};line-height:1.5">${effectGuide.chi2}</div>
-    <button class="bt on" onclick="_rpCalcSS('chi2')" style="margin-top:10px">Calculate</button>`;
+    <button class="bt bt-pri" onclick="_rpCalcSS('chi2')" style="margin-top:10px">Calculate</button>`;
   } else if(type==='corr'){
     form.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:540px">
       <label style="${_s}">Expected correlation (r): <span id="rp-ss-r-v" style="color:var(--ac)">0.30</span>
@@ -841,7 +844,7 @@ function _rpSSCalc(type) {
         <input type="range" id="rp-ss-pow" min="0.50" max="0.99" step="0.01" value="0.80" oninput="$('#rp-ss-pow-v').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;accent-color:var(--ac)"></label>
     </div>
     <div style="margin-top:8px;${_s};line-height:1.5">${effectGuide.corr}</div>
-    <button class="bt on" onclick="_rpCalcSS('corr')" style="margin-top:10px">Calculate</button>`;
+    <button class="bt bt-pri" onclick="_rpCalcSS('corr')" style="margin-top:10px">Calculate</button>`;
   } else if(type==='regression'){
     form.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:540px">
       <label style="${_s}">Number of predictors:<input type="number" class="si" id="rp-ss-p" value="3" min="1" max="50" style="width:100%;margin-top:2px"></label>
@@ -852,7 +855,7 @@ function _rpSSCalc(type) {
         <input type="range" id="rp-ss-pow" min="0.50" max="0.99" step="0.01" value="0.80" oninput="$('#rp-ss-pow-v').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;accent-color:var(--ac)"></label>
     </div>
     <div style="margin-top:8px;${_s};line-height:1.5">${effectGuide.regression}</div>
-    <button class="bt on" onclick="_rpCalcSS('regression')" style="margin-top:10px">Calculate</button>`;
+    <button class="bt bt-pri" onclick="_rpCalcSS('regression')" style="margin-top:10px">Calculate</button>`;
   }
 }
 

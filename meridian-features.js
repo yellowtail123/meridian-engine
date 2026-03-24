@@ -64,7 +64,30 @@ function _updateKeyPromptVisibility(){
     }
   }
   const aki=$('#aki');
-  if(aki){aki.placeholder=AI_PROVIDERS[S.aiProvider]?.placeholder||'API key...';}
+  if(aki){aki.placeholder=AI_PROVIDERS[S.aiProvider]?.placeholder||'sk-...';}
+  /* 3A: Toggle onboarding card vs connected chat */
+  const ob=$('#ai-onboard'),conn=$('#ai-connected'),sb=$('#ai-sb-info');
+  if(ob&&conn){
+    if(S.apiK){
+      ob.style.display='none';conn.style.display='flex';
+      if(sb){const prov=AI_PROVIDERS[S.aiProvider];sb.textContent=(prov?.name||S.aiProvider)+' \u00B7 '+(prov?.displayModels?.[S.aiModel]||S.aiModel)+' \u00B7 Connected \u2713'}
+    }else{
+      ob.style.display='flex';conn.style.display='none';
+    }
+  }
+}
+/* 3A: Onboarding helpers */
+function _aiShowOnboard(){S.apiK='';_updateKeyPromptVisibility();const aki=$('#aki');if(aki){aki.value='';aki.focus()}}
+function _onObProviderChange(prov){
+  _onProviderChange(prov);
+  const ms=$('#ai-ob-model');if(!ms)return;
+  const info=AI_PROVIDERS[prov];if(!info)return;
+  ms.innerHTML=info.models.map(m=>`<option value="${m}"${m===info.defaultModel?' selected':''}>${info.displayModels?.[m]||m}</option>`).join('');
+}
+function _initOnboardDropdowns(){
+  const ps=$('#ai-ob-provider');if(!ps)return;
+  ps.innerHTML=Object.entries(AI_PROVIDERS).map(([k,v])=>`<option value="${k}"${k===S.aiProvider?' selected':''}>${v.name}</option>`).join('');
+  _onObProviderChange(S.aiProvider);
 }
 async function updateAIProvider(prov){
   prov=prov||S.aiProvider||'anthropic';
@@ -248,6 +271,17 @@ function summarizeToolInput(name,input){
   if(name==='open_paper')return'"'+input.query+'"';
   return'';
 }
+/* ── 3A: Friendly error messages ── */
+function _friendlyAIError(raw){
+  const lc=(raw||'').toLowerCase();
+  if(lc.includes('429')||lc.includes('quota')||lc.includes('rate limit'))return'__AI_ERROR__You have reached your API usage limit. Please check your billing details on your provider\u2019s dashboard.';
+  if(lc.includes('401')||lc.includes('authentication')||lc.includes('invalid'))return'__AI_ERROR__This API key does not appear to be valid. Please double-check it and try again.';
+  if(lc.includes('403')||lc.includes('forbidden'))return'__AI_ERROR__Access denied. Your API key may not have the required permissions for this model.';
+  if(lc.includes('fetch')||lc.includes('network')||lc.includes('failed to fetch')||lc.includes('ERR_'))return'__AI_ERROR__Could not connect to the AI provider. Please check your internet connection and try again.';
+  if(lc.includes('500')||lc.includes('internal server'))return'__AI_ERROR__The AI provider is experiencing issues right now. Please try again in a moment.';
+  if(lc.includes('400')||lc.includes('bad request'))return'__AI_ERROR__There was a problem with the request. Try rephrasing or switching models.';
+  return'__AI_ERROR__Something went wrong. Please try again or switch to a different model.';
+}
 function renderToolCards(toolCalls){
   if(!toolCalls||!toolCalls.length)return'';
   return'<div class="tool-calls">'+toolCalls.map(tc=>{
@@ -265,38 +299,61 @@ function _buildChatHTML(compact){
     const prompts=AGENT_PROMPTS.sort(()=>Math.random()-.5).slice(0,3);
     return`<div style="text-align:center;padding:20px 0 8px"><div style="font-size:20px;font-weight:700;color:var(--ac);margin-bottom:4px">Meridian AI</div><p style="font-size:13px;color:var(--tm);margin-bottom:16px;line-height:1.5">Search papers, look up species, and analyze your library and data.<br>Try one of these to get started:</p></div><div class="csg">${prompts.map(s=>`<button class="csb" onclick="_chatInsert(this.textContent)">${s}</button>`).join('')}</div>`;
   }
-  let html='';
+  let html='';const now=new Date();
   for(let i=0;i<S.chatM.length;i++){
     const m=S.chatM[i];
+    const ts=m._ts?new Date(m._ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(!m._ts)m._ts=Date.now();
     if(m.role==='user'){
       if(Array.isArray(m.content)&&m.content[0]?.type==='tool_result')continue;
       const text=typeof m.content==='string'?m.content:(m.content[0]?.text||'');
-      html+=`<div class="msg u"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">You</div><div class="ct">${escHTML(text)}</div></div>`;
+      html+=`<div class="msg u"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">You</div><div class="ct">${escHTML(text)}</div><div class="msg-time">${ts}</div></div>`;
     }else if(m.role==='assistant'){
       const text=typeof m.content==='string'?m.content:
         (Array.isArray(m.content)?m.content.filter(b=>b.type==='text').map(b=>b.text).join(''):'');
+      /* 3A: Error card rendering */
+      if(text.startsWith('__AI_ERROR__')){
+        const errMsg=text.replace('__AI_ERROR__','');
+        html+=`<div class="msg a" style="max-width:90%"><div class="ai-error-card"><div class="ai-err-title">Request Failed</div>${escHTML(errMsg)}<div class="ai-err-actions"><button class="bt bt-sec" onclick="_retryLastChat()">Retry</button><button class="ai-err-link" onclick="_aiShowOnboard()">Switch Model</button></div></div><div class="msg-time">${ts}</div></div>`;
+        continue;
+      }
       html+=`<div class="msg a"><button class="copy-btn" onclick="navigator.clipboard.writeText(this.parentElement.querySelector('.ct').textContent);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1200)">Copy</button><div class="rl">Meridian AI</div>`;
       if(!compact&&m._toolCalls&&m._toolCalls.length)html+=renderToolCards(m._toolCalls);
       const rendered=typeof _linkCitations==='function'?_linkCitations(renderMD(text)):renderMD(text);
       html+=`<div class="ct">${rendered}</div>`;
       if(!compact&&m._usage){const u=m._usage;html+=`<div class="msg-cost">${u.input+u.output} tok`+(u.cost?` · ${_fmtCost(u.cost)}`:'')+`</div>`}
-      html+=`</div>`;
+      html+=`<div class="msg-time">${ts}</div></div>`;
     }
   }
   if(S.chatL)html+=mkL();
   return html;
 }
+function _retryLastChat(){
+  /* Remove last error message and re-send the previous user message */
+  while(S.chatM.length&&S.chatM[S.chatM.length-1]._isError)S.chatM.pop();
+  if(!S.chatM.length||S.chatM[S.chatM.length-1].role!=='user')return;
+  S.chatL=true;rCh();_runAgentLoop();
+}
 function rCh(){
   // Render into AI tab
   const c=$('#cmsg');
-  if(c){c.innerHTML=_buildChatHTML(false);c.scrollTop=c.scrollHeight;}
+  if(c){c.innerHTML=_buildChatHTML(false);c.scrollTop=c.scrollHeight;_injectCodeCopyBtns(c)}
   // Render into floating chat
   const fc=$('#fc-msgs');
   if(fc){fc.innerHTML=_buildChatHTML(true);fc.scrollTop=fc.scrollHeight;}
   // Toggle stop button
   const stopBtn=$('#cstop');if(stopBtn)stopBtn.style.display=S.chatL?'':'none';
+  const sendBtn=$('#csnd');if(sendBtn)sendBtn.style.display=S.chatL?'none':'';
   // Update unread badge on floating chat (if panel is closed and new assistant message)
   _fcUpdateBadge();
+}
+function _injectCodeCopyBtns(container){
+  container.querySelectorAll('.ct pre').forEach(pre=>{
+    if(pre.querySelector('.code-copy'))return;
+    const btn=document.createElement('button');btn.className='code-copy';btn.textContent='Copy';
+    btn.onclick=()=>{navigator.clipboard.writeText(pre.textContent.replace('Copy','').trim());btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1200)};
+    pre.style.position='relative';pre.appendChild(btn);
+  });
 }
 function _chatInsert(text){
   // Insert into whichever input is visible
@@ -354,7 +411,7 @@ function buildAIContext(){
   for(const b of blocks){const cost=estTok(b.text);if(cost<=budget){ctx+='\n'+b.text;budget-=cost;tags.push(b.tag)}}
   _lastCtxTags=tags;
   _updateCtxIndicator();
-  return SYS+(ctx?'\n\nCURRENT RESEARCH CONTEXT:'+ctx:'');
+  return SYS+(ctx?'\n\nCurrent Research Context:'+ctx:'');
 }
 // ── Update "AI can see" indicators ──
 function _updateCtxIndicator(){
@@ -757,8 +814,8 @@ async function _runAgentLoop(){
     if(iterations>=MAX_ITER)toast('Agent reached max iterations','info');
   }catch(e){
     if(e.name!=='AbortError'&&e.message!=='Stopped'){
-      const hint=e.message.includes('401')||e.message.includes('invalid')?' Check your API key.':e.message.includes('429')?' Rate limit reached — wait a moment.':e.message.includes('503')||e.message.includes('500')?' AI service temporarily unavailable.':'';
-      S.chatM.push({role:'assistant',content:'Error: '+e.message+hint});
+      const msg=_friendlyAIError(e.message);
+      S.chatM.push({role:'assistant',content:msg,_isError:true});
     }else{
       S.chatM.push({role:'assistant',content:'*Stopped by user.*'});
     }
@@ -778,15 +835,24 @@ async function _runAgentLoop(){
 // AI tab send handler
 async function sCh(){
   const inp=$('#ci'),m=inp.value.trim();if(!m||S.chatL)return;
-  if(!S.apiK)return toast('Enter API key in the API Keys dropdown','err');
-  inp.value='';S.chatM.push({role:'user',content:m});S.chatL=true;rCh();
+  if(!S.apiK){_aiShowOnboard();toast('Connect an AI provider first','info');return}
+  inp.value='';S.chatM.push({role:'user',content:m,_ts:Date.now()});S.chatL=true;rCh();
   _runAgentLoop();
 }
-$('#akb').addEventListener('click',async()=>{S.apiK=$('#aki').value.trim();if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);safeStore('meridian_model_'+S.aiProvider,S.aiModel);$('#akb').textContent='\u2713';toast('API key saved for '+AI_PROVIDERS[S.aiProvider].name,'ok');_updateKeyPromptVisibility();setTimeout(()=>$('#akb').textContent='Save',2000)}else{toast('Enter an API key first','err')}});
+$('#akb').addEventListener('click',async()=>{
+  const obModel=$('#ai-ob-model');
+  if(obModel&&obModel.value)S.aiModel=obModel.value;
+  const obProv=$('#ai-ob-provider');
+  if(obProv&&obProv.value){S.aiProvider=obProv.value;_syncAllProviderDropdowns()}
+  S.apiK=$('#aki').value.trim();
+  if(S.apiK){await _keyVault.store('meridian_key_'+S.aiProvider,S.apiK);safeStore('meridian_provider',S.aiProvider);safeStore('meridian_model_'+S.aiProvider,S.aiModel);toast('Connected to '+AI_PROVIDERS[S.aiProvider].name,'ok');_updateKeyPromptVisibility()}else{toast('Enter an API key first','err')}
+});
 $('#aki').addEventListener('keydown',e=>{if(e.key==='Enter')$('#akb').click()});
 // Unified provider dropdown handlers
 $('#aip')?.addEventListener('change',function(){_onProviderChange(this.value)});
 $('#fc-provider')?.addEventListener('change',function(){_onProviderChange(this.value)});
+// Init onboarding dropdowns
+setTimeout(_initOnboardDropdowns,200);
 
 // ═══ FLOATING CHATBOT ENGINE ═══
 let _fcOpen=false,_fcUnread=0;
@@ -1533,7 +1599,7 @@ $('#geoSearch')?.addEventListener('keydown',function(e){if(e.key==='Escape'){$('
 function renderThresholdPanel(tk){
   if(!tk||!tk.length){H('#ethresholds','');return}
   const opts=tk.map(id=>`<option value="${id}">${S.envTS[id]?.nm||id}</option>`).join('');
-  H('#ethresholds',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Threshold:</span><select class="fs" id="threshVar">${opts}</select><select class="fs" id="threshOp" style="width:50px"><option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&ge;</option><option value="<=">&le;</option></select><input class="fi" id="threshVal" placeholder="Value" style="width:70px" type="number" step="any"/><button class="bt sm on" onclick="applyThreshold()">Highlight</button><button class="bt sm" onclick="clearThreshold()" style="color:var(--co)">Clear</button></div><div id="threshStats" style="font-size:11px;font-family:var(--mf);color:var(--tm)"></div>`)}
+  H('#ethresholds',`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center"><span style="font-size:11px;color:var(--tm);font-family:var(--mf)">Threshold:</span><select class="fs" id="threshVar">${opts}</select><select class="fs" id="threshOp" style="width:50px"><option value=">">&gt;</option><option value="<">&lt;</option><option value=">=">&ge;</option><option value="<=">&le;</option></select><input class="fi" id="threshVal" placeholder="Value" style="width:70px" type="number" step="any"/><button class="bt sm bt-pri" onclick="applyThreshold()">Highlight</button><button class="bt sm" onclick="clearThreshold()" style="color:var(--co)">Clear</button></div><div id="threshStats" style="font-size:11px;font-family:var(--mf);color:var(--tm)"></div>`)}
 function applyThreshold(){
   const id=$('#threshVar')?.value;const op=$('#threshOp')?.value;const val=parseFloat($('#threshVal')?.value);
   if(!id||!S.envTS[id]||isNaN(val)){toast('Set variable and threshold value','err');return}
@@ -2034,6 +2100,12 @@ function _gapTier(score){
   return{tier:'theoretical',label:'Theoretical',color:'var(--tm)',bg:'var(--be)'};
 }
 
+/* ── 2G: Gap Analysis mode switcher ── */
+function _gapSetMode(mode){
+const modes=['discover','viz','export'];
+modes.forEach(m=>{const p=$('#gap-panel-'+m);const b=$('#gap-mode-'+m);if(p)p.style.display=m===mode?'':'none';if(b)b.classList.toggle('on',m===mode)});
+}
+
 function buildGapMap(){
   extractAllMetadata();
   const speciesSet=new Set(),regionSet=new Set(),methodSet=new Set();
@@ -2352,7 +2424,7 @@ function detectContradictions(){
 function showEffectSizeCalc(){
   H('#gapContent',`<div class="sec"><div class="sh"><h4>Effect Size Calculator</h4></div><div class="sb">
   <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
-    <div style="flex:1;min-width:250px"><div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;margin-bottom:6px">Two-Group Comparison (Cohen's d)</div>
+    <div style="flex:1;min-width:250px"><div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:6px">Two-Group Comparison (Cohen's d)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
       <div><label style="font-size:11px;color:var(--tm)">Mean 1</label><input class="fi" id="es-m1" type="number" step="any" style="width:100%"/></div>
       <div><label style="font-size:11px;color:var(--tm)">SD 1</label><input class="fi" id="es-sd1" type="number" step="any" min="0" style="width:100%"/></div>
@@ -2361,14 +2433,14 @@ function showEffectSizeCalc(){
       <div><label style="font-size:11px;color:var(--tm)">SD 2</label><input class="fi" id="es-sd2" type="number" step="any" min="0" style="width:100%"/></div>
       <div><label style="font-size:11px;color:var(--tm)">n2</label><input class="fi" id="es-n2" type="number" min="2" style="width:100%"/></div>
     </div>
-    <button class="bt on" onclick="calcEffectSize()" style="margin-top:8px">Calculate</button></div>
-    <div style="flex:1;min-width:250px"><div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;margin-bottom:6px">2×2 Table (Odds Ratio)</div>
+    <button class="bt bt-pri" onclick="calcEffectSize()" style="margin-top:8px">Calculate</button></div>
+    <div style="flex:1;min-width:250px"><div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:6px">2×2 Table (Odds Ratio)</div>
     <div style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px;align-items:center;font-size:12px;font-family:var(--mf)">
       <span></span><span style="color:var(--tm);text-align:center">Event</span><span style="color:var(--tm);text-align:center">No Event</span>
       <span style="color:var(--ts)">Exposed</span><input class="fi" id="es-a" type="number" min="0" style="width:70px"/><input class="fi" id="es-b" type="number" min="0" style="width:70px"/>
       <span style="color:var(--ts)">Control</span><input class="fi" id="es-c" type="number" min="0" style="width:70px"/><input class="fi" id="es-d" type="number" min="0" style="width:70px"/>
     </div>
-    <button class="bt on" onclick="calcOddsRatio()" style="margin-top:8px">Calculate OR/RR</button></div>
+    <button class="bt bt-pri" onclick="calcOddsRatio()" style="margin-top:8px">Calculate OR/RR</button></div>
   </div>
   <div id="es-results"></div>
   <div id="es-plot" style="margin-top:10px"></div>
@@ -2467,7 +2539,7 @@ body{font-family:'Inter',sans-serif;max-width:800px;margin:40px auto;padding:0 2
 h1{color:#1a1a2e;border-bottom:2px solid #C9956B;padding-bottom:8px;font-size:24px}
 h2{color:#C9956B;margin-top:28px;font-size:18px}
 table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}
-th{background:#f5f0eb;padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+th{background:#f5f0eb;padding:8px 10px;text-align:left;border-bottom:2px solid #ddd;font-size:11px;letter-spacing:.5px}
 td{padding:6px 10px;border-bottom:1px solid #eee}
 tr:nth-child(even){background:#faf8f5}
 .stat{display:inline-block;padding:4px 12px;margin:2px;border-radius:4px;background:#f5f0eb;font-family:monospace;font-size:13px}
@@ -2946,7 +3018,7 @@ function compileWithLineage(){
 function renderParamTable(){
   const el=$('#paramTableContent');if(!el)return;
   const species=[...new Set(_paramTable.map(r=>r.species))].sort();
-  el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><button class="bt sm on" onclick="addParam()">+ Add Parameter</button><button class="bt sm" onclick="paramToWorkshop()">→ Workshop</button><button class="bt sm" onclick="exportParamCSV()">Export CSV</button></div>`+
+  el.innerHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap"><button class="bt sm bt-pri" onclick="addParam()">+ Add Parameter</button><button class="bt sm" onclick="paramToWorkshop()">→ Workshop</button><button class="bt sm" onclick="exportParamCSV()">Export CSV</button></div>`+
     (species.length?species.map(sp=>`<div class="sec" style="margin-bottom:10px"><div class="sh"><h4 style="font-style:italic">${escHTML(sp)}</h4></div><div class="sb"><table class="param-table"><thead><tr><th>Parameter</th><th>Value</th><th>Unit</th><th>Source Paper</th><th>Year</th><th></th></tr></thead><tbody>${_paramTable.filter(r=>r.species===sp).map((r,i)=>{const gi=_paramTable.indexOf(r);return`<tr><td>${escHTML(r.param)}</td><td>${r.value}</td><td>${escHTML(r.unit||'')}</td><td style="font-size:11px">${escHTML((r.paperTitle||'').slice(0,40))}</td><td>${r.year||''}</td><td><button class="bt sm" style="color:var(--co);font-size:10px" onclick="_paramTable.splice(${gi},1);safeStore('meridian_params',_paramTable);renderParamTable()">×</button></td></tr>`}).join('')}</tbody></table></div></div>`).join(''):'<p style="color:var(--tm);font-size:12px">No parameters. Click "+ Add Parameter" to enter species-specific data from your papers.</p>')}
 function addParam(){
   const species=prompt('Taxon (e.g. Tursiops truncatus, Acropora millepora):');if(!species)return;
@@ -3040,7 +3112,7 @@ renderLib=function(){
     paramSection.innerHTML=`<div class="sec" style="margin-top:14px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Citation Metrics</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none" id="metricsContent"></div></div>
     <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Species Parameter Table</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none" id="paramTableContent"></div></div>
     <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Saved Search Alerts</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none"><div id="alertsList"></div></div></div>
-    <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Author Tracking (ORCID)</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none"><div style="margin-bottom:8px"><button class="bt sm on" onclick="trackOrcid()">+ Track Author</button></div><div id="orcidList"></div></div></div>`;
+    <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Author Tracking (ORCID)</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none"><div style="margin-bottom:8px"><button class="bt sm bt-pri" onclick="trackOrcid()">+ Track Author</button></div><div id="orcidList"></div></div></div>`;
     existingBtnRow.parentNode.appendChild(paramSection);
     setTimeout(()=>{renderParamTable();renderAlerts();renderOrcidPanel();renderMetricsSection()},50)}
   // Enhance library cards with new features
@@ -3104,8 +3176,8 @@ function renderMetricsSection(){
   const el=$('#metricsContent');if(!el)return;
   const m=renderCitationMetrics();if(!m)return el.innerHTML='<p style="color:var(--tm);font-size:12px">Need at least 2 papers.</p>';
   el.innerHTML=`<div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap"><div class="ec"><div class="el">Library h-index</div><div class="ev">${m.hIndex}</div></div><div class="ec"><div class="el">Total Papers</div><div class="ev">${S.lib.length}</div></div><div class="ec"><div class="el">Total Citations</div><div class="ev">${S.lib.reduce((s,p)=>s+(p.cited||0),0).toLocaleString()}</div></div></div>
-  <div style="display:flex;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:250px"><h4 style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;margin-bottom:6px">Top Authors</h4><table class="dt"><thead><tr><th>Author</th><th>Papers</th><th>h-idx</th><th>Cited</th></tr></thead><tbody>${m.topAuthors.map(a=>`<tr><td>${escHTML(a.name)}</td><td>${a.count}</td><td style="color:var(--ac)">${a.hIndex}</td><td>${a.totalCited}</td></tr>`).join('')}</tbody></table></div>
-  <div style="flex:1;min-width:250px"><h4 style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;margin-bottom:6px">Top Journals</h4><table class="dt"><thead><tr><th>Journal</th><th>Papers</th><th>Mean Cited</th></tr></thead><tbody>${m.topJournals.map(j=>`<tr><td>${escHTML(j.name)}</td><td>${j.count}</td><td style="color:var(--ac)">${j.meanCited}</td></tr>`).join('')}</tbody></table></div></div>`}
+  <div style="display:flex;gap:12px;flex-wrap:wrap"><div style="flex:1;min-width:250px"><h4 style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:6px">Top Authors</h4><table class="dt"><thead><tr><th>Author</th><th>Papers</th><th>h-idx</th><th>Cited</th></tr></thead><tbody>${m.topAuthors.map(a=>`<tr><td>${escHTML(a.name)}</td><td>${a.count}</td><td style="color:var(--ac)">${a.hIndex}</td><td>${a.totalCited}</td></tr>`).join('')}</tbody></table></div>
+  <div style="flex:1;min-width:250px"><h4 style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:6px">Top Journals</h4><table class="dt"><thead><tr><th>Journal</th><th>Papers</th><th>Mean Cited</th></tr></thead><tbody>${m.topJournals.map(j=>`<tr><td>${escHTML(j.name)}</td><td>${j.count}</td><td style="color:var(--ac)">${j.meanCited}</td></tr>`).join('')}</tbody></table></div></div>`}
 
 // ═══ KEYWORD CO-OCCURRENCE NETWORK ═══
 function buildKeywordNetwork(){
@@ -3157,25 +3229,22 @@ function exportKwMatrix(){
 // ═══ ENHANCED LITERATURE TAB (add query builder, grey lit, alerts) ═══
 function enhanceLitTab(){
   const litTab=$('#tab-lit');if(!litTab||litTab.dataset.enhanced)return;litTab.dataset.enhanced='1';
-  // Add query builder panel
+  // Add query builder panel (hidden, opened via Filters dropdown)
   const qbDiv=document.createElement('div');
   qbDiv.id='qbPanel';qbDiv.style.cssText='display:none;margin-bottom:12px;padding:12px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)';
   const searchRow=$('#litSearchRow');
   if(searchRow)searchRow.after(qbDiv);
-  // Add toggle and grey lit button to filter row
+  // Add Grey Lit button to filter row (before Filters dropdown)
   const filterRow=$('#litFilterRow');
   if(filterRow){
-    const qbBtn=document.createElement('button');qbBtn.className='bt sm';qbBtn.textContent='Builder';
-    qbBtn.onclick=()=>{const p=$('#qbPanel');p.style.display=p.style.display==='none'?'block':'none';if(p.style.display==='block')renderQueryBuilder()};
     const greyBtn=document.createElement('button');greyBtn.className='bt sm';greyBtn.textContent='Grey Lit';
     greyBtn.onclick=greyLitSearch;greyBtn.style.cssText='color:var(--wa);border-color:rgba(212,160,74,.2)';
-    filterRow.insertBefore(greyBtn,$('#litFilterActions'));
-    filterRow.insertBefore(qbBtn,greyBtn)}
-  // Add search log section at end of lit tab
-  const logSection=document.createElement('div');
-  logSection.innerHTML=`<div class="sec" style="margin-top:14px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Search Audit Log (${_searchAudit.length} searches)</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none" id="searchLogContent"></div></div>`;
-  litTab.appendChild(logSection);
-  setTimeout(renderSearchLog,100)}
+    const filtersBtn=$('#litFiltersBtn');
+    if(filtersBtn)filterRow.insertBefore(greyBtn,filtersBtn)}
+  // Add search log section — collapsed by default with summary line
+  const logSection=document.createElement('div');logSection.id='litLogSection';
+  logSection.innerHTML=`<div class="sec" style="margin-top:14px"><div class="sh" onclick="const sb=this.nextElementSibling;const open=sb.style.display!=='none';sb.style.display=open?'none':'block';this.querySelector('.sh-chevron').style.transform=open?'rotate(-90deg)':'';if(!open&&typeof renderSearchLog==='function')renderSearchLog()"><h4>Search Audit Log · ${_searchAudit.length} searches</h4><span class="sh-chevron" style="margin-left:auto;display:inline-flex;transform:rotate(-90deg);transition:transform .25s"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="var(--tm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg></span></div><div class="sb" style="display:none" id="searchLogContent"></div></div>`;
+  litTab.appendChild(logSection)}
 setTimeout(enhanceLitTab,100);
 
 // ═══ UPDATE TAB NAVIGATION ═══
@@ -3212,7 +3281,7 @@ function showOnboarding(){
       </div>`).join('')}
     </div>
     <div style="background:var(--bi);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:20px">
-      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Optional — AI API Key</div>
+      <div style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:1px;margin-bottom:8px">Optional — AI API Key</div>
       <div style="font-size:12px;color:var(--ts);margin-bottom:10px;line-height:1.5">Bring your own key to enable the AI research assistant. You can also set this later in the AI tab.</div>
       <div style="display:flex;gap:8px;align-items:center">
         <select class="fs" id="splash-aip" style="min-width:130px"><option value="anthropic">Anthropic</option><option value="openai">OpenAI</option><option value="google">Google</option></select>
@@ -3220,7 +3289,7 @@ function showOnboarding(){
       </div>
     </div>
     <div style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap">
-      <button class="bt on" style="padding:12px 32px;font-size:14px" onclick="_splashEnter()">Get Started</button>
+      <button class="bt bt-pri" style="padding:12px 32px;font-size:14px" onclick="_splashEnter()">Get Started</button>
     </div>
     <div style="text-align:center;margin-top:16px;font-size:11px;color:var(--tm)">
       <a href="#" onclick="event.preventDefault();showPrivacyPolicy()" style="color:var(--tm);text-decoration:underline">Privacy Policy</a>
@@ -3338,7 +3407,7 @@ H('#lemp',emptyState(
     '<svg width="36" height="36" viewBox="0 0 16 16" style="stroke:var(--ac);fill:none;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg>',
     'Data Workshop',
     'Compile paper metadata from your Library, or paste CSV data directly. Supports 10 chart types with Plotly.',
-    `<button class="bt on" onclick="goTab('library')">Go to Library</button><button class="bt sm" onclick="goTab('lit')">Search Papers First</button>`
+    `<button class="bt bt-pri" onclick="goTab('library')">Go to Library</button><button class="bt sm" onclick="goTab('lit')">Search Papers First</button>`
   ))}})();
 // Graph empty state
 (function(){const gs=$('#citGraphSvg');if(gs&&!gs.innerHTML.trim()){
@@ -3346,7 +3415,7 @@ H('#lemp',emptyState(
     '<svg width="36" height="36" viewBox="0 0 16 16" style="stroke:var(--ac);fill:none;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round"><circle cx="4" cy="4" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="8" cy="13" r="2"/><line x1="5.5" y1="5.5" x2="7" y2="11.5"/><line x1="10.5" y1="5.5" x2="9" y2="11.5"/><line x1="6" y1="4" x2="10" y2="4"/></svg>',
     'Citation Network',
     'Save papers to your Library first, then select a seed paper to explore its citation network.',
-    `<button class="bt on" onclick="goTab('library')">Go to Library</button>`
+    `<button class="bt bt-pri" onclick="goTab('library')">Go to Library</button>`
   ))}}})();
 // Gaps empty state
 (function(){const gc=$('#gapContent');if(gc&&!gc.innerHTML.trim()){
@@ -3354,7 +3423,7 @@ H('#lemp',emptyState(
     '<svg width="36" height="36" viewBox="0 0 16 16" style="stroke:var(--ac);fill:none;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round"><path d="M3 2h4l1.5 2L10 2h3v4l-2 1.5L13 9v4h-4l-1-2-1 2H3V9l2-1.5L3 6z"/></svg>',
     'Research Gap Analysis',
     'Need 5+ papers in your Library to build meaningful evidence maps. Save papers from Literature search, then click "Build Evidence Map".',
-    `<button class="bt on" onclick="goTab('lit')">Search Papers</button><button class="bt sm" onclick="buildGapMap()">Discover Gaps</button>`
+    `<button class="bt bt-pri" onclick="goTab('lit')">Search Papers</button><button class="bt sm" onclick="buildGapMap()">Discover Gaps</button>`
   ))}})();
 
 // ═══ PHASE 3c: WORKFLOW BREADCRUMB ═══
@@ -3964,3 +4033,42 @@ function _updateSessionTokenDisplay(){
   if(!_sessionTokens.input&&!_sessionTokens.output){el.innerHTML='No tokens used yet';return}
   el.innerHTML=`In: ${_sessionTokens.input.toLocaleString()} · Out: ${_sessionTokens.output.toLocaleString()}<br>Est. cost: ${_fmtCost(_sessionTokens.cost)}`;
 }
+
+/* ── 2F: Citations / Graph Tab Enhancement ── */
+let _graphTabEnhanced=false;
+function _enhanceGraphTab(){
+if(_graphTabEnhanced)return;_graphTabEnhanced=true;
+const tab=$('#tab-graph');if(!tab)return;
+/* Score weights: convert <details> to collapsible .sec */
+const sw=$('#bm-score-weights');
+if(sw){
+  const sec=document.createElement('div');sec.className='sec collapsed';sec.id='bm-score-weights-sec';sec.style.cssText=sw.style.cssText;
+  const sh=document.createElement('div');sh.className='sh';sh.innerHTML='<h4>Score Weights</h4><span class="sh-chevron"><svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>';
+  const sb=document.createElement('div');sb.className='sb';
+  /* move children from details into sb */
+  const sliders=$('#bm-weight-sliders');if(sliders)sb.appendChild(sliders);
+  const hint=sw.querySelector('div[style*="margin-top:6px"]');if(hint)sb.appendChild(hint);
+  sec.appendChild(sh);sec.appendChild(sb);
+  sw.replaceWith(sec);
+  sh.addEventListener('click',()=>{sec.classList.toggle('collapsed')});
+}
+/* Controls sections: wrap in card borders */
+['graph-cit-controls','graph-coauth-controls'].forEach(id=>{
+  const el=$('#'+id);if(!el)return;
+  el.style.padding='10px 12px';el.style.borderRadius='var(--rd)';el.style.background='var(--bs)';el.style.border='1px solid var(--bd)';
+});
+/* Expansion row: card style */
+const expRow=$('#bm-expansion-row');
+if(expRow){expRow.style.padding='10px 12px';expRow.style.borderRadius='var(--rd)';expRow.style.background='var(--bs)';expRow.style.border='1px solid var(--bd)'}
+/* Graph SVG: min-height 400px */
+const svg=$('#citGraphSvg');if(svg){svg.setAttribute('height','500');svg.style.minHeight='400px'}
+const wrap=$('#citGraphWrap');if(wrap)wrap.style.minHeight='400px';
+/* Rec panel: min-height */
+const rec=$('#bm-rec-panel');if(rec)rec.style.minHeight='400px';
+/* Standardise selects and inputs */
+tab.querySelectorAll('select.fs,select.fi').forEach(s=>{s.style.height='40px';s.style.borderRadius='8px';s.style.fontSize='14px'});
+tab.querySelectorAll('input.fi,input.si').forEach(i=>{i.style.height='40px';i.style.borderRadius='8px';i.style.fontSize='14px'});
+}
+/* Hook into goTab */
+const _origGoTabGraph=window.goTab;
+if(typeof _origGoTabGraph==='function'){window.goTab=function(id,sub){_origGoTabGraph(id,sub);if(id==='graph')setTimeout(_enhanceGraphTab,50)}}

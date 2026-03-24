@@ -466,7 +466,7 @@ function _pdfShowFallback(paper){
 <h3 style="color:var(--wa);margin-bottom:8px">⚠ The open-access PDF is no longer available at the original URL</h3>
 <p style="font-size:13px;color:var(--tm);margin-bottom:12px">The publisher's server may be blocking cross-origin requests, or the PDF may have moved.</p>
 <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-<a class="bt sm on" href="${escHTML(safeUrl(url))}" target="_blank" rel="noopener" style="text-decoration:none">Open PDF in New Tab ↗</a>
+<a class="bt sm bt-sec" href="${escHTML(safeUrl(url))}" target="_blank" rel="noopener" style="text-decoration:none">Open PDF in New Tab ↗</a>
 ${_pdfS.paperDoi?`<a class="bt sm" href="${escHTML(safeUrl(_pdfS.paperDoi))}" target="_blank" rel="noopener" style="text-decoration:none">Open DOI Page ↗</a>`:''}
 </div>
 ${notes?`<div style="margin-bottom:16px"><h4 style="font-size:13px;color:var(--ts);margin-bottom:6px">Your Notes</h4><div style="font-size:13px;color:var(--tx);white-space:pre-wrap;background:var(--bi);padding:12px;border-radius:6px;border:1px solid var(--bd)">${escHTML(notes)}</div></div>`:''}

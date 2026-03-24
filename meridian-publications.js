@@ -25,7 +25,7 @@ function _renderPubUI(){
     </div>
     <div style="margin-bottom:14px;padding:12px 16px;background:linear-gradient(135deg,var(--am),rgba(123,158,135,.06));border:1px solid var(--ab);border-radius:var(--rd);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span style="font-size:12px;color:var(--ts)">All submissions must follow the Meridian Publication Template format.</span>
-      <a href="/template/Meridian_Publication_Template.docx" download class="bt sm on" style="text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0"><path d="M8 1v9M4 6l4 4 4-4"/><path d="M2 12h12v2H2z"/></svg> Download Publication Template</a>
+      <a href="/template/Meridian_Publication_Template.docx" download class="bt sm bt-sec" style="text-decoration:none;font-size:12px;display:inline-flex;align-items:center;gap:4px"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" style="flex-shrink:0"><path d="M8 1v9M4 6l4 4 4-4"/><path d="M2 12h12v2H2z"/></svg> Download Publication Template</a>
     </div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
       <div class="si-wrap" style="flex:1;min-width:240px"><input class="si" id="pub-search" placeholder="Search publications by title, author, species, keyword..." oninput="_pubApplySearch()" style="font-size:14px"/><button class="si-clear" type="button" onclick="$('#pub-search').value='';_pubApplySearch()" aria-label="Clear">&times;</button></div>
@@ -40,7 +40,7 @@ function _renderPubUI(){
         <option>Review</option><option>Dataset Description</option><option>Monitoring Report</option>
         <option>Methodology</option><option>Policy Brief</option><option>Preprint</option><option>Other</option>
       </select>
-      ${_supaUser?'<button class="bt sm on" onclick="_pubShowSubmit()">+ Submit Publication</button>':'<button class="bt sm" onclick="showAuthModal()" style="color:var(--tm)">Sign in to submit</button>'}
+      ${_supaUser?'<button class="bt bt-pri" onclick="_pubShowSubmit()">+ Submit Publication</button>':'<button class="bt bt-sec" onclick="showAuthModal()">Sign in to submit</button>'}
     </div>
     <div id="pub-cards"></div>
     <div id="pub-detail" style="display:none"></div>
@@ -91,7 +91,7 @@ function _pubRenderCards(){
       <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="var(--ab)" stroke-width="1.5" style="margin-bottom:16px;opacity:.5"><rect x="12" y="4" width="40" height="56" rx="4"/><path d="M20 16h24M20 24h24M20 32h16"/><path d="M36 36l8 8M44 36l-8 8" stroke="var(--ac)" stroke-width="2"/></svg>
       <div style="font-size:15px;color:var(--ts);font-family:var(--sf);font-weight:500;margin-bottom:6px">No publications yet</div>
       <div style="font-size:13px;color:var(--tm);font-family:var(--sf);margin-bottom:16px">Be the first to share your research with the Meridian community</div>
-      ${_supaUser?'<button class="bt on" onclick="_pubShowSubmit()" style="font-size:14px;padding:10px 24px">Submit a Publication</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to submit</button>'}
+      ${_supaUser?'<button class="bt bt-pri" onclick="_pubShowSubmit()" style="font-size:14px;padding:10px 24px">Submit a Publication</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to submit</button>'}
     </div>`);
     return;
   }
@@ -112,9 +112,9 @@ function _pubCard(p){
           ${p.is_trusted_author?'<span style="font-size:10px;color:var(--sg);font-family:var(--mf)" title="Trusted author">&#x2705;</span>':''}
           ${p.status!=='published'?'<span style="font-size:10px;color:var(--wa);font-family:var(--mf)">'+p.status+'</span>':''}
         </div>
-        <div style="font-size:14px;font-weight:600;color:var(--tx);margin-bottom:3px">${_pesc(p.title)}</div>
-        <div style="font-size:12px;color:var(--tm);margin-bottom:4px">${_pesc(authors)}</div>
-        <div style="font-size:12px;color:var(--ts);line-height:1.5;max-height:40px;overflow:hidden">${_pesc((p.abstract||'').slice(0,180))}${(p.abstract||'').length>180?'...':''}</div>
+        <div style="font-size:16px;font-weight:600;color:var(--ac);margin-bottom:3px">${_pesc(p.title)}</div>
+        <div style="font-size:14px;color:var(--tm);margin-bottom:4px">${_pesc(authors)}</div>
+        <div style="font-size:13px;color:var(--ts);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${_pesc((p.abstract||'').slice(0,250))}${(p.abstract||'').length>250?' <span style="color:var(--ac);font-size:12px">Read more \u2192</span>':''}</div>
         <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">${speciesTags}${(p.keywords||[]).slice(0,3).map(k=>'<span style="font-size:10px;color:var(--tm);font-family:var(--mf)">#'+_pesc(k)+'</span>').join(' ')}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;min-width:90px">
@@ -181,7 +181,7 @@ async function _pubShowDetail(id){
               ${d.file_format?'<span style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-left:6px">'+_pesc(d.file_format)+'</span>':''}
               ${d.file_size_bytes?'<span style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-left:4px">('+_pubFormatBytes(d.file_size_bytes)+')</span>':''}
             </div>
-            ${d.file_url?'<button class="bt sm on" onclick="_pubDownloadDataset(\''+d.id+'\')" style="font-size:11px">Download</button>':''}
+            ${d.file_url?'<button class="bt sm bt-sec" onclick="_pubDownloadDataset(\''+d.id+'\')" style="font-size:11px">Download</button>':''}
           </div>`).join('')}</div></div>`;
       }
     }catch(e){console.warn('Linked datasets:',e)}
@@ -214,7 +214,7 @@ async function _pubShowDetail(id){
             ${p.is_trusted_author?'<span style="font-size:11px;color:var(--sg);font-family:var(--mf)">&#x2705; Trusted Author</span>':''}
             <span style="font-size:11px;color:var(--wa);font-family:var(--mf)">${p.status}</span>
           </div>
-          <h4 style="font-size:18px;color:var(--tx);text-transform:none;letter-spacing:0;font-weight:700">${_pesc(p.title)}</h4>
+          <h4 style="font-size:18px;color:var(--tx);font-weight:700">${_pesc(p.title)}</h4>
         </div>
       </div>
       <div class="sb">
@@ -233,15 +233,15 @@ async function _pubShowDetail(id){
           ${p.location_lat!=null?'<span style="color:var(--tm)">Location</span><span style="color:var(--ts)">'+p.location_lat.toFixed(4)+', '+p.location_lng.toFixed(4)+'</span>':''}
         </div>
 
-        <div style="margin-top:16px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Sections Detected</div>${sectionBadges}</div>
+        <div style="margin-top:16px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);letter-spacing:.5px;margin-bottom:6px">Sections Detected</div>${sectionBadges}</div>
 
         <div style="margin-top:16px;padding:14px;background:var(--be);border-radius:var(--rd)">
-          <div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Abstract</div>
+          <div style="font-size:11px;font-family:var(--mf);color:var(--tm);letter-spacing:.5px;margin-bottom:6px">Abstract</div>
           <div style="font-size:13px;color:var(--ts);line-height:1.7">${_pesc(p.abstract)}</div>
         </div>
 
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          ${p.pdf_url?'<button class="bt on" onclick="_pubDownloadPDF(\''+p.id+'\')">View PDF</button>':''}
+          ${p.pdf_url?'<button class="bt bt-pri" onclick="_pubDownloadPDF(\''+p.id+'\')">View PDF</button>':''}
           ${_supaUser?`<button class="bt sm" id="pub-endorse-btn" onclick="_pubToggleEndorse('${p.id}')" style="color:var(--sg);border-color:var(--sb)">${userEndorsed?'&#x2705; Endorsed':'&#x1F44D; Endorse'}</button>`:''}
           ${_supaUser?`<button class="bt sm" onclick="_pubShowFlagForm('${p.id}')" style="color:var(--co);border-color:rgba(194,120,120,.3)">&#x1F6A9; Flag</button>`:''}
           ${canEdit?`<button class="bt sm" onclick="_pubDeleteOwn('${p.id}')" style="color:var(--co);border-color:rgba(194,120,120,.3)">Delete</button>`:''}
@@ -253,7 +253,7 @@ async function _pubShowDetail(id){
 
     <div class="sec" style="margin-top:16px"><div class="sh"><h4>Comments</h4></div><div class="sb">
       <div id="pub-comments">${commentsHtml||'<div style="color:var(--tm);font-size:12px">No comments yet.</div>'}</div>
-      ${_supaUser?`<div style="display:flex;gap:8px;margin-top:12px"><input class="fi" id="pub-comment-input" placeholder="Add a comment..." style="flex:1"/><button class="bt sm on" onclick="_pubAddComment('${p.id}')">Post</button></div>`:''}
+      ${_supaUser?`<div style="display:flex;gap:8px;margin-top:12px"><input class="fi" id="pub-comment-input" placeholder="Add a comment..." style="flex:1"/><button class="bt sm bt-pri" onclick="_pubAddComment('${p.id}')">Post</button></div>`:''}
     </div></div>
 
     <div id="pub-flag-form" style="display:none;margin-top:16px"></div>
@@ -330,7 +330,7 @@ function _pubShowFlagForm(id){
       <option value="other">Other</option>
     </select>
     <textarea class="fi" id="pub-flag-desc" placeholder="Additional details (optional)" rows="3" style="resize:vertical;width:100%;margin-bottom:8px"></textarea>
-    <div style="display:flex;gap:8px"><button class="bt on" onclick="_pubSubmitFlag('${id}')">Submit Flag</button><button class="bt sm" onclick="hi('#pub-flag-form')">Cancel</button></div>
+    <div style="display:flex;gap:8px"><button class="bt bt-pri" onclick="_pubSubmitFlag('${id}')">Submit Flag</button><button class="bt sm" onclick="hi('#pub-flag-form')">Cancel</button></div>
   </div></div>`);
 }
 
@@ -394,24 +394,24 @@ function _pubShowSubmit(){
     <div class="sec"><div class="sh"><h4>Submit Publication</h4></div><div class="sb">
       <div style="display:grid;gap:14px">
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Title *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Title *</label>
           <input class="si" id="pub-s-title" placeholder="Publication title" style="font-size:13px"/>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Abstract *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Abstract *</label>
           <textarea class="fi" id="pub-s-abstract" placeholder="Publication abstract — minimum 100 words" rows="5" style="resize:vertical;width:100%;font-size:13px"></textarea>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Authors * (one per line: Name | Affiliation | Email | ORCID)</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Authors * (one per line: Name | Affiliation | Email | ORCID)</label>
           <textarea class="fi" id="pub-s-authors" placeholder="Jane Smith | University of Sydney | jane@uni.edu | 0000-0001-2345-6789" rows="3" style="resize:vertical;width:100%;font-size:12px"></textarea>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Collaborators (one per line: Name | Type | Country)</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Collaborators (one per line: Name | Type | Country)</label>
           <textarea class="fi" id="pub-s-collabs" placeholder="CSIRO | Government Agency | Australia" rows="2" style="resize:vertical;width:100%;font-size:12px"></textarea>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Category *</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Category *</label>
             <select class="fs" id="pub-s-category" style="width:100%">
               <option value="">Select...</option>
               <option>Field Study</option><option>Technical Report</option><option>Thesis/Dissertation</option>
@@ -420,41 +420,41 @@ function _pubShowSubmit(){
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Region</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Region</label>
             <input class="fi" id="pub-s-region" placeholder="e.g. Mediterranean, Western Atlantic" style="width:100%"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Species Studied (comma-separated)</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Species Studied (comma-separated)</label>
             <input class="fi" id="pub-s-species" placeholder="e.g. Pagrus auratus, Chrysophrys auratus" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Keywords (comma-separated)</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Keywords (comma-separated)</label>
             <input class="fi" id="pub-s-keywords" placeholder="e.g. otolith, growth, age estimation" style="width:100%"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame Start</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame Start</label>
             <input type="date" class="fi" id="pub-s-start" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame End</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame End</label>
             <input type="date" class="fi" id="pub-s-end" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Coordinates (lat, lng)</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Coordinates (lat, lng)</label>
             <input class="fi" id="pub-s-coords" placeholder="e.g. -33.86, 151.21" style="width:100%"/>
           </div>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Link Datasets (optional — enter Meridian Data IDs, comma-separated)</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Link Datasets (optional — enter Meridian Data IDs, comma-separated)</label>
           <input class="fi" id="pub-s-datasets" placeholder="e.g. MD-2026-0001, MD-2026-0003" style="width:100%"/>
         </div>
 
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Upload PDF *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Upload PDF *</label>
           <div id="pub-s-dropzone" style="border:2px dashed var(--bd);border-radius:var(--rd);padding:24px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bs)"
             ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
             ondragleave="this.style.borderColor='var(--bd)'"
@@ -469,7 +469,7 @@ function _pubShowSubmit(){
         <div id="pub-s-validation" style="display:none"></div>
 
         <div style="display:flex;gap:10px;margin-top:8px">
-          <button class="bt on" onclick="_pubSubmitPublication()" id="pub-s-btn">Submit for Review</button>
+          <button class="bt bt-pri" onclick="_pubSubmitPublication()" id="pub-s-btn">Submit for Review</button>
           <button class="bt sm" onclick="_pubBackToBrowse()">Cancel</button>
         </div>
         <div id="pub-s-status" style="display:none;margin-top:8px;font-size:12px;font-family:var(--mf)"></div>
@@ -552,7 +552,7 @@ async function _pubValidatePDF(file){
     </div>`;
 
     let missingRequired=0;
-    html+='<div style="font-size:11px;font-family:var(--mf);color:var(--tm);margin-bottom:6px">REQUIRED SECTIONS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">';
+    html+='<div style="font-size:11px;font-family:var(--mf);color:var(--tm);margin-bottom:6px">Required Sections</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">';
     for(const s of required){
       const found=sectionsFound[s];
       if(!found)missingRequired++;
@@ -561,7 +561,7 @@ async function _pubValidatePDF(file){
     }
     html+='</div>';
 
-    html+='<div style="font-size:11px;font-family:var(--mf);color:var(--tm);margin-bottom:6px">OPTIONAL SECTIONS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">';
+    html+='<div style="font-size:11px;font-family:var(--mf);color:var(--tm);margin-bottom:6px">Optional Sections</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">';
     for(const s of optional){
       const found=sectionsFound[s];
       const label=s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());

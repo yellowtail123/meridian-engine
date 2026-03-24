@@ -33,7 +33,7 @@ function _renderArchiveUI(){
         <option value="species_az">Species A-Z</option>
       </select>
       <button class="bt sm" onclick="_archToggleFilters()" id="arch-filter-btn" style="position:relative">Filters <span id="arch-filter-count" style="display:none;background:var(--ac);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:4px"></span></button>
-      ${_supaUser?'<button class="bt sm on" onclick="_archShowUpload()">+ Upload Dataset</button>':'<button class="bt sm" onclick="showAuthModal()" style="color:var(--tm)">Sign in to upload</button>'}
+      ${_supaUser?'<button class="bt bt-pri" onclick="_archShowUpload()">+ Upload Dataset</button>':'<button class="bt bt-sec" onclick="showAuthModal()">Sign in to upload</button>'}
     </div>
     <div id="arch-filters" style="display:none;margin-bottom:16px;padding:16px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)"></div>
     <div id="arch-cards"></div>
@@ -84,7 +84,7 @@ function _archRenderFilterPanel(){
   };
   const section=(title,items)=>{
     if(!items.length)return'';
-    return`<div style="margin-bottom:12px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${title}</div><div style="display:flex;flex-wrap:wrap;gap:4px 16px;max-height:120px;overflow-y:auto">${items.join('')}</div></div>`;
+    return`<div style="margin-bottom:12px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);letter-spacing:.5px;margin-bottom:6px">${title}</div><div style="display:flex;flex-wrap:wrap;gap:4px 16px;max-height:120px;overflow-y:auto">${items.join('')}</div></div>`;
   };
   H('#arch-filters',`
     ${section('Region',o.regions.map(([r,c])=>chk(_archFilters.region,'region',r,c)))}
@@ -93,7 +93,7 @@ function _archRenderFilterPanel(){
     ${section('Variables',o.vars.map(([v,c])=>chk(_archFilters.variables,'variables',v,c)))}
     ${section('File Format',o.formats.map(f=>chk(_archFilters.format,'format',f)))}
     ${section('License',o.licenses.map(l=>chk(_archFilters.license,'license',l)))}
-    <div style="margin-bottom:8px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Time Period</div>
+    <div style="margin-bottom:8px"><div style="font-size:11px;font-family:var(--mf);color:var(--tm);letter-spacing:.5px;margin-bottom:6px">Time Period</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input type="date" class="fi" id="arch-date-start" value="${_archFilters.dateStart||''}" onchange="_archFilters.dateStart=this.value||null;_archRenderCards()" style="font-size:12px"/>
         <span style="color:var(--tm);font-size:12px">to</span>
@@ -180,7 +180,7 @@ function _archRenderCards(){
       <svg viewBox="0 0 64 64" width="56" height="56" fill="none" stroke="var(--ab)" stroke-width="1.5" style="margin-bottom:16px;opacity:.5"><rect x="8" y="16" width="48" height="8" rx="3"/><path d="M12 24v24h40V24"/><path d="M24 36h16"/></svg>
       <div style="font-size:15px;color:var(--ts);font-family:var(--sf);font-weight:500;margin-bottom:6px">${hasFilters?'No datasets matching your filters':'No datasets uploaded yet'}</div>
       <div style="font-size:13px;color:var(--tm);font-family:var(--sf);margin-bottom:16px">${hasFilters?'Try adjusting your search or filters':'Contribute your data to the Meridian community'}</div>
-      ${hasFilters?'<button class="bt sm" onclick="_archClearFilters()" style="font-size:13px">Clear filters</button>':(_supaUser?'<button class="bt on" onclick="_archShowUpload()" style="font-size:14px;padding:10px 24px">Upload Dataset</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to upload</button>')}
+      ${hasFilters?'<button class="bt sm" onclick="_archClearFilters()" style="font-size:13px">Clear filters</button>':(_supaUser?'<button class="bt bt-pri" onclick="_archShowUpload()" style="font-size:14px;padding:10px 24px">Upload Dataset</button>':'<button class="bt sm" onclick="showAuthModal()" style="font-size:13px">Sign in to upload</button>')}
     </div>`);
     return;
   }
@@ -202,8 +202,8 @@ function _archCard(d){
           ${d.region?'<span class="bg yr" style="font-size:10px;padding:2px 6px">'+_esc(d.region)+'</span>':''}
           ${d.status!=='published'?'<span style="font-size:10px;color:var(--co);font-family:var(--mf)">'+d.status+'</span>':''}
         </div>
-        <div style="font-size:14px;font-weight:600;color:var(--tx);margin-bottom:3px">${_esc(d.title)}</div>
-        <div style="font-size:12px;color:var(--tm);margin-bottom:6px">${_esc(authors)}</div>
+        <div style="font-size:16px;font-weight:600;color:var(--ac);margin-bottom:3px">${_esc(d.title)}</div>
+        <div style="font-size:14px;color:var(--tm);margin-bottom:6px">${_esc(authors)}</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">${speciesTags}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;min-width:120px">
@@ -216,7 +216,7 @@ function _archCard(d){
         </div>
       </div>
     </div>
-    ${d.file_url?'<button class="bt sm on" onclick="event.stopPropagation();_archDownload(\''+d.id+'\')" style="margin-top:8px;font-size:11px">Download</button>':''}
+    ${d.file_url?'<button class="bt bt-sec" onclick="event.stopPropagation();_archDownload(\''+d.id+'\')" style="margin-top:8px;font-size:12px;padding:6px 14px">Download</button>':''}
     ${isOwn?'<button class="bt sm" onclick="event.stopPropagation();_archDeleteOwn(\''+d.id+'\')" style="margin-top:8px;margin-left:6px;font-size:11px;color:var(--co);border-color:rgba(194,120,120,.3)">Delete</button>':''}
     <button class="ask-ai-btn" onclick="event.stopPropagation();_askAI('Describe this dataset: ${_esc((d.title||'').slice(0,100))}. Type: ${_esc(d.data_type||'')}. Region: ${_esc(d.region||'')}. Species: ${_esc((d.species||[]).slice(0,3).join(', '))}. ${_esc((d.description||'').slice(0,200))}')" title="Ask AI about this dataset">✨</button>
   </div>`;
@@ -318,7 +318,7 @@ async function _archShowDetail(id){
             ${d.region?'<span class="bg yr">'+_esc(d.region)+'</span>':''}
             ${d.license?'<span style="font-size:11px;color:var(--sg);font-family:var(--mf)">'+_esc(d.license)+'</span>':''}
           </div>
-          <h4 style="font-size:18px;color:var(--tx);text-transform:none;letter-spacing:0;font-weight:700">${_esc(d.title)}</h4>
+          <h4 style="font-size:18px;color:var(--tx);font-weight:700">${_esc(d.title)}</h4>
         </div>
       </div>
       <div class="sb">
@@ -340,7 +340,7 @@ async function _archShowDetail(id){
           ${d.location_lat!=null?'<span style="color:var(--tm)">Location</span><span style="color:var(--ts)">'+d.location_lat.toFixed(4)+', '+d.location_lng.toFixed(4)+'</span>':''}
         </div>
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          ${d.file_url?'<button class="bt on" onclick="_archDownload(\''+d.id+'\')">Download Dataset</button>':''}
+          ${d.file_url?'<button class="bt bt-pri" onclick="_archDownload(\''+d.id+'\')">Download Dataset</button>':''}
           <button class="bt sm" onclick="_archShowFlagForm('${d.id}')" style="color:var(--co);border-color:rgba(194,120,120,.3)">Flag this dataset</button>
         </div>
       </div>
@@ -435,7 +435,7 @@ function _archShowFlagForm(id){
         </select>
         <textarea class="fi" id="arch-flag-desc" placeholder="Additional details (optional)" rows="3" style="resize:vertical;width:100%"></textarea>
         <div style="display:flex;gap:8px">
-          <button class="bt on" onclick="_archSubmitFlag('${id}')">Submit Flag</button>
+          <button class="bt bt-pri" onclick="_archSubmitFlag('${id}')">Submit Flag</button>
           <button class="bt sm" onclick="hi('#arch-flag-form')">Cancel</button>
         </div>
       </div>
@@ -482,16 +482,16 @@ function _archShowUpload(){
     <div class="sec"><div class="sh"><h4>Upload Dataset</h4></div><div class="sb">
       <div style="display:grid;gap:14px">
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Title *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Title *</label>
           <input class="si" id="arch-u-title" placeholder="Dataset title" style="font-size:13px"/>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Description *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Description *</label>
           <textarea class="fi" id="arch-u-desc" placeholder="Describe the dataset — what it measures, how it was collected, and what it can be used for" rows="4" style="resize:vertical;width:100%;font-size:13px"></textarea>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Data Type *</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Data Type *</label>
             <select class="fs" id="arch-u-type" style="width:100%">
               <option value="">Select...</option>
               <option>Catch Data</option><option>Survey Data</option><option>Environmental Monitoring</option>
@@ -501,45 +501,45 @@ function _archShowUpload(){
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Region</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Region</label>
             <input class="fi" id="arch-u-region" placeholder="e.g. Mediterranean, Caribbean" style="width:100%"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Species (comma-separated)</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Species (comma-separated)</label>
             <input class="fi" id="arch-u-species" placeholder="e.g. Pagrus auratus, Chrysophrys auratus" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Collection Method</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Collection Method</label>
             <input class="fi" id="arch-u-method" placeholder="e.g. Bottom trawl, ROV survey" style="width:100%"/>
           </div>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Authors (one per line: Name | Affiliation | Email | ORCID)</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Authors (one per line: Name | Affiliation | Email | ORCID)</label>
           <textarea class="fi" id="arch-u-authors" placeholder="Jane Smith | University of Sydney | jane@uni.edu | 0000-0001-2345-6789" rows="3" style="resize:vertical;width:100%;font-size:12px"></textarea>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame Start</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame Start</label>
             <input type="date" class="fi" id="arch-u-start" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame End</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Time Frame End</label>
             <input type="date" class="fi" id="arch-u-end" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Sample Size</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Sample Size</label>
             <input type="number" class="fi" id="arch-u-sample" placeholder="e.g. 5000" style="width:100%"/>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Coordinates (lat, lng)</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Coordinates (lat, lng)</label>
             <input class="fi" id="arch-u-coords" placeholder="e.g. -33.86, 151.21" style="width:100%"/>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">License</label>
+            <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">License</label>
             <select class="fs" id="arch-u-license" style="width:100%">
               <option value="">Select...</option>
               <option>CC-BY</option><option>CC-BY-NC</option><option>CC-BY-SA</option><option>CC0</option><option>Custom</option>
@@ -547,17 +547,17 @@ function _archShowUpload(){
           </div>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Link to Publication (optional — enter Meridian ID)</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Link to Publication (optional — enter Meridian ID)</label>
           <input class="fi" id="arch-u-publink" placeholder="e.g. ME-2026-0012" style="width:100%"/>
         </div>
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Variables Included</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Variables Included</label>
           <div id="arch-u-vars-auto" style="margin-bottom:6px"></div>
           <input class="fi" id="arch-u-vars" placeholder="Comma-separated: SST, Length, Weight, Depth, Salinity" style="width:100%"/>
         </div>
 
         <div>
-          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Dataset File *</label>
+          <label style="font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;display:block;margin-bottom:4px">Dataset File *</label>
           <div id="arch-u-dropzone" style="border:2px dashed var(--bd);border-radius:var(--rd);padding:24px;text-align:center;cursor:pointer;transition:border-color .2s;background:var(--bs)"
             ondragover="event.preventDefault();this.style.borderColor='var(--ac)'"
             ondragleave="this.style.borderColor='var(--bd)'"
@@ -572,7 +572,7 @@ function _archShowUpload(){
         <div id="arch-u-preview" style="display:none"></div>
 
         <div style="display:flex;gap:10px;margin-top:8px">
-          <button class="bt on" onclick="_archSubmitUpload()" id="arch-u-submit">Publish Dataset</button>
+          <button class="bt bt-pri" onclick="_archSubmitUpload()" id="arch-u-submit">Publish Dataset</button>
           <button class="bt sm" onclick="_archBackToBrowse()">Cancel</button>
         </div>
         <div id="arch-u-status" style="display:none;margin-top:8px;font-size:12px;font-family:var(--mf)"></div>
@@ -661,7 +661,7 @@ function _archShowUploadPreview(headers,rows){
   const el=$('#arch-u-preview');
   if(!el)return;
   sh(el);
-  let html='<div style="margin-top:4px;font-size:11px;color:var(--tm);font-family:var(--mf);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Preview (first '+rows.length+' rows)</div>';
+  let html='<div style="margin-top:4px;font-size:11px;color:var(--tm);font-family:var(--mf);letter-spacing:.5px;margin-bottom:6px">Preview (first '+rows.length+' rows)</div>';
   html+='<div style="overflow-x:auto;max-height:300px;border:1px solid var(--bd);border-radius:6px"><table class="dt"><thead><tr>';
   for(const h of headers)html+='<th>'+_esc(h)+'</th>';
   html+='</tr></thead><tbody>';

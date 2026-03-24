@@ -127,7 +127,7 @@ function _renderColumnMapping(headers, rows) {
       </table>
       <div id="fd-map-error" style="display:none;color:var(--co);font-size:12px;font-family:var(--mf);margin-top:8px"></div>
       <div style="margin-top:10px;display:flex;gap:8px">
-        <button class="bt on" onclick="_fdImport()">Import ${rows.length} records</button>
+        <button class="bt bt-pri" onclick="_fdImport()">Import ${rows.length} records</button>
         <button class="bt sm" onclick="$('#fd-mapping').style.display='none'">Cancel</button>
       </div>
     </div>`;
@@ -185,7 +185,7 @@ function _renderDatasetList(datasets) {
           </div>
           <div style="display:flex;gap:4px;flex-wrap:wrap">
             <button class="bt sm" onclick="_fdPreviewDataset(${i})">Preview</button>
-            <button class="bt sm on" onclick="_fdSendToWorkshop(${i})">Send to Workshop</button>
+            <button class="bt sm bt-sec" onclick="_fdSendToWorkshop(${i})">Send to Workshop</button>
             <button class="bt sm" onclick="_fdShowOnMap(${i})">Show on Map</button>
             <button class="bt sm" onclick="_fdPrepSubmission(${i})">Submit to Repository</button>
             <button class="bt sm" style="color:var(--co)" onclick="_fdDeleteDataset(${i})">Delete</button>
@@ -381,7 +381,7 @@ function _fdRenderRepoPanel(ds) {
   if (repo === 'obis') {
     panel.innerHTML = _renderDarwinCoreMapping(ds) + _fdDwcRequiredFields(ds) +
       `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="bt on" onclick="_fdRunValidation()">Validate</button>
+        <button class="bt bt-pri" onclick="_fdRunValidation()">Validate</button>
         <button class="bt sm" onclick="_fdExportDarwinCore()">Export Darwin Core Archive</button>
       </div><div id="fd-validation-result"></div>`;
   } else if (repo === 'pangaea') {
@@ -400,7 +400,7 @@ function _fdRenderRepoPanel(ds) {
         <input class="si" id="pg-method" placeholder="e.g. CTD cast, trawl survey" style="font-size:11px"/>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="bt on" onclick="_fdExportPangaea()">Export PANGAEA Template</button>
+        <button class="bt bt-pri" onclick="_fdExportPangaea()">Export PANGAEA Template</button>
       </div>`;
   } else {
     panel.innerHTML = `
@@ -418,7 +418,7 @@ function _fdRenderRepoPanel(ds) {
         <textarea class="si" id="bco-desc" rows="2" placeholder="Brief dataset description" style="font-size:11px"></textarea>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="bt on" onclick="_fdExportBCODMO()">Export BCO-DMO Template</button>
+        <button class="bt bt-pri" onclick="_fdExportBCODMO()">Export BCO-DMO Template</button>
       </div>`;
   }
 }

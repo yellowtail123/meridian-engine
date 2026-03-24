@@ -23,12 +23,12 @@ function _renderEcoStatsUI() {
     </div>
     <div id="es-paste" style="display:none;margin-bottom:12px">
       <textarea class="si" id="es-paste-area" rows="6" placeholder="Paste tab-separated values (rows = samples, columns = species/variables)&#10;Species1&#9;Species2&#9;Species3&#10;5&#9;3&#9;0&#10;2&#9;8&#9;1" style="width:100%;font-family:var(--mf);font-size:11px"></textarea>
-      <button class="bt sm on" onclick="_esParsePaste()" style="margin-top:4px">Load pasted data</button>
+      <button class="bt sm bt-pri" onclick="_esParsePaste()" style="margin-top:4px">Load pasted data</button>
     </div>
     <div id="es-preview" style="display:none;margin-bottom:14px"></div>
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="bt on" onclick="_esRunDiversity()" ${!_esData?'disabled':''}>Diversity Indices</button>
+      <button class="bt bt-pri" onclick="_esRunDiversity()" ${!_esData?'disabled':''}>Diversity Indices</button>
       <button class="bt sm" onclick="_esRunPermanova()" ${!_esData?'disabled':''}>PERMANOVA</button>
       <button class="bt sm" onclick="_esRunNMDS()" ${!_esData?'disabled':''}>NMDS</button>
       <button class="bt sm" onclick="_esRunMannKendall()" ${!_esData?'disabled':''}>Mann-Kendall</button>

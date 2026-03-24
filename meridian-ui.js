@@ -42,9 +42,15 @@ async function initHome(){
     }catch(e){}
     welcomeHtml=`<div class="home-welcome"><h2>Welcome back, ${_escH(displayName)}</h2>${affiliation?'<div class="home-affil">'+_escH(affiliation)+'</div>':''}<p class="home-sub">What are you working on today?</p></div>`;
   }else{
-    welcomeHtml=`<div class="home-welcome"><div class="home-title">Meridian Engine</div><p class="home-sub">Open Research Platform for Marine &amp; Environmental Science</p><div class="home-guest-actions"><button class="bt on" onclick="showAuthModal()">Sign In</button><span class="home-view-all" onclick="goTab('lit')">Browse as Guest</span></div></div>`;
+    welcomeHtml=`<div class="home-welcome"><div class="home-title">Meridian Engine</div><p class="home-sub">Open Research Platform for Marine &amp; Environmental Science</p><div class="home-guest-actions"><button class="bt bt-pri" onclick="showAuthModal()">Sign In</button><span class="home-view-all" onclick="goTab('lit')">Browse as Guest</span></div></div>`;
   }
 
+  // Getting started for new users
+  let gettingStarted='';
+  const isNewUser=!S.lib?.length&&!S.litR?.length;
+  if(isNewUser){
+    gettingStarted=`<div style="padding:20px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.06)"><h3 style="font-size:16px;font-weight:600;color:var(--ts);margin-bottom:6px">Welcome to Meridian</h3><p style="font-size:14px;color:var(--tm);line-height:1.6;margin-bottom:12px">Start by searching academic databases, or explore species and environmental data.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="bt bt-pri" onclick="goTab('lit')">Search Literature</button><button class="bt bt-sec" onclick="goTab('species')">Explore Species</button><button class="bt bt-sec" onclick="goTab('env')">Environmental Data</button></div></div>`;
+  }
   // Quick actions
   const qaHtml=`<div class="home-qa">
 <div class="home-qa-card" style="border-top-color:var(--ac)" onclick="goTab('lit')"><span class="qa-icon" style="color:var(--ac)">&#x25C9;</span><h4>Search Literature</h4><p>4 databases simultaneously</p></div>
@@ -72,10 +78,10 @@ async function initHome(){
   // Community sections + stats (async, render placeholders first)
   const communityId='home-community-'+Date.now();
   const statsId='home-stats-'+Date.now();
-  const communityHtml=`<div class="home-section"><h3>Latest from the Community</h3><div class="home-community" id="${communityId}"><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Publications</h3><div class="home-comm-empty">Loading…</div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Datasets</h3><div class="home-comm-empty">Loading…</div></div></div></div>`;
+  const communityHtml=`<div class="home-section"><h3>Latest from the Community</h3><div class="home-community" id="${communityId}"><div><h3 style="font-size:13px;font-weight:600;color:var(--ts);margin-bottom:12px">Latest Publications</h3><div class="home-comm-empty">Loading…</div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--ts);margin-bottom:12px">Latest Datasets</h3><div class="home-comm-empty">Loading…</div></div></div></div>`;
   const statsHtml=`<div class="home-stats" id="${statsId}"><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Papers Searchable</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Publications Submitted</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Datasets Archived</div></div><div class="home-stat"><div class="hs-num">—</div><div class="hs-label">Registered Researchers</div></div></div>`;
 
-  el.innerHTML=welcomeHtml+qaHtml+activityHtml+communityHtml+statsHtml;
+  el.innerHTML=welcomeHtml+gettingStarted+qaHtml+activityHtml+communityHtml+statsHtml;
 
   // Load community data async
   _loadCommunityData(communityId,statsId);
@@ -120,7 +126,7 @@ async function _loadCommunityData(commId,statsId){
   }catch(e){datasetsHtml='<div class="home-comm-empty">Could not load datasets</div>'}
 
   if(commEl){
-    commEl.innerHTML=`<div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Publications</h3>${pubsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('publications')">View All Publications →</span></div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--tm);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px">Latest Datasets</h3>${datasetsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('archive')">View All Datasets →</span></div></div>`;
+    commEl.innerHTML=`<div><h3 style="font-size:13px;font-weight:600;color:var(--ts);margin-bottom:12px">Latest Publications</h3>${pubsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('publications')">View All Publications →</span></div></div><div><h3 style="font-size:13px;font-weight:600;color:var(--ts);margin-bottom:12px">Latest Datasets</h3>${datasetsHtml}<div style="margin-top:8px"><span class="home-view-all" onclick="goTab('archive')">View All Datasets →</span></div></div>`;
   }
 
   // Stats
@@ -663,7 +669,7 @@ function _renderWorkflowList(overlay,wfs){
     <h3>Analysis Workflows</h3>
     <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
       <p style="font-size:12px;color:var(--ts);flex:1">Select a workflow to load, or create your own custom analysis recipe.</p>
-      <button class="bt on" onclick="openWorkflowEditor(-1)" style="white-space:nowrap">+ New Workflow</button>
+      <button class="bt bt-pri" onclick="openWorkflowEditor(-1)" style="white-space:nowrap">+ New Workflow</button>
       <button class="bt sm" onclick="resetWorkflowDefaults()" style="font-size:10px;white-space:nowrap">Reset Defaults</button>
     </div>
     <div id="wf-list">${wfs.map((w,i)=>_workflowCardHTML(w,i)).join('')}</div>
@@ -749,7 +755,7 @@ function openWorkflowEditor(idx){
         <textarea class="si" id="wfe-guidance" rows="3" placeholder="What to look for in the results, threshold values, interpretation tips..." style="width:100%;resize:vertical;font-size:13px;line-height:1.5">${escHTML(w.guidance)}</textarea>
       </div>
       <div>
-        <label style="font-size:11px;color:var(--tm);font-family:var(--mf);display:block;margin-bottom:3px">ALERT THRESHOLDS <button class="bt sm" onclick="_wfeAddThreshold()" style="font-size:10px;padding:2px 8px;margin-left:6px">+ Add</button></label>
+        <label style="font-size:11px;color:var(--tm);font-family:var(--mf);display:block;margin-bottom:3px">Alert Thresholds <button class="bt sm" onclick="_wfeAddThreshold()" style="font-size:10px;padding:2px 8px;margin-left:6px">+ Add</button></label>
         <div id="wfe-thresholds" style="display:flex;flex-direction:column;gap:4px">
           ${(w.thresholds||[]).map((t,ti)=>_thresholdRowHTML(t,ti)).join('')}
         </div>
@@ -757,7 +763,7 @@ function openWorkflowEditor(idx){
       </div>
       <div style="display:flex;gap:8px;margin-top:4px;justify-content:flex-end">
         <button class="bt sm" onclick="_renderWorkflowList($('#wf-overlay'),_getWorkflows())">Cancel</button>
-        <button class="bt on" onclick="saveWorkflowFromEditor(${idx})">${isNew?'Create Workflow':'Save Changes'}</button>
+        <button class="bt bt-pri" onclick="saveWorkflowFromEditor(${idx})">${isNew?'Create Workflow':'Save Changes'}</button>
       </div>
     </div></div>`;
   // Store current threshold data for the editor

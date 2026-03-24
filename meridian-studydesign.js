@@ -67,7 +67,7 @@ function _sdShowCalc(type) {
           <input type="range" id="sd-tt-power" min="0.70" max="0.99" step="0.01" value="0.80" oninput="$('#sd-tt-pow-val').textContent=parseFloat(this.value).toFixed(2)" style="width:100%;margin-top:2px;accent-color:var(--ac)">
         </label>
       </div>
-      <button class="bt on" onclick="_sdCalcTTest()" style="margin-top:12px">Calculate Sample Size</button>
+      <button class="bt bt-pri" onclick="_sdCalcTTest()" style="margin-top:12px">Calculate Sample Size</button>
     </div>`;
   } else if (type === 'proportion') {
     el.innerHTML = `<div style="${_box}">
@@ -97,7 +97,7 @@ function _sdShowCalc(type) {
           </select>
         </label>
       </div>
-      <button class="bt on" onclick="_sdCalcProportion()" style="margin-top:12px">Calculate Sample Size</button>
+      <button class="bt bt-pri" onclick="_sdCalcProportion()" style="margin-top:12px">Calculate Sample Size</button>
     </div>`;
   } else if (type === 'rarefaction') {
     el.innerHTML = `<div style="${_box}">
@@ -112,7 +112,7 @@ function _sdShowCalc(type) {
         <label class="bt sm" style="cursor:pointer">Upload CSV <input type="file" accept=".csv,.tsv,.txt" onchange="_sdLoadRarFile(this)" style="display:none"></label>
         <button class="bt sm" onclick="_sdLoadRarExample()">Load example</button>
       </div>
-      <button class="bt on" onclick="_sdCalcRarefaction()" style="margin-top:8px">Analyse Sampling Effort</button>
+      <button class="bt bt-pri" onclick="_sdCalcRarefaction()" style="margin-top:8px">Analyse Sampling Effort</button>
     </div>`;
   } else if (type === 'transect') {
     el.innerHTML = `<div style="${_box}">
@@ -146,7 +146,7 @@ function _sdShowCalc(type) {
           <input type="number" class="si" id="sd-tr-width" value="2" step="0.5" min="0.1" style="width:100%;margin-top:2px">
         </label>
       </div>
-      <button class="bt on" onclick="_sdCalcTransect()" style="margin-top:12px">Calculate Design</button>
+      <button class="bt bt-pri" onclick="_sdCalcTransect()" style="margin-top:12px">Calculate Design</button>
     </div>`;
     $('#sd-tr-param')?.addEventListener('change', function() {
       const w = $('#sd-tr-width-wrap');
@@ -272,7 +272,7 @@ function _sdCalcTTest() {
       ${d<0.3?' Small effects require large samples — consider whether this effect size is ecologically meaningful.':''}
     </div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-      <button class="bt sm on" onclick="_sdAddToPlan('ttest',{testType:'${testType}',n:${nRequired},totalN:${totalN},d:${d},alpha:${alpha},power:${targetPower},mde:${mde.toFixed(3)}})">Add to Study Plan</button>
+      <button class="bt sm bt-pri" onclick="_sdAddToPlan('ttest',{testType:'${testType}',n:${nRequired},totalN:${totalN},d:${d},alpha:${alpha},power:${targetPower},mde:${mde.toFixed(3)}})">Add to Study Plan</button>
       <button class="bt sm" onclick="_sdExportSingle('ttest',{testType:'${testType}',n:${nRequired},totalN:${totalN},d:${d},alpha:${alpha},power:${targetPower}})">Export as Markdown</button>
     </div>
   </div>`);
@@ -325,7 +325,7 @@ function _sdCalcProportion() {
       To detect a difference from p1=${p1} to p2=${p2} (${tails===1?'one':'two'}-tailed) with ${(targetPower*100).toFixed(0)}% power at &alpha;=${alpha}, you need <b>${nRequired} per group</b> (${totalN} total).
     </div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-      <button class="bt sm on" onclick="_sdAddToPlan('proportion',{n:${nRequired},totalN:${totalN},p1:${p1},p2:${p2},alpha:${alpha},power:${targetPower},tails:${tails}})">Add to Study Plan</button>
+      <button class="bt sm bt-pri" onclick="_sdAddToPlan('proportion',{n:${nRequired},totalN:${totalN},p1:${p1},p2:${p2},alpha:${alpha},power:${targetPower},tails:${tails}})">Add to Study Plan</button>
       <button class="bt sm" onclick="_sdExportSingle('proportion',{n:${nRequired},totalN:${totalN},p1:${p1},p2:${p2},alpha:${alpha},power:${targetPower},tails:${tails}})">Export as Markdown</button>
     </div>
   </div>`);
@@ -443,7 +443,7 @@ function _sdCalcRarefaction() {
         : `With ${nSites} sites you observed ${chao1Est.S_observed} species (${(currentRichness/chao1Est.chao1*100).toFixed(0)}% of asymptote). To reach 95% (${target95.toFixed(1)} species), approximately <b>${additionalSites} more sites</b> are recommended.`}
     </div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-      <button class="bt sm on" onclick="_sdAddToPlan('rarefaction',{sites:${nSites},S_obs:${chao1Est.S_observed},chao1:${chao1Est.chao1.toFixed(1)},target95:${target95.toFixed(1)},additionalSites:'${additionalSites}'})">Add to Study Plan</button>
+      <button class="bt sm bt-pri" onclick="_sdAddToPlan('rarefaction',{sites:${nSites},S_obs:${chao1Est.S_observed},chao1:${chao1Est.chao1.toFixed(1)},target95:${target95.toFixed(1)},additionalSites:'${additionalSites}'})">Add to Study Plan</button>
       <button class="bt sm" onclick="_sdExportSingle('rarefaction',{sites:${nSites},S_obs:${chao1Est.S_observed},chao1:${chao1Est.chao1.toFixed(1)},target95:${target95.toFixed(1)},additionalSites:'${additionalSites}'})">Export as Markdown</button>
     </div>
   </div>`);
@@ -505,7 +505,7 @@ function _sdCalcTransect() {
       ${transectLength ? ` For density with a ${stripWidth}m strip width, this corresponds to approximately ${transectLength}m total transect length.` : ''}
     </div>
     <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-      <button class="bt sm on" onclick="_sdAddToPlan('transect',{param:'${param}',n:${nRequired},mean:${mean},sd:${sd},marginPct:${marginPct},alpha:${alpha}${transectLength?',transectLength:'+transectLength:''}})">Add to Study Plan</button>
+      <button class="bt sm bt-pri" onclick="_sdAddToPlan('transect',{param:'${param}',n:${nRequired},mean:${mean},sd:${sd},marginPct:${marginPct},alpha:${alpha}${transectLength?',transectLength:'+transectLength:''}})">Add to Study Plan</button>
       <button class="bt sm" onclick="_sdExportSingle('transect',{param:'${param}',n:${nRequired},mean:${mean},sd:${sd},marginPct:${marginPct},alpha:${alpha}${transectLength?',transectLength:'+transectLength:''}})">Export as Markdown</button>
     </div>
   </div>`);
@@ -653,7 +653,7 @@ async function _sdApplyGap(idx) {
           <b style="color:var(--ac)">Based on ${nPapers} studies on: ${escHTML(gap.title)}</b><br>
           Reported effect sizes range from d=${parsed.d_min} to d=${parsed.d_max} (median: d=${parsed.d_median})<br>
           ${parsed.note ? `<span style="color:var(--tm)">${escHTML(parsed.note)}</span><br>` : ''}
-          <button class="bt sm on" onclick="$('#sd-tt-d').value=${parsed.d_median};$('#sd-tt-d-val').textContent='${parsed.d_median.toFixed(2)}'" style="margin-top:4px">Use d=${parsed.d_median} &rarr;</button>
+          <button class="bt sm bt-sec" onclick="$('#sd-tt-d').value=${parsed.d_median};$('#sd-tt-d-val').textContent='${parsed.d_median.toFixed(2)}'" style="margin-top:4px">Use d=${parsed.d_median} &rarr;</button>
         </div>`;
       }
     } catch (e) {
@@ -721,7 +721,7 @@ function _sdRenderStudyPlan() {
   });
 
   html += `<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
-    <button class="bt sm on" onclick="_sdExportAllPlans()">Export Study Plan</button>
+    <button class="bt sm bt-pri" onclick="_sdExportAllPlans()">Export Study Plan</button>
     <button class="bt sm" style="color:var(--co)" onclick="if(confirm('Clear all study plan items?')){safeStore('meridian_study_plan',[]);_sdRenderStudyPlan()}">Clear All</button>
   </div>`;
   html += '</div></div>';
