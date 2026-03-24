@@ -1740,7 +1740,7 @@ const _CO2_URLS=['https://gml.noaa.gov/webdata/ccgg/trends/co2/co2_daily_mlo.csv
 const cp=hC?(async()=>{try{
   let t=null;
   for(const co2Url of _CO2_URLS){
-    try{const r=await envFetchT(co2Url,15000);if(r.ok){t=await r.text();break}}catch{}}
+    try{const r=await envFetchT(proxyUrl(co2Url),15000);if(r.ok){t=await r.text();break}}catch{}}
   if(!t)throw new Error('All CO2 sources failed');
   const allData=t.trim().split('\n').filter(l=>!l.startsWith('#')&&l.includes(',')).slice(1)
     .map(l=>{const p=l.split(',');return{time:`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`,value:parseFloat(p[p.length-1])||parseFloat(p[4])}}).filter(r=>r.value>0);
@@ -1753,7 +1753,7 @@ const cp=hC?(async()=>{try{
 const hKeeling=sel.includes('co2_keeling');
 const kp=hKeeling?(async()=>{try{
   const kUrl='https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/daily/daily_in_situ_co2_mlo.csv';
-  const r=await envFetchT(kUrl,15000);if(!r.ok)throw new Error('Scripps CO2 HTTP '+r.status);
+  const r=await envFetchT(proxyUrl(kUrl),15000);if(!r.ok)throw new Error('Scripps CO2 HTTP '+r.status);
   const t=await r.text();
   const allData=t.trim().split('\n').filter(l=>!l.startsWith('"')&&l.includes(',')).slice(1)
     .map(l=>{const p=l.split(',');const date=p[0]?.trim();const ppm=parseFloat(p[p.length-1]);return date&&ppm>0?{time:date,value:ppm}:null}).filter(Boolean);

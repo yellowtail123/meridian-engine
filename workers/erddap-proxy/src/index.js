@@ -2,7 +2,7 @@
 // Proxies ERDDAP and NOAA data requests with proper CORS headers.
 // Deploy: npx wrangler deploy --config workers/erddap-proxy/wrangler.toml
 //
-// Usage: GET /api/erddap/proxy?url=<encoded-target-url>
+// Usage: GET /api/erddap/?url=<encoded-target-url>
 
 const ALLOWED_ORIGINS = [
   'https://meridian-engine.com',
@@ -44,11 +44,26 @@ const SAFE_RESPONSE_HEADERS = [
 
 function isOriginAllowed(request) {
   const origin = request.headers.get('Origin') || '';
-  // If Origin header is present, check it strictly
-  if (origin) return ALLOWED_ORIGINS.includes(origin);
-  // Same-origin GET requests may omit Origin — fall back to Referer
   const referer = request.headers.get('Referer') || '';
-  return ALLOWED_ORIGINS.some(o => referer.startsWith(o + '/'));
+  const secFetchSite = request.headers.get('Sec-Fetch-Site') || '';
+
+  // DEBUG — remove after confirming fix works
+  console.log('ERDDAP proxy auth:', JSON.stringify({
+    origin: origin || '(empty)',
+    referer: referer ? referer.substring(0, 80) : '(empty)',
+    secFetchSite: secFetchSite || '(empty)',
+  }));
+
+  // 1) Origin header matches an allowed origin
+  if (origin && ALLOWED_ORIGINS.includes(origin)) return true;
+
+  // 2) Referer starts with an allowed origin (same-origin GETs may omit Origin)
+  if (referer && ALLOWED_ORIGINS.some(o => referer === o || referer.startsWith(o + '/'))) return true;
+
+  // 3) Browser Sec-Fetch-Site header confirms same-origin
+  if (secFetchSite === 'same-origin') return true;
+
+  return false;
 }
 
 function corsHeaders(origin) {
@@ -84,7 +99,7 @@ export default {
     const origin = request.headers.get('Origin') || '';
     const cors = corsHeaders(origin);
 
-    // CORS preflight
+    // CORS preflight — always respond with CORS headers
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: cors });
     }
@@ -97,7 +112,7 @@ export default {
       });
     }
 
-    // Origin/Referer check — reject unauthorized requests
+    // Origin / Referer / Sec-Fetch-Site check
     if (!isOriginAllowed(request)) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
@@ -135,7 +150,7 @@ export default {
       });
     }
 
-    // HTTPS only — blocks http, data, javascript, file, etc.
+    // HTTPS only
     if (targetUrl.protocol !== 'https:') {
       return new Response(JSON.stringify({ error: 'Only HTTPS targets allowed' }), {
         status: 400,
