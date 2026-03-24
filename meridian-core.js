@@ -464,7 +464,7 @@ function buildErddapUrl(v,tQ,lat,lon){
     let bw=v.lon360&&b.west<0?360+b.west:b.west,be=v.lon360&&b.east<0?360+b.east:b.east;
     if(bw>be){bw=b.west;be=b.east}
     url+=`[(${b.south}):1:(${b.north})][(${bw}):1:(${be})]`}
-  else url+=`[(${(lat-0.1).toFixed(2)}):1:(${(lat+0.1).toFixed(2)})][(${(lonVal-0.1).toFixed(2)}):1:(${(lonVal+0.1).toFixed(2)})]`;
+  else{const buf=0.025;url+=`[(${(lat-buf).toFixed(3)}):1:(${(lat+buf).toFixed(3)})][(${(lonVal-buf).toFixed(3)}):1:(${(lonVal+buf).toFixed(3)})]`}
   return url}
 function encErddap(url){return url.replace(/\[/g,'%5B').replace(/\]/g,'%5D')}
 // Response cache — keyed by URL, TTL 5 minutes
@@ -478,9 +478,11 @@ async function erddapFetch(url,ms){
   const serverBase=url.match(/^https?:\/\/[^/]+/)?.[0]||'';
   try{const r=await envFetchT(proxyUrl(eu),ms);
     if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}
+    if(r.status===504)throw new Error('Upstream timed out — try a shorter date range');
+    if(r.status===502)throw new Error('Server error — upstream ERDDAP may be overloaded, try again');
     throw new Error('HTTP '+r.status)}
   catch(e){if(e.name==='AbortError'||_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-    throw new Error('Data unavailable — could not reach '+(serverBase.split('//')[1]||'server')+'.')}}
+    throw e.message?.startsWith('HTTP ')||e.message?.startsWith('Upstream')||e.message?.startsWith('Server error')?e:new Error('Data unavailable — could not reach '+(serverBase.split('//')[1]||'server')+'.')}}
 // ── Bathymetry cascade sources (best → fallback) ──
 const _BATHY_SOURCES=[
   {ds:'ETOPO_2022_v1_15s',v:'z',res:0.00417},
