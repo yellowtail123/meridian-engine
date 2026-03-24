@@ -31,7 +31,7 @@ function _deepScrubKeys(obj){
 const _errPipeline=(function(){
   const MAX_CRUMBS=30,MAX_ERRORS=100,DEDUP_MS=5000,REPORT_INTERVAL=60000,REPORT_MAX_PER_MIN=10;
   const _crumbs=[],_errors=[];
-  let _errDB=null,_lastReportT=0,_reportCount=0,_reportTimer=null;
+  let _errDB=null,_lastReportT=0,_reportCount=0,_reportTimer=null,_endpointDisabled=false;
   const _ERROR_ENDPOINT='/api/errors';
 
   // ── Browser/OS detection ──
@@ -179,7 +179,7 @@ const _errPipeline=(function(){
     _reportTimer=setTimeout(()=>{_reportTimer=null;_sendReport()},REPORT_INTERVAL);
   }
   function _sendReport(){
-    if(!_ERROR_ENDPOINT||window._DEBUG)return;
+    if(!_ERROR_ENDPOINT||_endpointDisabled||window._DEBUG)return;
     const now=Date.now();
     if(now-_lastReportT<60000)_reportCount++;else _reportCount=1;
     _lastReportT=now;
@@ -189,8 +189,9 @@ const _errPipeline=(function(){
     const batch=unsent.slice(0,20);
     try{
       const body=JSON.stringify({errors:batch.map(e=>_deepScrubKeys(e)),ts:new Date().toISOString()});
-      if(navigator.sendBeacon){navigator.sendBeacon(_ERROR_ENDPOINT,body)}
-      else{_origFetch(_ERROR_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}).catch(()=>{})}
+      _origFetch(_ERROR_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true})
+        .then(r=>{if(r.status===405){_endpointDisabled=true;console.info('Error reporter: endpoint returned 405 (worker not deployed) — disabled')}})
+        .catch(()=>{});
       batch.forEach(e=>e._sent=true);
     }catch{}
   }

@@ -1017,9 +1017,12 @@ function initEnvMap(){
       layers:'GEBCO_LATEST_2',format:'image/png',transparent:true,opacity:0.7,version:'1.1.1',
       attribution:'GEBCO Compilation Group (2024) GEBCO 2024 Grid',
       pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
-    dhw:()=>L.tileLayer(
-      'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GHRSST_L4_G1SST_Sea_Surface_Temperature/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
-      {time:gibsDate(),maxZoom:7,maxNativeZoom:7,opacity:0.7,pane:'wmsPane',keepBuffer:2,updateWhenZooming:false,updateWhenIdle:true}),
+    dhw:()=>{
+      const layer=L.tileLayer.wms('https://pae-paha.pacioos.hawaii.edu/erddap/wms/dhw_5km/request',{
+        layers:'dhw_5km:CRW_DHW',styles:'',format:'image/png',transparent:true,opacity:0.7,version:'1.3.0',
+        tileSize:128,pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true});
+      let errCount=0;layer.on('tileerror',()=>{if(++errCount>8){toast('DHW WMS layer unavailable — Coral Reef Watch data may be delayed','err')}});
+      return layer},
     // ── GFW Fishing: auth token + generate-png workflow + wavy mask ──
     gfw:()=>{
       let token='';try{token=localStorage.getItem('meridian_gfw_token')||''}catch{}
@@ -1150,6 +1153,7 @@ function toggleMapLayer(id){const btn=$('#ml-'+id);if(!_envMap)return;
   if(!_mapLayers[id]&&_mapLayerDefs?.[id]){
     btn.classList.add('loading');
     _mapLayers[id]=_mapLayerDefs[id]();
+    if(!_mapLayers[id]){btn.classList.remove('loading');console.warn('Layer '+id+' failed to initialize');return}
     // Apply current opacity from slider
     const curOpacity=parseFloat($('#wmsOpacity')?.value||0.75);
     if(_mapLayers[id].setOpacity)_mapLayers[id].setOpacity(curOpacity);
@@ -1520,13 +1524,15 @@ const _mapLegendUrls={
   chlor:'inline:chlor',
   par:'inline:par',
   gebco_relief:'inline:gebco',
-  gebco_color:'inline:gebco'};
+  gebco_color:'inline:gebco',
+  dhw:'inline:dhw'};
 const _inlineLegends={
   sst:{grad:'linear-gradient(90deg,#00008B,#0000FF,#00BFFF,#00FF00,#FFFF00,#FF8C00,#FF0000)',min:'0°C',max:'32°C'},
   sst_anom:{grad:'linear-gradient(90deg,#00008B,#4169E1,#B0C4DE,#FFFFFF,#F0C0C0,#DC143C,#8B0000)',min:'-5°C',max:'+5°C'},
   chlor:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0.01',max:'20 mg/m³'},
   par:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0',max:'0.5 m⁻¹'},
-  gebco:{grad:'linear-gradient(90deg,#08306b,#2171b5,#6baed6,#c6dbef,#f7fbff,#d9f0a3,#78c679,#31a354,#006837)',min:'-11000m',max:'+8500m'}};
+  gebco:{grad:'linear-gradient(90deg,#08306b,#2171b5,#6baed6,#c6dbef,#f7fbff,#d9f0a3,#78c679,#31a354,#006837)',min:'-11000m',max:'+8500m'},
+  dhw:{grad:'linear-gradient(90deg,#FFFFFF,#FFFFB2,#FECC5C,#FD8D3C,#F03B20,#BD0026)',min:'0',max:'20 °C-wk'}};
 let _legendControl=null;
 function updateLegendControl(){
   if(!_envMap)return;
@@ -1538,7 +1544,7 @@ function updateLegendControl(){
     _legendControl=new Leg();_envMap.addControl(_legendControl)}
   const container=_legendControl.getContainer();
   container.innerHTML='<div class="ml-title">Legend</div>'+active.map(id=>{
-    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',par:'Kd(PAR)',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry'}[id]||id;
+    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',par:'Kd(PAR)',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry',dhw:'Degree Heating Weeks'}[id]||id;
     const url=_mapLegendUrls[id];
     if(url.startsWith('inline:')){const k=url.split(':')[1],il=_inlineLegends[k];if(!il)return'';
       return`<div style="font-size:10px;color:var(--ts);margin:4px 0 2px">${nm}</div><div class="inline-legend" style="background:${il.grad}"></div><div class="inline-legend-labels"><span>${il.min}</span><span>${il.max}</span></div>`}
