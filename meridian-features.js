@@ -1055,6 +1055,8 @@ function initEnvMap(){
   const markerIcon=L.divIcon({className:'env-marker',iconSize:[16,16],iconAnchor:[8,8]});
   _envMarker=L.marker([lat,lon],{draggable:true,icon:markerIcon}).addTo(_envMap);
   _envMarker.on('dragend',function(){const p=_envMarker.getLatLng();$('#elat').value=p.lat.toFixed(4);$('#elon').value=p.lng.toFixed(4)});
+  // Load user's map annotations
+  if(typeof loadMapAnnotations==='function')setTimeout(loadMapAnnotations,500);
   _envMap.on('click',function(e){
     if(_measureMode||_wmsQueryMode){if(_wmsQueryMode)queryWmsLayers(e.latlng);return}
     _envMarker.setLatLng(e.latlng);const _el=$('#elat'),_lo=$('#elon');

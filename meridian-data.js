@@ -1699,7 +1699,7 @@ renderAnnotationsPanel(tk);
 renderThresholdPanel(tk);
 // Action buttons
 try{sessionStorage.setItem('meridian_env_meta',JSON.stringify({lat,lon,keys:fk}))}catch{}
-H('#eact',`<div style="display:flex;gap:6px;margin:12px 0;flex-wrap:wrap"><button class="bt bt-pri" onclick="sendEnvWS()">→ Workshop</button><button class="bt sm" onclick="dlEnvCSV()">CSV</button><button class="bt sm" onclick="dlReproScript('python')">Python</button><button class="bt sm" onclick="dlReproScript('r')">R Script</button><button class="bt sm" onclick="exportReproBundle()" style="color:var(--sg);border-color:var(--sb)">Export Bundle</button><button class="bt sm" onclick="shareAnalysisLink()">Share Link</button><button class="bt sm" onclick="saveCurrentAsWorkflow()" style="color:var(--ac)">Save as Workflow</button><button class="bt sm" onclick="fetchArgoProfiles()">Argo Profiles</button>${tk.length?tk.map(id=>`<button class="bt sm" onclick="exportChart('ep-${id}')">📷 ${S.envTS[id].nm}</button>`).join(''):''}</div>
+H('#eact',`<div style="display:flex;gap:6px;margin:12px 0;flex-wrap:wrap"><button class="bt bt-pri" onclick="sendEnvWS()">→ Workshop</button><button class="bt sm" onclick="dlEnvCSV()">CSV</button><button class="bt sm" onclick="dlReproScript('python')">Python</button><button class="bt sm" onclick="dlReproScript('r')">R Script</button><button class="bt sm" onclick="exportReproBundle()" style="color:var(--sg);border-color:var(--sb)">Export Bundle</button><button class="bt sm" onclick="shareAnalysisLink()">Share Link</button><button class="bt sm" onclick="saveCurrentAsWorkflow()" style="color:var(--ac)">Save as Workflow</button><button class="bt sm" onclick="fetchArgoProfiles()">Argo Profiles</button><button class="bt sm" onclick="showSaveAnnotationModal()" style="color:var(--wa);border-color:rgba(212,160,74,.4)">&#x1F4CC; Save Annotation</button>${tk.length?tk.map(id=>`<button class="bt sm" onclick="exportChart('ep-${id}')">📷 ${S.envTS[id].nm}</button>`).join(''):''}</div>
 ${window._activeWorkflow?`<div class="tip" style="margin-top:8px"><b>Workflow: ${escHTML(window._activeWorkflow.name)}</b><br>${escHTML(window._activeWorkflow.guidance)}<button class="dx" onclick="this.closest('.tip').remove();window._activeWorkflow=null">×</button></div>`:''}
 <div class="sec" style="margin-top:10px"><div class="sh" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'"><h4>Normality & Quality Assessment</h4><span style="color:var(--tm)">▾</span></div><div class="sb" style="display:none">
 <table class="dt"><thead><tr><th>Variable</th><th>n</th><th>W</th><th>p</th><th>Normal?</th><th>Quality</th><th>Coverage</th><th>Max Gap</th></tr></thead>
@@ -2571,4 +2571,331 @@ function _sdmCaveatHTML() {
     <div style="font-size:12px;color:var(--wa);font-family:var(--mf);font-weight:600;margin-bottom:4px">Simplified Model — Use With Caution</div>
     <div style="font-size:11px;color:var(--ts);line-height:1.5">This is a bioclimatic envelope model (BIOCLIM-style). It does <b>not</b> account for dispersal barriers, biotic interactions, species adaptation, habitat fragmentation, or sampling bias. It assumes equilibrium between species distribution and current climate. Suitable for exploratory analysis and hypothesis generation — not for conservation planning without further validation.</div>
   </div>`;
+}
+
+
+// ═══ MAP ANNOTATIONS — Persistent location-pinned data notes ═══
+let _mapAnnotations=[];
+let _annotationLayer=null;
+const _annColors={red:'#E05555',blue:'#4A90D9',green:'#5CAA5C',orange:'#D4874A',purple:'#9B6BC4',yellow:'#D4C04A',cyan:'#4AC4C4',white:'#CCCCCC',amber:'#D4A04A'};
+
+// ── Save Annotation Modal ──
+function showSaveAnnotationModal(prefill){
+  const lat=$('#elat')?.value,lon=$('#elon')?.value,df=$('#edf')?.value,dt=$('#edt')?.value;
+  if(!lat||!lon)return toast('No location data to annotate','err');
+  if(!Object.keys(S.envR).length)return toast('Fetch data first before saving an annotation','err');
+  // Stash current data for post-login recovery
+  window._pendingAnnotation={lat,lon,df,dt,envR:JSON.parse(JSON.stringify(S.envR)),envTS:JSON.parse(JSON.stringify(S.envTS))};
+  // Auth gate
+  if(!window._supaUser){
+    toast('Sign in to save annotations','info');
+    showAuthModal();
+    // After login, re-show modal
+    const _origCb=window._onAuthSuccess;
+    window._onAuthSuccess=function(){if(_origCb)_origCb();setTimeout(()=>showSaveAnnotationModal(prefill),500)};
+    return}
+  const existing=document.getElementById('ann-save-modal');if(existing)existing.remove();
+  const varSummary=Object.keys(S.envR).map(id=>{const r=S.envR[id];return`<tr><td style="padding:2px 8px;color:var(--ac)">${escHTML(r.nm)}</td><td style="padding:2px 8px">${typeof r.value==='number'?r.value.toFixed(2):r.value||'N/A'}</td><td style="padding:2px 8px;opacity:.6">${r.u||''}</td></tr>`}).join('');
+  const colorOpts=Object.entries(_annColors).map(([k,v])=>`<label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ann-color" value="${k}" ${k==='amber'?'checked':''}><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${v};border:2px solid rgba(255,255,255,.3)"></span><span style="font-size:11px;color:var(--ts)">${k}</span></label>`).join('');
+  const modal=document.createElement('div');modal.id='ann-save-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10006;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;width:min(520px,92vw);max-height:88vh;overflow-y:auto;padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="margin:0;font-size:16px;color:var(--tf)">&#x1F4CC; Save Map Annotation</h3>
+      <button onclick="document.getElementById('ann-save-modal').remove()" style="background:none;border:none;color:var(--tm);font-size:18px;cursor:pointer">&times;</button>
+    </div>
+    <div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:14px;padding:8px 10px;background:var(--bs);border-radius:6px">
+      <span style="color:var(--ac)">${parseFloat(lat).toFixed(4)}&deg;N, ${parseFloat(lon).toFixed(4)}&deg;E</span>
+      ${df&&dt?' &middot; '+df+' to '+dt:''}
+      &middot; ${Object.keys(S.envR).length} variables
+    </div>
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Name <span style="color:var(--co)">*</span></label>
+    <input type="text" id="ann-name" class="fs" placeholder="e.g. Southern California — June 2012" style="width:100%;margin-bottom:12px" value="${escHTML(prefill?.name||'')}">
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Notes</label>
+    <textarea id="ann-notes" class="fs" rows="3" placeholder="Your observations..." style="width:100%;margin-bottom:12px;resize:vertical">${escHTML(prefill?.notes||'')}</textarea>
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Tags</label>
+    <input type="text" id="ann-tags" class="fs" placeholder="SST, upwelling, California" style="width:100%;margin-bottom:12px" value="${escHTML(prefill?.tags||'')}">
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:8px">Color</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${colorOpts}</div>
+    <div style="margin-bottom:14px"><div style="font-size:11px;color:var(--tm);font-family:var(--mf);margin-bottom:4px">Captured Data</div>
+      <table style="font-size:11px;font-family:var(--mf);color:var(--ts);border-collapse:collapse">${varSummary}</table>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bt sm" onclick="document.getElementById('ann-save-modal').remove()">Cancel</button>
+      <button class="bt bt-pri" onclick="_doSaveAnnotation()">Save Annotation</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
+  document.body.appendChild(modal);
+  document.getElementById('ann-name').focus();
+}
+
+async function _doSaveAnnotation(){
+  const name=document.getElementById('ann-name').value.trim();
+  if(!name)return toast('Name is required','err');
+  const notes=document.getElementById('ann-notes').value.trim()||null;
+  const tagsRaw=document.getElementById('ann-tags').value.trim();
+  const tags=tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):null;
+  const color=document.querySelector('input[name="ann-color"]:checked')?.value||'amber';
+  const pa=window._pendingAnnotation||{};
+  const lat=parseFloat(pa.lat||$('#elat')?.value);
+  const lon=parseFloat(pa.lon||$('#elon')?.value);
+  const df=pa.df||$('#edf')?.value||null;
+  const dt=pa.dt||$('#edt')?.value||null;
+  // Build variable_data payload
+  const variable_data={envR:pa.envR||S.envR,envTS:pa.envTS||S.envTS,
+    variables:Object.keys(pa.envR||S.envR).map(id=>{const r=(pa.envR||S.envR)[id];const v=EV.find(x=>x.id===id);
+      return{id,name:r.nm,value:r.value,unit:r.u,source:v?.src,dataset:v?.ds,server:v?.server}})};
+  try{
+    const{data,error}=await SB.from('map_annotations').insert({
+      user_id:_supaUser.id,name,notes,tags,color,
+      latitude:lat,longitude:lon,
+      date_range_start:df?df+'T00:00:00Z':null,
+      date_range_end:dt?dt+'T23:59:59Z':null,
+      variable_data}).select().single();
+    if(error)throw error;
+    toast('Annotation saved!','ok');
+    document.getElementById('ann-save-modal')?.remove();
+    window._pendingAnnotation=null;
+    _mapAnnotations.push(data);
+    _renderAnnotationMarkers();
+    _renderAnnotationsList();
+  }catch(e){console.error('Save annotation error:',e);toast('Failed to save: '+(e.message||e),'err')}}
+
+// ── Load Annotations from Supabase ──
+async function loadMapAnnotations(){
+  if(!window.SB||!window._supaUser)return;
+  try{
+    const{data,error}=await SB.from('map_annotations').select('*').eq('user_id',_supaUser.id).order('created_at',{ascending:false});
+    if(error)throw error;
+    _mapAnnotations=data||[];
+    _renderAnnotationMarkers();
+    _renderAnnotationsList();
+    const ctx=$('#env-annotations-ctx');if(ctx)ctx.textContent=_mapAnnotations.length?'· '+_mapAnnotations.length+' saved':'';
+  }catch(e){console.error('Load annotations error:',e)}}
+
+// ── Render Markers on Map ──
+function _renderAnnotationMarkers(){
+  if(!_envMap)return;
+  if(_annotationLayer){_envMap.removeLayer(_annotationLayer)}
+  _annotationLayer=L.layerGroup();
+  _mapAnnotations.forEach(ann=>{
+    const fillColor=_annColors[ann.color]||_annColors.amber;
+    const marker=L.circleMarker([ann.latitude,ann.longitude],{
+      radius:8,fillColor,color:'#ffffff',weight:2,opacity:1,fillOpacity:0.85,
+      pane:'markerPane'});
+    // Tooltip on hover
+    const dateStr=ann.date_range_start&&ann.date_range_end?ann.date_range_start.slice(0,10)+' to '+ann.date_range_end.slice(0,10):'';
+    marker.bindTooltip(`<b>${escHTML(ann.name)}</b>${dateStr?'<br><span style="opacity:.7">'+dateStr+'</span>':''}`,{direction:'top',offset:[0,-10]});
+    // Click handler
+    marker.on('click',()=>_showAnnotationPopup(ann));
+    marker.addTo(_annotationLayer);
+  });
+  _annotationLayer.addTo(_envMap);
+}
+
+// ── Annotation Popup/Panel ──
+function _showAnnotationPopup(ann){
+  const vd=ann.variable_data||{};
+  const envR=vd.envR||{};
+  const envTS=vd.envTS||{};
+  const dateStr=ann.date_range_start&&ann.date_range_end?ann.date_range_start.slice(0,10)+' to '+ann.date_range_end.slice(0,10):'';
+  const tagPills=(ann.tags||[]).map(t=>`<span style="display:inline-block;padding:2px 8px;border-radius:10px;background:rgba(212,160,74,.15);color:var(--ac);font-size:10px;font-family:var(--mf);margin:2px">${escHTML(t)}</span>`).join('');
+  const varRows=Object.keys(envR).map(id=>{const r=envR[id];return`<tr><td style="padding:3px 8px;color:var(--ac);font-size:11px">${escHTML(r.nm||id)}</td><td style="padding:3px 8px;font-size:12px;font-weight:600">${typeof r.value==='number'?r.value.toFixed(2):r.value||'N/A'}</td><td style="padding:3px 8px;font-size:10px;opacity:.6">${r.u||''}</td></tr>`}).join('');
+  const tsKeys=Object.keys(envTS);
+  const fillColor=_annColors[ann.color]||_annColors.amber;
+  // Render into esum + echarts area
+  H('#esum',`<div style="padding:16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${fillColor};border:2px solid rgba(255,255,255,.3);flex-shrink:0"></span>
+      <div><div style="font-size:16px;font-weight:700;color:var(--tf)">${escHTML(ann.name)}</div>
+        <div style="font-size:11px;color:var(--tm);font-family:var(--mf)">${ann.latitude.toFixed(4)}&deg;N, ${ann.longitude.toFixed(4)}&deg;E${dateStr?' &middot; '+dateStr:''}</div></div>
+    </div>
+    ${ann.notes?'<div style="font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:10px;padding:8px 10px;background:var(--bs);border-radius:6px">'+escHTML(ann.notes)+'</div>':''}
+    ${tagPills?'<div style="margin-bottom:10px">'+tagPills+'</div>':''}
+    <table style="font-size:11px;font-family:var(--mf);color:var(--ts);border-collapse:collapse;margin-bottom:12px">${varRows}</table>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${tsKeys.length?'<button class="bt sm" onclick="_viewAnnotationCharts(\''+ann.id+'\')">View Full Data</button>':''}
+      <button class="bt sm" onclick="_editAnnotation('${ann.id}')">Edit</button>
+      <button class="bt sm" onclick="_refetchAnnotation('${ann.id}')" style="color:var(--sg);border-color:var(--sb)">Re-fetch</button>
+      <button class="bt sm" onclick="_deleteAnnotation('${ann.id}')" style="color:var(--co);border-color:rgba(194,120,120,.3)">Delete</button>
+    </div>
+  </div>`);
+  H('#echarts','');H('#esyn','');
+  // Fly map to location
+  if(_envMap)_envMap.flyTo([ann.latitude,ann.longitude],8,{duration:1});
+}
+
+// ── View saved time series charts ──
+function _viewAnnotationCharts(annId){
+  const ann=_mapAnnotations.find(a=>a.id===annId);if(!ann)return;
+  const envTS=ann.variable_data?.envTS||{};
+  const tk=Object.keys(envTS);if(!tk.length)return toast('No time series data saved','info');
+  let ch='';tk.forEach(id=>{ch+=`<div style="position:relative"><div class="pcc" id="ann-ep-${id}" style="height:240px"></div></div>`});
+  H('#echarts',ch);
+  requestAnimationFrame(()=>{tk.forEach((id,i)=>{
+    const ts=envTS[id];if(!ts?.data?.length)return;
+    let pd=ts.data;if(pd.length>350&&typeof lttb==='function')pd=lttb(pd,350);
+    const times=pd.map(d=>d.time),vals=pd.map(d=>d.value);
+    Plotly.newPlot('ann-ep-'+id,[{x:times,y:vals,type:'scatter',mode:'lines',line:{color:CL[i%8],width:2},fill:'tozeroy',fillcolor:CL[i%8]+'15',name:ts.nm}],
+      {...PL,height:240,title:{text:ts.nm+' ('+ts.u+')',font:{size:12}},xaxis:{...PL.xaxis,type:'date'},hovermode:'x unified'},{responsive:true})})});
+}
+
+// ── Edit Annotation ──
+function _editAnnotation(annId){
+  const ann=_mapAnnotations.find(a=>a.id===annId);if(!ann)return;
+  const existing=document.getElementById('ann-edit-modal');if(existing)existing.remove();
+  const colorOpts=Object.entries(_annColors).map(([k,v])=>`<label style="cursor:pointer;display:flex;align-items:center;gap:4px"><input type="radio" name="ann-edit-color" value="${k}" ${k===ann.color?'checked':''}><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${v};border:2px solid rgba(255,255,255,.3)"></span><span style="font-size:11px;color:var(--ts)">${k}</span></label>`).join('');
+  const modal=document.createElement('div');modal.id='ann-edit-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10006;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML=`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:12px;width:min(460px,92vw);max-height:80vh;overflow-y:auto;padding:24px">
+    <h3 style="margin:0 0 16px;font-size:15px;color:var(--tf)">Edit Annotation</h3>
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Name <span style="color:var(--co)">*</span></label>
+    <input type="text" id="ann-edit-name" class="fs" value="${escHTML(ann.name)}" style="width:100%;margin-bottom:12px">
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Notes</label>
+    <textarea id="ann-edit-notes" class="fs" rows="3" style="width:100%;margin-bottom:12px;resize:vertical">${escHTML(ann.notes||'')}</textarea>
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:4px">Tags</label>
+    <input type="text" id="ann-edit-tags" class="fs" value="${escHTML((ann.tags||[]).join(', '))}" style="width:100%;margin-bottom:12px">
+    <label style="font-size:12px;color:var(--tf);font-weight:600;display:block;margin-bottom:8px">Color</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">${colorOpts}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="bt sm" onclick="document.getElementById('ann-edit-modal').remove()">Cancel</button>
+      <button class="bt bt-pri" onclick="_doEditAnnotation('${ann.id}')">Save Changes</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()});
+  document.body.appendChild(modal);
+}
+
+async function _doEditAnnotation(annId){
+  const name=document.getElementById('ann-edit-name').value.trim();
+  if(!name)return toast('Name is required','err');
+  const notes=document.getElementById('ann-edit-notes').value.trim()||null;
+  const tagsRaw=document.getElementById('ann-edit-tags').value.trim();
+  const tags=tagsRaw?tagsRaw.split(',').map(t=>t.trim()).filter(Boolean):null;
+  const color=document.querySelector('input[name="ann-edit-color"]:checked')?.value||'amber';
+  try{
+    const{error}=await SB.from('map_annotations').update({name,notes,tags,color,updated_at:new Date().toISOString()}).eq('id',annId).eq('user_id',_supaUser.id);
+    if(error)throw error;
+    const idx=_mapAnnotations.findIndex(a=>a.id===annId);
+    if(idx>=0)Object.assign(_mapAnnotations[idx],{name,notes,tags,color});
+    document.getElementById('ann-edit-modal')?.remove();
+    _renderAnnotationMarkers();
+    _renderAnnotationsList();
+    _showAnnotationPopup(_mapAnnotations.find(a=>a.id===annId));
+    toast('Annotation updated','ok');
+  }catch(e){toast('Update failed: '+e.message,'err')}}
+
+// ── Delete Annotation ──
+async function _deleteAnnotation(annId){
+  if(!confirm('Delete this annotation? This cannot be undone.'))return;
+  try{
+    const{error}=await SB.from('map_annotations').delete().eq('id',annId).eq('user_id',_supaUser.id);
+    if(error)throw error;
+    _mapAnnotations=_mapAnnotations.filter(a=>a.id!==annId);
+    _renderAnnotationMarkers();
+    _renderAnnotationsList();
+    H('#esum','');H('#echarts','');
+    toast('Annotation deleted','ok');
+  }catch(e){toast('Delete failed: '+e.message,'err')}}
+
+// ── Re-fetch Annotation ──
+function _refetchAnnotation(annId){
+  const ann=_mapAnnotations.find(a=>a.id===annId);if(!ann)return;
+  $('#elat').value=ann.latitude.toFixed(4);
+  $('#elon').value=ann.longitude.toFixed(4);
+  if(ann.date_range_start)$('#edf').value=ann.date_range_start.slice(0,10);
+  if(ann.date_range_end)$('#edt').value=ann.date_range_end.slice(0,10);
+  if(_envMarker)_envMarker.setLatLng([ann.latitude,ann.longitude]);
+  if(_envMap)_envMap.flyTo([ann.latitude,ann.longitude],8,{duration:0.5});
+  $('#emode').value='timeseries';$('#edts').style.display='';
+  _updateQueryMeter();
+  toast('Re-fetching '+ann.name+'...','info');
+  setTimeout(()=>envFetch(),300);
+}
+
+// ── Annotations List Panel ──
+function _renderAnnotationsList(){
+  const el=$('#ann-list-panel');if(!el)return;
+  if(!_mapAnnotations.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--tm);font-family:var(--mf);padding:12px;text-align:center;opacity:.6">No annotations saved yet. Fetch environmental data and click &#x1F4CC; Save Annotation.</div>';
+    return}
+  const filter=(el.querySelector('#ann-filter')?.value||'').toLowerCase();
+  const sort=el.querySelector('#ann-sort')?.value||'created';
+  let items=[..._mapAnnotations];
+  if(filter)items=items.filter(a=>a.name.toLowerCase().includes(filter)||(a.tags||[]).some(t=>t.toLowerCase().includes(filter)));
+  items.sort((a,b)=>{
+    if(sort==='name')return a.name.localeCompare(b.name);
+    if(sort==='date_range')return(a.date_range_start||'').localeCompare(b.date_range_start||'');
+    return(b.created_at||'').localeCompare(a.created_at||'')});
+  const cards=items.map(a=>{
+    const fillColor=_annColors[a.color]||_annColors.amber;
+    const dateStr=a.date_range_start?a.date_range_start.slice(0,10)+(a.date_range_end?' to '+a.date_range_end.slice(0,10):''):'';
+    const nVars=Object.keys(a.variable_data?.envR||{}).length;
+    const tagStr=(a.tags||[]).map(t=>`<span style="display:inline-block;padding:1px 6px;border-radius:8px;background:rgba(212,160,74,.12);color:var(--ac);font-size:9px;margin:1px">${escHTML(t)}</span>`).join('');
+    return`<div class="ann-card" onclick="_showAnnotationPopup(_mapAnnotations.find(x=>x.id==='${a.id}'))" style="padding:10px 12px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--ac)'" onmouseout="this.style.borderColor='var(--bd)'">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${fillColor};flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:600;color:var(--tf)">${escHTML(a.name)}</span>
+      </div>
+      <div style="font-size:10px;color:var(--tm);font-family:var(--mf);margin-top:3px;margin-left:18px">
+        ${a.latitude.toFixed(2)}&deg;N, ${a.longitude.toFixed(2)}&deg;E${dateStr?' &middot; '+dateStr:''} &middot; ${nVars} vars
+      </div>
+      ${tagStr?'<div style="margin-top:4px;margin-left:18px">'+tagStr+'</div>':''}
+    </div>`}).join('');
+  // Preserve controls, update cards
+  const controlsHTML=`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+    <input type="text" id="ann-filter" class="fs" placeholder="Filter by name or tag..." oninput="_renderAnnotationsList()" style="flex:1;min-width:120px;font-size:11px" value="${escHTML(filter)}">
+    <select id="ann-sort" class="fs" onchange="_renderAnnotationsList()" style="font-size:11px;width:auto">
+      <option value="created" ${sort==='created'?'selected':''}>Newest</option>
+      <option value="date_range" ${sort==='date_range'?'selected':''}>Date Range</option>
+      <option value="name" ${sort==='name'?'selected':''}>Name</option>
+    </select>
+  </div>`;
+  const exportHTML=_mapAnnotations.length?`<div style="display:flex;gap:6px;margin-top:10px;border-top:1px solid var(--bd);padding-top:10px">
+    <button class="bt sm" onclick="_exportAnnotations('csv')" style="font-size:10px">Export CSV</button>
+    <button class="bt sm" onclick="_exportAnnotations('geojson')" style="font-size:10px">Export GeoJSON</button>
+    <button class="bt sm" onclick="_exportAnnotations('json')" style="font-size:10px">Export JSON</button>
+  </div>`:'';
+  el.innerHTML=controlsHTML+'<div style="max-height:400px;overflow-y:auto">'+cards+'</div>'+exportHTML;
+  // Re-focus filter input
+  const fi=el.querySelector('#ann-filter');if(fi&&filter)fi.setSelectionRange(filter.length,filter.length);
+}
+
+// ── Export Annotations ──
+function _exportAnnotations(fmt){
+  if(!_mapAnnotations.length)return toast('No annotations to export','err');
+  if(fmt==='csv'){
+    // Collect all variable names across all annotations
+    const allVarIds=new Set();
+    _mapAnnotations.forEach(a=>{Object.keys(a.variable_data?.envR||{}).forEach(id=>allVarIds.add(id))});
+    const varIds=[...allVarIds];
+    const varNames=varIds.map(id=>{
+      for(const a of _mapAnnotations){const r=a.variable_data?.envR?.[id];if(r?.nm)return r.nm}return id});
+    const hdr=['Name','Latitude','Longitude','Date_Start','Date_End','Tags',...varNames];
+    const rows=_mapAnnotations.map(a=>{
+      const envR=a.variable_data?.envR||{};
+      return['"'+a.name.replace(/"/g,'""')+'"',a.latitude,a.longitude,
+        a.date_range_start?.slice(0,10)||'',a.date_range_end?.slice(0,10)||'',
+        '"'+(a.tags||[]).join('; ')+'"',
+        ...varIds.map(id=>envR[id]?.value!=null?envR[id].value.toFixed?envR[id].value.toFixed(4):envR[id].value:'')].join(',')});
+    dl(['# Meridian Map Annotations Export','# '+new Date().toISOString(),hdr.join(','),...rows].join('\n'),'annotations.csv','text/csv');
+  }else if(fmt==='geojson'){
+    const fc={type:'FeatureCollection',features:_mapAnnotations.map(a=>{
+      const props={name:a.name,notes:a.notes,tags:a.tags,color:a.color,
+        date_range_start:a.date_range_start?.slice(0,10),date_range_end:a.date_range_end?.slice(0,10),
+        created_at:a.created_at};
+      Object.entries(a.variable_data?.envR||{}).forEach(([id,r])=>{props[r.nm||id]=r.value;props[(r.nm||id)+'_unit']=r.u});
+      return{type:'Feature',geometry:{type:'Point',coordinates:[a.longitude,a.latitude]},properties:props}})};
+    dl(JSON.stringify(fc,null,2),'annotations.geojson','application/geo+json');
+  }else{
+    dl(JSON.stringify(_mapAnnotations,null,2),'annotations.json','application/json');
+  }
+  toast('Exported '+_mapAnnotations.length+' annotations as '+fmt.toUpperCase(),'ok');
+}
+
+// ── Fly to annotation from list ──
+function _flyToAnnotation(annId){
+  const ann=_mapAnnotations.find(a=>a.id===annId);if(!ann)return;
+  _showAnnotationPopup(ann);
 }

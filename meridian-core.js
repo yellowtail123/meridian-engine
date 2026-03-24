@@ -781,6 +781,8 @@ function updateUISignedIn(user){
   toast('Signed in as '+(user.email||''),'ok');
   _syncOnLogin().catch(e=>console.warn('Sync:',e));
   _flushQueue();
+  if(typeof loadMapAnnotations==='function')setTimeout(loadMapAnnotations,800);
+  if(typeof window._onAuthSuccess==='function'){window._onAuthSuccess();window._onAuthSuccess=null}
 }
 
 function updateUISignedOut(){
