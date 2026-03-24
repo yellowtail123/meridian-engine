@@ -1827,10 +1827,17 @@ const naop=hNao?(async()=>{try{
   const lines=t.trim().split('\n').filter(l=>l.trim()&&!/^\s*$/.test(l));
   const allData=[];
   for(const line of lines){
-    const p=line.trim().split(/\s+/);if(p.length<13)continue;
-    const yr=p[0];if(isNaN(parseInt(yr)))continue;
-    for(let m=1;m<=12;m++){const val=parseFloat(p[m]);
-      if(!isNaN(val)&&val>-99){allData.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:val})}}}
+    const p=line.trim().split(/\s+/);
+    if(p.length>=3&&p.length<13){
+      // CPC 3-column format: year month value
+      const yr=p[0],mo=p[1],val=parseFloat(p[2]);
+      if(isNaN(parseInt(yr))||isNaN(parseInt(mo)))continue;
+      if(!isNaN(val)&&Math.abs(val)<90)allData.push({time:`${yr}-${String(parseInt(mo)).padStart(2,'0')}-15`,value:val})
+    }else if(p.length>=13){
+      // PSL 13-column format: year val1..val12
+      const yr=p[0];if(isNaN(parseInt(yr)))continue;
+      for(let m=1;m<=12;m++){const val=parseFloat(p[m]);
+        if(!isNaN(val)&&Math.abs(val)<90)allData.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:val})}}}
   const data=(df&&dt)?allData.filter(d=>d.time>=df&&d.time<=dt):allData;
   if(!data.length)throw new Error('No NAO data in range');
   S.envR.nao={nm:'NAO Index',value:data[data.length-1]?.value,u:''};

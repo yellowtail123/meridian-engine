@@ -42,8 +42,13 @@ const SAFE_RESPONSE_HEADERS = [
   'etag',
 ];
 
-function isOriginAllowed(origin) {
-  return ALLOWED_ORIGINS.includes(origin);
+function isOriginAllowed(request) {
+  const origin = request.headers.get('Origin') || '';
+  // If Origin header is present, check it strictly
+  if (origin) return ALLOWED_ORIGINS.includes(origin);
+  // Same-origin GET requests may omit Origin — fall back to Referer
+  const referer = request.headers.get('Referer') || '';
+  return ALLOWED_ORIGINS.some(o => referer.startsWith(o + '/'));
 }
 
 function corsHeaders(origin) {
@@ -92,8 +97,8 @@ export default {
       });
     }
 
-    // Strict origin check — reject missing or unauthorized Origin
-    if (!isOriginAllowed(origin)) {
+    // Origin/Referer check — reject unauthorized requests
+    if (!isOriginAllowed(request)) {
       return new Response(JSON.stringify({ error: 'Origin not allowed' }), {
         status: 403,
         headers: { ...cors, 'Content-Type': 'application/json' },
