@@ -2404,29 +2404,53 @@ const _climateIndices={};const _activeIndices=new Set();
 async function corsFetchT(url,ms){try{const r=await fetchT(url,ms);if(r.ok)return r}catch{}
   for(const pf of CORS_PROXIES){try{const r=await fetchT(pf(url),ms);if(r.ok)return r}catch{}}
   throw new Error('All sources failed')}
+// Parse year + 12 monthly columns format (used by PSL ONI, NAO, PDO files)
+// Skips header/footer lines, treats values ≥90 as missing (-99.90 sentinel)
+function _parseYearMonthCols(text){
+  const data=[];
+  text.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);
+    if(p.length>=13&&!isNaN(parseInt(p[0]))){
+      const yr=p[0];for(let m=1;m<=12;m++){const v=parseFloat(p[m]);
+        if(!isNaN(v)&&Math.abs(v)<90)data.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:v})}}});
+  return data}
+// Parse NCEI el_nino.dat: year month nino12 nino3 nino34 nino4 — extract Nino3.4 (col 5)
+function _parseNceiOni(text){
+  const data=[];
+  text.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);
+    if(p.length>=5&&!isNaN(parseInt(p[0]))&&!isNaN(parseInt(p[1]))){
+      const yr=p[0],mo=p[1],v=parseFloat(p[4]); // column 5 = Nino 3.4 anomaly
+      if(!isNaN(v)&&Math.abs(v)<90)data.push({time:`${yr}-${mo.padStart(2,'0')}-15`,value:v})}});
+  return data}
+// Fetch strategy: same-origin Pages Function first (/api/climate?type=X),
+// then NCEI direct (has CORS for oni/pdo), then public CORS proxies as last resort
+const _ciDirect={
+  oni:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.el_nino.dat',
+  pdo:'https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat'};
+const _ciNames={oni:'ONI (ENSO)',nao:'NAO',pdo:'PDO'};
+const _ciUnits={oni:'°C',nao:'index',pdo:'index'};
 async function fetchClimateIndex(type){
   if(_climateIndices[type])return _climateIndices[type];
-  try{
-    if(type==='oni'){
-      const r=await corsFetchT('https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt',15000);
-      const t=await r.text();const lines=t.trim().split('\n').filter(l=>l.trim()&&!l.startsWith('SEAS'));
-      const data=[];const mMap={DJF:1,JFM:2,FMA:3,MAM:4,AMJ:5,MJJ:6,JJA:7,JAS:8,ASO:9,SON:10,OND:11,NDJ:12};
-      lines.forEach(l=>{const p=l.trim().split(/\s+/);if(p.length>=4){const yr=p[0],seas=p[1],anom=parseFloat(p[p.length-1]);
-        if(!isNaN(anom)){const m=mMap[seas]||1;data.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:anom})}}});
-      _climateIndices.oni={nm:'ONI (ENSO)',data,u:'°C'};return _climateIndices.oni}
-    if(type==='nao'){
-      const r=await corsFetchT('https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii',15000);
-      const t=await r.text();const data=[];
-      t.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);if(p.length>=3){const yr=p[0],mo=p[1],v=parseFloat(p[2]);
-        if(!isNaN(v))data.push({time:`${yr}-${mo.padStart(2,'0')}-15`,value:v})}});
-      _climateIndices.nao={nm:'NAO',data,u:'index'};return _climateIndices.nao}
-    if(type==='pdo'){
-      const r=await corsFetchT('https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat',15000);
-      const t=await r.text();const data=[];
-      t.trim().split('\n').forEach(l=>{const p=l.trim().split(/\s+/);if(p.length>=13&&!isNaN(parseInt(p[0]))){
-        const yr=p[0];for(let m=1;m<=12;m++){const v=parseFloat(p[m]);if(!isNaN(v)&&v<90)data.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:v})}}});
-      _climateIndices.pdo={nm:'PDO',data,u:'index'};return _climateIndices.pdo}
-  }catch(e){console.error('Climate index fetch error:',e);return null}}
+  let text=null;
+  // 1) Try same-origin Pages Function (no CORS needed)
+  try{const r=await fetchT('/api/climate?type='+type,12000);
+    if(r.ok)text=await r.text()}catch{}
+  // 2) For ONI/PDO: try NCEI direct (has Access-Control-Allow-Origin: *)
+  if(!text&&_ciDirect[type]){
+    try{const r=await fetchT(_ciDirect[type],12000);
+      if(r.ok)text=await r.text()}catch{}}
+  // 3) Last resort: CORS proxies (unreliable but sometimes work)
+  if(!text){
+    const urls={oni:'https://psl.noaa.gov/data/correlation/oni.data',
+      nao:'https://psl.noaa.gov/data/correlation/nao.data',
+      pdo:'https://psl.noaa.gov/data/correlation/pdo.data'};
+    try{const r=await corsFetchT(urls[type],15000);
+      if(r.ok)text=await r.text()}catch{}}
+  if(!text){console.error('Climate index fetch failed: '+type);return null}
+  // Parse — NCEI ONI has a different format, all PSL/NCEI-PDO use year+12cols
+  const data=(type==='oni'&&text.trim().split('\n')[0].trim().split(/\s+/).length<13)
+    ?_parseNceiOni(text):_parseYearMonthCols(text);
+  _climateIndices[type]={nm:_ciNames[type],data,u:_ciUnits[type]};
+  return _climateIndices[type]}
 let _ciActiveType=null,_ciRange='30';
 const _ciDesc={
   oni:'ONI: Oceanic Niño Index — positive values indicate El Niño, negative indicate La Niña.',

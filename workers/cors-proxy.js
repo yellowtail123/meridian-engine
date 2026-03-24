@@ -32,7 +32,9 @@ const ALLOWED_HOSTS = [
   'oceanwatch.pifsc.noaa.gov',
   'polarwatch.noaa.gov',
   'www.gmrt.org',
-  'gateway.api.globalfishingwatch.org'
+  'gateway.api.globalfishingwatch.org',
+  'psl.noaa.gov',
+  'www.cpc.ncep.noaa.gov'
 ];
 
 function corsHeaders(origin) {
