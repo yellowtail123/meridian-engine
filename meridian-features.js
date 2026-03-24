@@ -1590,7 +1590,7 @@ function renderGebcoSnippets(){
 function _fillSnippets(c){
   const rEl=$('#gebco-snippet-r'),pyEl=$('#gebco-snippet-python'),qEl=$('#gebco-snippet-qgis');
   if(rEl)rEl.textContent=
-`# GEBCO Bathymetry via OPeNDAP
+`# GEBCO-derived Bathymetry via OPeNDAP (NOAA ETOPO 2022, 30 arc-sec)
 library(ncdf4)
 library(raster)
 
@@ -1598,8 +1598,8 @@ library(raster)
 lon_range <- c(${c.west}, ${c.east})
 lat_range <- c(${c.south}, ${c.north})
 
-# Access GEBCO 2024 via OPeNDAP (CEDA)
-url <- "https://dap.ceda.ac.uk/thredds/dodsC/neodc/gebco/2024/GEBCO_2024.nc"
+# Access ETOPO 2022 (incorporates GEBCO) via NOAA THREDDS — no auth required
+url <- "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/30s/30s_bed_elev_netcdf/ETOPO_2022_v1_30s_N90W180_bed.nc"
 nc <- nc_open(url)
 lon <- ncvar_get(nc, "lon")
 lat <- ncvar_get(nc, "lat")
@@ -1608,8 +1608,8 @@ lat <- ncvar_get(nc, "lat")
 lon_idx <- which(lon >= lon_range[1] & lon <= lon_range[2])
 lat_idx <- which(lat >= lat_range[1] & lat <= lat_range[2])
 
-# Extract elevation/depth data
-depth <- ncvar_get(nc, "elevation",
+# Extract elevation/depth data (variable: z, negative = ocean depth)
+depth <- ncvar_get(nc, "z",
   start = c(min(lon_idx), min(lat_idx)),
   count = c(length(lon_idx), length(lat_idx)))
 nc_close(nc)
@@ -1619,10 +1619,10 @@ r <- raster(t(depth),
   xmn = min(lon[lon_idx]), xmx = max(lon[lon_idx]),
   ymn = min(lat[lat_idx]), ymx = max(lat[lat_idx]),
   crs = CRS("+proj=longlat +datum=WGS84"))
-plot(r, main = "GEBCO Bathymetry")`;
+plot(r, main = "GEBCO/ETOPO Bathymetry")`;
 
   if(pyEl)pyEl.textContent=
-`# GEBCO Bathymetry via OPeNDAP
+`# GEBCO-derived Bathymetry via OPeNDAP (NOAA ETOPO 2022, 30 arc-sec)
 import xarray as xr
 import matplotlib.pyplot as plt
 
@@ -1630,12 +1630,12 @@ import matplotlib.pyplot as plt
 lon_min, lon_max = ${c.west}, ${c.east}
 lat_min, lat_max = ${c.south}, ${c.north}
 
-# Access GEBCO 2024 via OPeNDAP (CEDA)
-url = "https://dap.ceda.ac.uk/thredds/dodsC/neodc/gebco/2024/GEBCO_2024.nc"
+# Access ETOPO 2022 (incorporates GEBCO) via NOAA THREDDS — no auth required
+url = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/30s/30s_bed_elev_netcdf/ETOPO_2022_v1_30s_N90W180_bed.nc"
 ds = xr.open_dataset(url)
 
-# Subset to region
-bathy = ds['elevation'].sel(
+# Subset to region (variable: z, negative = ocean depth)
+bathy = ds['z'].sel(
     lon=slice(lon_min, lon_max),
     lat=slice(lat_min, lat_max)
 )
@@ -1643,7 +1643,7 @@ bathy = ds['elevation'].sel(
 # Plot
 fig, ax = plt.subplots(figsize=(12, 8))
 bathy.plot(ax=ax, cmap='terrain', robust=True)
-ax.set_title('GEBCO Bathymetry')
+ax.set_title('GEBCO/ETOPO Bathymetry')
 plt.show()
 
 # Save as GeoTIFF
