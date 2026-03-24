@@ -32,6 +32,7 @@ const ALLOWED_HOSTS = [
   'www.cpc.ncep.noaa.gov',
   'gml.noaa.gov',
   'scrippsco2.ucsd.edu',
+  'members.oceantrack.org',
 ];
 
 const RATE_LIMIT_MAX = 120; // per minute per IP

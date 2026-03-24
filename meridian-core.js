@@ -421,17 +421,16 @@ let _coordDMS=false,_measureMode=false,_measurePoints=[],_measureLayers=[],_isob
 let _graticuleLayer=null,_gibsLayers={},_areaStats=null,_polygonMode='filter';
 let _envAbort=null;
 // ── ERDDAP Proxy — same-origin Cloudflare Worker ──
-// Deploy: npx wrangler deploy --config workers/erddap-proxy/wrangler.toml
-// Routes to meridian-engine.com/api/erddap/proxy — no CORS issues (same origin).
-const _CORS_WORKER='/api/erddap/proxy?url=';
-const CORS_PROXIES=[url=>_CORS_WORKER+encodeURIComponent(url)];
+// Deployed at meridian-engine.com/api/erddap/ — all external data fetches route through here.
+const _ERDDAP_PROXY='/api/erddap/?url=';
+function proxyUrl(url){return _ERDDAP_PROXY+encodeURIComponent(url)}
 // ── Server Health Registry ──
 const _serverHealth=new Map();
 const _SERVER_HEALTH_TTL=60000;
 async function probeServer(serverUrl){
   const c=_serverHealth.get(serverUrl);
   if(c&&Date.now()-c.at<_SERVER_HEALTH_TTL)return c.ok;
-  try{const r=await fetchT(serverUrl+'/version',8000);
+  try{const r=await fetchT(proxyUrl(serverUrl+'/version'),8000);
     _serverHealth.set(serverUrl,{ok:r.ok,at:Date.now()});return r.ok}
   catch{_serverHealth.set(serverUrl,{ok:false,at:Date.now()});return false}}
 function isServerDown(serverUrl){
@@ -475,18 +474,13 @@ function setCache(url,data){_fetchCache.set(url,{data,t:Date.now()});if(_fetchCa
 async function erddapFetch(url,ms){
   const eu=encErddap(url);
   const cached=getCached(eu);if(cached)return new Response(JSON.stringify(cached),{status:200});
-  const serverBase=url.match(/^https?:\/\/[^/]+\/erddap/)?.[0]||url.match(/^https?:\/\/[^/]+/)?.[0];
-  if(serverBase&&isServerDown(serverBase))throw new Error('Server '+serverBase.split('//')[1]+' unreachable');
   if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-  // Try direct first (works for CORS-enabled servers like NCEI)
-  try{const r=await envFetchT(eu,ms);
-    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
-  if(_envAbort?.signal.aborted)throw new DOMException('','AbortError');
-  // Route through same-origin ERDDAP proxy (Cloudflare Worker)
-  try{const r=await envFetchT(CORS_PROXIES[0](eu),ms+5000);
-    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}
-  catch(e){if(_envAbort?.signal.aborted)throw new DOMException('','AbortError')}
-  throw new Error('Data unavailable — could not reach '+(serverBase?.split('//')[1]||'server')+'. Check your network connection or try again in a few minutes.')}
+  const serverBase=url.match(/^https?:\/\/[^/]+/)?.[0]||'';
+  try{const r=await envFetchT(proxyUrl(eu),ms);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}
+    throw new Error('HTTP '+r.status)}
+  catch(e){if(e.name==='AbortError'||_envAbort?.signal.aborted)throw new DOMException('','AbortError');
+    throw new Error('Data unavailable — could not reach '+(serverBase.split('//')[1]||'server')+'.')}}
 // ── Bathymetry cascade sources (best → fallback) ──
 const _BATHY_SOURCES=[
   {ds:'ETOPO_2022_v1_15s',v:'z',res:0.00417},
@@ -535,13 +529,10 @@ async function _bathyFetchDirect(url,ms=15000){
   const eu=encErddap(url);
   const cached=getCached(eu);
   if(cached)return new Response(JSON.stringify(cached),{status:200});
-  // Try direct first (works for CORS-enabled servers)
-  try{const r=await fetchT(eu,ms);
-    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
-  // Route through same-origin ERDDAP proxy
-  try{const r=await fetchT(CORS_PROXIES[0](eu),ms+5000);
-    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}}catch{}
-  throw new Error('Bathymetry fetch failed')}
+  try{const r=await fetchT(proxyUrl(eu),ms);
+    if(r.ok){r.clone().json().then(d=>setCache(eu,d)).catch(()=>{});return r}
+    throw new Error('HTTP '+r.status)}
+  catch(e){throw new Error('Bathymetry fetch failed')}}
 // ── Bathymetry helper — cache → GMRT → ERDDAP fallback ──
 async function fetchBathymetry(lat,lon){
   const la=parseFloat(lat),lo=parseFloat(lon);

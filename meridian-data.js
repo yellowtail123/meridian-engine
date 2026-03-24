@@ -1038,8 +1038,8 @@ async function loadOTN(){
     // Query ERDDAP for OTN tagged animal detections
     const name=encodeURIComponent(d.sciName);
     const [otnR,atnR]=await Promise.all([
-      fetchT(`https://members.oceantrack.org/erddap/tabledap/otn_animals.json?commonname,scientificname,latitude,longitude,yearcollected,catalognumber&scientificname=%22${name}%22&orderBy(%22yearcollected%22)&.draw=markers`,10000).then(r=>r.ok?r.json():null).catch(()=>null),
-      fetchT(`https://coastwatch.pfeg.noaa.gov/erddap/tabledap/animaltags.json?commonName,scientificName,latitude,longitude,time&scientificName=%22${name}%22&orderBy(%22time%22)`,10000).then(r=>r.ok?r.json():null).catch(()=>null)
+      fetchT(proxyUrl(`https://members.oceantrack.org/erddap/tabledap/otn_animals.json?commonname,scientificname,latitude,longitude,yearcollected,catalognumber&scientificname=%22${name}%22&orderBy(%22yearcollected%22)&.draw=markers`),10000).then(r=>r.ok?r.json():null).catch(()=>null),
+      fetchT(proxyUrl(`https://coastwatch.pfeg.noaa.gov/erddap/tabledap/animaltags.json?commonName,scientificName,latitude,longitude,time&scientificName=%22${name}%22&orderBy(%22time%22)`),10000).then(r=>r.ok?r.json():null).catch(()=>null)
     ]);
     let detections=[];
     if(otnR?.table?.rows?.length){const cols=otnR.table.columnNames;const latI=cols.indexOf('latitude'),lonI=cols.indexOf('longitude'),yrI=cols.indexOf('yearcollected');
@@ -1799,7 +1799,7 @@ const php=hPh?(async()=>{try{
 const hOni=sel.includes('oni');
 const onip=hOni?(async()=>{try{
   const oniUrl='https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt';
-  const r=await envFetchT(oniUrl,15000);
+  const r=await envFetchT(proxyUrl(oniUrl),15000);
   if(!r.ok)throw new Error('ONI HTTP '+r.status);
   const t=await r.text();
   const lines=t.trim().split('\n').filter(l=>l.trim()&&!/^SEAS|^APTS/i.test(l.trim()));
@@ -1821,7 +1821,7 @@ const onip=hOni?(async()=>{try{
 const hNao=sel.includes('nao');
 const naop=hNao?(async()=>{try{
   const naoUrl='https://www.cpc.ncep.noaa.gov/products/precip/CWlink/pna/norm.nao.monthly.b5001.current.ascii';
-  const r=await envFetchT(naoUrl,15000);
+  const r=await envFetchT(proxyUrl(naoUrl),15000);
   if(!r.ok)throw new Error('NAO HTTP '+r.status);
   const t=await r.text();
   const lines=t.trim().split('\n').filter(l=>l.trim()&&!/^\s*$/.test(l));
@@ -2402,9 +2402,8 @@ function getSeasonalMonths(){
 // ═══ CLIMATE INDEX OVERLAYS ═══
 const _climateIndices={};const _activeIndices=new Set();
 async function corsFetchT(url,ms){
-  // Try direct first, then same-origin proxy
-  try{const r=await fetchT(url,ms);if(r.ok)return r}catch{}
-  try{const r=await fetchT(CORS_PROXIES[0](url),ms+5000);if(r.ok)return r}catch{}
+  const r=await fetchT(proxyUrl(url),ms);
+  if(r.ok)return r;
   throw new Error('Fetch failed for '+url.split('/')[2])}
 // Parse year + 12 monthly columns format (used by PSL ONI, NAO, PDO files)
 // Skips header/footer lines, treats values ≥90 as missing (-99.90 sentinel)
@@ -2436,13 +2435,13 @@ const _ciUnits={oni:'°C',nao:'index',pdo:'index'};
 async function fetchClimateIndex(type){
   if(_climateIndices[type])return _climateIndices[type];
   let text=null;
-  // 1) For ONI/PDO: try NCEI direct (has Access-Control-Allow-Origin: *)
+  // 1) For ONI/PDO: try NCEI via proxy
   if(_ciDirect[type]){
-    try{const r=await fetchT(_ciDirect[type],12000);
+    try{const r=await fetchT(proxyUrl(_ciDirect[type]),12000);
       if(r.ok)text=await r.text()}catch{}}
   // 2) PSL via same-origin ERDDAP proxy (handles NAO and fallback for ONI/PDO)
   if(!text&&_ciProxy[type]){
-    try{const r=await fetchT(CORS_PROXIES[0](_ciProxy[type]),15000);
+    try{const r=await fetchT(proxyUrl(_ciProxy[type]),15000);
       if(r.ok)text=await r.text()}catch{}}
   if(!text){console.error('Climate index fetch failed: '+type);return null}
   // Parse — NCEI ONI has a different format, all PSL/NCEI-PDO use year+12cols
@@ -2677,7 +2676,7 @@ async function fetchArgoProfiles(){
   if(!lat||!lon)return toast('Set coordinates first','err');
   toast('Searching for Argo floats near '+lat+'°N, '+lon+'°E...','info');
   const delta=2;const latMin=(+lat-delta).toFixed(2),latMax=(+lat+delta).toFixed(2),lonMin=(+lon-delta).toFixed(2),lonMax=(+lon+delta).toFixed(2);
-  try{const r=await fetchT(`https://coastwatch.pfeg.noaa.gov/erddap/tabledap/ArgoFloats.json?platform_number,latitude,longitude,time,temp,psal,pres&latitude>=${latMin}&latitude<=${latMax}&longitude>=${lonMin}&longitude<=${lonMax}&orderByMax("time")&distinct()`,20000);
+  try{const r=await fetchT(proxyUrl(`https://coastwatch.pfeg.noaa.gov/erddap/tabledap/ArgoFloats.json?platform_number,latitude,longitude,time,temp,psal,pres&latitude>=${latMin}&latitude<=${latMax}&longitude>=${lonMin}&longitude<=${lonMax}&orderByMax("time")&distinct()`),20000);
   if(!r.ok){toast('No Argo data found in this area','info');return}
   const d=await r.json();const rows=d.table?.rows||[];
   if(!rows.length){toast('No Argo profiles found','info');return}
