@@ -1203,6 +1203,8 @@ function clearMap(){
   if(_graticuleLayer){_envMap.removeLayer(_graticuleLayer);_graticuleLayer=null;$('#gratBtn')?.classList.remove('on')}
   // Turn off WMS query mode
   if(_wmsQueryMode){_wmsQueryMode=false;$('#wmsQueryBtn')?.classList.remove('on')}
+  // Close climate index panel
+  if(typeof closeClimatePanel==='function')closeClimatePanel();
   // Reset legend
   if(_legendControl){_envMap.removeControl(_legendControl);_legendControl=null}
   // Close all popups

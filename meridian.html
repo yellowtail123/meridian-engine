@@ -283,6 +283,17 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 </div>
 <div id="envMap"></div>
+<div id="climate-index-panel" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px 4px">
+    <span id="climate-index-desc" style="font-size:11px;color:var(--tm);font-family:var(--mf)"></span>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button class="bt sm" id="ciRangeFull" onclick="setClimateRange('full')" style="font-size:10px">Full Record</button>
+      <button class="bt sm on" id="ciRange30" onclick="setClimateRange('30')" style="font-size:10px">Last 30 yr</button>
+      <button class="bt sm" onclick="closeClimatePanel()" style="font-size:10px" title="Close panel">&times;</button>
+    </div>
+  </div>
+  <div id="climate-index-chart" style="height:280px"></div>
+</div>
 <div id="noaa-filters" class="noaa-panel" style="display:none">
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div class="lbl">NOAA Environmental Filters — select area on map</div><button class="bt sm" onclick="applyNoaaFilters()">Apply to Fetch</button></div>
 <div class="range-slider"><span style="font-size:11px;color:var(--tm);width:50px">SST</span><input type="range" id="noaa-sst-min" min="-2" max="35" value="0" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-min-v','°C')"/><span class="rv" id="noaa-sst-min-v">0°C</span><span style="color:var(--tm)">–</span><input type="range" id="noaa-sst-max" min="-2" max="35" value="30" step="0.5" oninput="updateFilterLabel(this,'noaa-sst-max-v','°C')"/><span class="rv" id="noaa-sst-max-v">30°C</span></div>

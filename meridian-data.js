@@ -2427,10 +2427,50 @@ async function fetchClimateIndex(type){
         const yr=p[0];for(let m=1;m<=12;m++){const v=parseFloat(p[m]);if(!isNaN(v)&&v<90)data.push({time:`${yr}-${String(m).padStart(2,'0')}-15`,value:v})}}});
       _climateIndices.pdo={nm:'PDO',data,u:'index'};return _climateIndices.pdo}
   }catch(e){console.error('Climate index fetch error:',e);return null}}
+let _ciActiveType=null,_ciRange='30';
+const _ciDesc={
+  oni:'ONI: Oceanic Niño Index — positive values indicate El Niño, negative indicate La Niña.',
+  nao:'NAO: North Atlantic Oscillation — positive phase brings mild wet winters to Europe, negative brings cold dry winters.',
+  pdo:'PDO: Pacific Decadal Oscillation — warm/cool phases lasting 20–30 years that modulate ENSO effects.'};
 function toggleClimateIndex(type){
-  const btn=$('#idx-'+type);
-  if(_activeIndices.has(type)){_activeIndices.delete(type);btn?.classList.remove('on');toast(type.toUpperCase()+' overlay removed','info')}
-  else{_activeIndices.add(type);btn?.classList.add('on');fetchClimateIndex(type).then(()=>toast(type.toUpperCase()+' overlay ready — refetch to apply','ok'))}}
+  const btn=$('#idx-'+type);const panel=$('#climate-index-panel');
+  // Toggle off if same button clicked again
+  if(_activeIndices.has(type)&&_ciActiveType===type){
+    _activeIndices.delete(type);btn?.classList.remove('on');_ciActiveType=null;
+    if(panel)panel.style.display='none';return}
+  // Deselect previous standalone button (keep overlay set for env charts)
+  if(_ciActiveType){$('#idx-'+_ciActiveType)?.classList.remove('on');_activeIndices.delete(_ciActiveType)}
+  _activeIndices.add(type);btn?.classList.add('on');_ciActiveType=type;
+  btn?.classList.add('loading');
+  fetchClimateIndex(type).then(idx=>{
+    btn?.classList.remove('loading');
+    if(!idx?.data?.length){toast('No data returned for '+type.toUpperCase(),'err');return}
+    if(panel)panel.style.display='block';
+    H('#climate-index-desc',_ciDesc[type]||'');
+    renderClimateChart(type,_ciRange);
+  }).catch(()=>{btn?.classList.remove('loading');toast('Failed to fetch '+type.toUpperCase()+' data','err')})}
+function renderClimateChart(type,range){
+  const idx=_climateIndices[type];if(!idx?.data?.length)return;
+  let data=idx.data;
+  if(range==='30'){const cutoff=new Date().getFullYear()-30;data=data.filter(d=>parseInt(d.time)>=cutoff)}
+  const x=data.map(d=>d.time),y=data.map(d=>d.value);
+  const colors=y.map(v=>v>=0?'rgba(220,80,60,0.7)':'rgba(70,130,210,0.7)');
+  Plotly.newPlot('climate-index-chart',[
+    {x,y,type:'bar',marker:{color:colors},name:idx.nm,hovertemplate:'%{x|%b %Y}: %{y:.2f}<extra></extra>'},
+    {x:[x[0],x[x.length-1]],y:[0,0],type:'scatter',mode:'lines',line:{color:'rgba(169,157,145,0.5)',width:1,dash:'dot'},showlegend:false,hoverinfo:'skip'}
+  ],{...PL,height:280,
+    title:{text:idx.nm+(idx.u?' ('+idx.u+')':''),font:{size:13}},
+    xaxis:{...PL.xaxis,type:'date'},
+    yaxis:{...PL.yaxis,title:{text:idx.u||'index',font:{size:11}},zeroline:true,zerolinecolor:'rgba(169,157,145,0.3)'},
+    bargap:0.05,showlegend:false
+  },{responsive:true});
+  // Update range button states
+  $('#ciRange30')?.classList.toggle('on',range==='30');
+  $('#ciRangeFull')?.classList.toggle('on',range==='full')}
+function setClimateRange(range){_ciRange=range;if(_ciActiveType)renderClimateChart(_ciActiveType,range)}
+function closeClimatePanel(){
+  if(_ciActiveType){$('#idx-'+_ciActiveType)?.classList.remove('on');_activeIndices.delete(_ciActiveType);_ciActiveType=null}
+  const p=$('#climate-index-panel');if(p)p.style.display='none'}
 function renderClimateOverlays(chartId,chartData){
   if(!_activeIndices.size)return;
   const minT=chartData[0]?.time,maxT=chartData[chartData.length-1]?.time;
