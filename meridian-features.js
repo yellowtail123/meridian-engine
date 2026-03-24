@@ -1164,7 +1164,7 @@ function toggleMapLayer(id){const btn=$('#ml-'+id);if(!_envMap)return;
   if(!_mapLayers[id])return;
   if(_envMap.hasLayer(_mapLayers[id])){_envMap.removeLayer(_mapLayers[id]);btn.classList.remove('on');btn.classList.remove('loading')}
   else{_mapLayers[id].addTo(_envMap);btn.classList.add('on')}
-  updateLegendControl()}
+  updateLegendControl();_updateDlBtn()}
 function toggleGebcoLayer(mode){
   // mode: 'relief' or 'color' — mutually exclusive GEBCO sub-layers
   const reliefId='gebco_relief',colorId='gebco_color';
@@ -1217,6 +1217,7 @@ function clearMap(){
   if(!_envMap.hasLayer(_baseTileLayer))_baseTileLayer.addTo(_envMap);
   if(_envMap.hasLayer(_satTileLayer))_envMap.removeLayer(_satTileLayer);
   $('#base-dark')?.classList.add('on');$('#base-sat')?.classList.remove('on');
+  _updateDlBtn();
   toast('Map cleared','ok')}
 function setPolygonMode(m){_polygonMode=m;$$('.pm-btn').forEach(b=>b.classList.toggle('sel',b.dataset.mode===m));const d={crop:'Bounding box only — data is fetched for the rectangular extent of the polygon. Fastest, may include points outside boundary.',filter:'Point-in-polygon — grid points outside the polygon boundary are excluded from analysis.',cut:'Strict clip — filtered to polygon boundary, vertices embedded in exports, summary annotated with clip region.'};H('#polygon-mode-desc',d[m]||'');toast('Polygon mode: '+m.charAt(0).toUpperCase()+m.slice(1),'info')}
 function updateFilterLabel(el,labelId,unit){const v=$('#'+labelId);if(v)v.textContent=el.value+(unit||'')}
@@ -1699,6 +1700,86 @@ function copyGebcoSnippet(lang){
   if(_origToggle)window.toggleEnvGroup=function(g){_origToggle(g);if(g==='gebcocode')renderGebcoSnippets()};
   else setTimeout(()=>{const t=window.toggleEnvGroup;if(t){const orig=t;window.toggleEnvGroup=function(g){orig(g);if(g==='gebcocode')renderGebcoSnippets()}}},500);
 })();
+
+// ═══ DOWNLOAD DATA — ERDDAP direct download + code snippets ═══
+const _dlLayers={sst:true,chlor:true,bath:true,gebco_relief:true,gebco_color:true};
+function _getActiveDownloadLayer(){
+  for(const id of Object.keys(_dlLayers)){
+    if(_mapLayers[id]&&_envMap?.hasLayer(_mapLayers[id]))return id}
+  return null}
+function _updateDlBtn(){
+  const btn=$('#dlDataBtn');if(!btn)return;
+  const layer=_getActiveDownloadLayer();
+  btn.disabled=!layer;
+  btn.title=layer?'Download '+{sst:'SST',chlor:'Chlorophyll',bath:'Bathymetry',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry'}[layer]+' data for current view'
+    :'Data download available for SST, Chlorophyll, and Bathymetry layers'}
+function toggleDownloadMenu(){
+  const m=$('#dlDataMenu');if(!m)return;
+  const show=m.style.display==='none';
+  m.style.display=show?'block':'none';
+  if(show){const close=e=>{if(!m.contains(e.target)&&e.target.id!=='dlDataBtn'){m.style.display='none';document.removeEventListener('click',close)}};
+    setTimeout(()=>document.addEventListener('click',close),0)}}
+function _dlBounds(){
+  if(_envBounds)return{s:_envBounds.south,n:_envBounds.north,w:_envBounds.west,e:_envBounds.east};
+  if(!_envMap)return null;
+  const b=_envMap.getBounds();
+  return{s:b.getSouth().toFixed(4),n:b.getNorth().toFixed(4),w:b.getWest().toFixed(4),e:b.getEast().toFixed(4)}}
+function downloadLayerData(fmt){
+  $('#dlDataMenu').style.display='none';
+  const layer=_getActiveDownloadLayer();
+  if(!layer){toast('Activate SST, Chlorophyll, or Bathymetry layer first','info');return}
+  const b=_dlBounds();
+  if(!b){toast('Zoom into an area of interest first','info');return}
+  const span=Math.abs(b.n-b.s)+Math.abs(b.e-b.w);
+  if(span>40)toast('Large area — download may be slow. Consider zooming in.','info');
+  if(fmt==='snippets'){_showDlSnippets(layer,b);return}
+  // Bathymetry → redirect to GEBCO download page
+  if(layer==='bath'||layer==='gebco_relief'||layer==='gebco_color'){
+    window.open('https://download.gebco.net/','_blank');
+    toast('GEBCO download portal opened — use Code Snippets for programmatic access','ok');return}
+  const ext=fmt==='geotif'?'geotif':'nc';
+  let url;
+  if(layer==='sst')url=`https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.${ext}?analysed_sst[(last)][(${b.s}):(${b.n})][(${b.w}):(${b.e})]`;
+  else if(layer==='chlor')url=`https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdMH1chla8day.${ext}?chlorophyll[(last)][(${b.s}):(${b.n})][(${b.w}):(${b.e})]`;
+  toast('Requesting '+ext.toUpperCase()+' from ERDDAP...','ok');
+  window.open(url,'_blank')}
+function _showDlSnippets(layer,b){
+  const nm={sst:'Sea Surface Temperature',chlor:'Chlorophyll-a',bath:'Bathymetry (GEBCO/ETOPO)',gebco_relief:'Bathymetry (GEBCO/ETOPO)',gebco_color:'Bathymetry (GEBCO/ETOPO)'}[layer];
+  const s=b.s,n=b.n,w=b.w,e=b.e;
+  const noCoords=s==null;
+  const note=noCoords?'<div style="color:var(--co);font-size:12px;margin-bottom:10px;font-family:var(--mf)">Zoom into your area of interest to auto-fill coordinates.</div>':'';
+  const sv=noCoords?'{south}':s,nv=noCoords?'{north}':n,wv=noCoords?'{west}':w,ev=noCoords?'{east}':e;
+  let rCode,pyCode,qCode;
+  if(layer==='sst'){
+    rCode=`library(rerddap)\nlibrary(raster)\ninfo <- info("jplMURSST41", url = "https://coastwatch.pfeg.noaa.gov/erddap/")\ndata <- griddap(info,\n  time = c("last", "last"),\n  latitude = c(${sv}, ${nv}),\n  longitude = c(${wv}, ${ev}),\n  fmt = "nc")\nr <- raster(data$summary$filename)\nplot(r, main = "Sea Surface Temperature")`;
+    pyCode=`import xarray as xr\nurl = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.nc?analysed_sst[(last)][(${sv}):(${nv})][(${wv}):(${ev})]"\nds = xr.open_dataset(url)\nds['analysed_sst'].plot(cmap='RdYlBu_r', robust=True)`;
+    qCode=`Layer → Add Layer → Add WMS/WMTS Layer\nURL: https://coastwatch.pfeg.noaa.gov/erddap/wms/jplMURSST41\nLayer: analysed_sst`}
+  else if(layer==='chlor'){
+    rCode=`library(rerddap)\nlibrary(raster)\ninfo <- info("erdMH1chla8day", url = "https://coastwatch.pfeg.noaa.gov/erddap/")\ndata <- griddap(info,\n  time = c("last", "last"),\n  latitude = c(${sv}, ${nv}),\n  longitude = c(${wv}, ${ev}),\n  fmt = "nc")\nr <- raster(data$summary$filename)\nplot(r, main = "Chlorophyll-a")`;
+    pyCode=`import xarray as xr\nurl = "https://coastwatch.pfeg.noaa.gov/erddap/griddap/erdMH1chla8day.nc?chlorophyll[(last)][(${sv}):(${nv})][(${wv}):(${ev})]"\nds = xr.open_dataset(url)\nds['chlorophyll'].plot(cmap='YlGn', robust=True)`;
+    qCode=`Layer → Add Layer → Add WMS/WMTS Layer\nURL: https://coastwatch.pfeg.noaa.gov/erddap/wms/erdMH1chla8day\nLayer: chlorophyll`}
+  else{
+    rCode=`library(ncdf4)\nlibrary(raster)\nurl <- "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/30s/30s_bed_elev_netcdf/ETOPO_2022_v1_30s_N90W180_bed.nc"\nnc <- nc_open(url)\nlon <- ncvar_get(nc, "lon")\nlat <- ncvar_get(nc, "lat")\nlon_idx <- which(lon >= ${wv} & lon <= ${ev})\nlat_idx <- which(lat >= ${sv} & lat <= ${nv})\ndepth <- ncvar_get(nc, "z",\n  start = c(min(lon_idx), min(lat_idx)),\n  count = c(length(lon_idx), length(lat_idx)))\nnc_close(nc)\nr <- raster(t(depth),\n  xmn = ${wv}, xmx = ${ev}, ymn = ${sv}, ymx = ${nv},\n  crs = CRS("+proj=longlat +datum=WGS84"))\nplot(r, main = "GEBCO Bathymetry")`;
+    pyCode=`import xarray as xr\nurl = "https://www.ngdc.noaa.gov/thredds/dodsC/global/ETOPO2022/30s/30s_bed_elev_netcdf/ETOPO_2022_v1_30s_N90W180_bed.nc"\nds = xr.open_dataset(url)\nbathy = ds['z'].sel(lon=slice(${wv}, ${ev}), lat=slice(${sv}, ${nv}))\nbathy.plot(cmap='terrain', robust=True)`;
+    qCode=`Layer → Add Layer → Add WMS/WMTS Layer\nURL: https://wms.gebco.net/mapserv?\nLayer: GEBCO_LATEST`}
+  const overlay=document.createElement('div');overlay.className='meridian-modal-overlay';
+  overlay.onclick=ev=>{if(ev.target===overlay)overlay.remove()};
+  overlay.innerHTML=`<div class="meridian-modal" style="position:relative;max-width:750px"><button class="mm-close" onclick="this.closest('.meridian-modal-overlay').remove()">×</button>
+    <h3>Code Snippets — ${escHTML(nm)}</h3>${note}
+    <div style="font-size:11px;color:var(--tm);margin-bottom:6px;font-family:var(--mf)">Region: ${sv}°N to ${nv}°N, ${wv}°E to ${ev}°E</div>
+    <h4 style="font-size:13px;color:var(--ac);margin:12px 0 6px;font-family:var(--mf)">R</h4>
+    <div class="dl-snippet-block"><pre id="dl-snip-r">${escHTML(rCode)}</pre><button class="dl-copy-btn" onclick="copyDlSnippet('r')">Copy</button></div>
+    <h4 style="font-size:13px;color:var(--ac);margin:12px 0 6px;font-family:var(--mf)">Python</h4>
+    <div class="dl-snippet-block"><pre id="dl-snip-python">${escHTML(pyCode)}</pre><button class="dl-copy-btn" onclick="copyDlSnippet('python')">Copy</button></div>
+    <h4 style="font-size:13px;color:var(--ac);margin:12px 0 6px;font-family:var(--mf)">QGIS</h4>
+    <div class="dl-snippet-block"><pre id="dl-snip-qgis">${escHTML(qCode)}</pre><button class="dl-copy-btn" onclick="copyDlSnippet('qgis')">Copy</button></div>
+  </div>`;
+  document.body.appendChild(overlay)}
+function copyDlSnippet(lang){
+  const el=$('#dl-snip-'+lang);if(!el)return;
+  navigator.clipboard.writeText(el.textContent).then(()=>toast(lang.toUpperCase()+' snippet copied','ok')).catch(()=>{
+    const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+    document.execCommand('copy');s.removeAllRanges();toast(lang.toUpperCase()+' snippet copied','ok')})}
 
 // ═══ WMS OPACITY SLIDER ═══
 function setWmsOpacity(val){const v=parseFloat(val);Object.keys(_mapLayers).forEach(id=>{if(_mapLayers[id]?.setOpacity)_mapLayers[id].setOpacity(v)});Object.keys(_gibsLayers).forEach(id=>{if(_gibsLayers[id]?.setOpacity)_gibsLayers[id].setOpacity(v)})}

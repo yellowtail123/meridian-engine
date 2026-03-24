@@ -275,6 +275,14 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     <input type="range" id="wmsOpacity" min="0.1" max="1" step="0.05" value="0.75" oninput="setWmsOpacity(this.value)" style="width:100px">
   </div>
   <div class="tool-group" style="margin-left:auto">
+    <div style="position:relative;display:inline-block">
+      <button class="bt sm" id="dlDataBtn" onclick="toggleDownloadMenu()" title="Data download available for SST, Chlorophyll, and Bathymetry layers" disabled>Download Data &#x25BE;</button>
+      <div id="dlDataMenu" class="dl-dropdown" style="display:none">
+        <div class="dl-dd-item" onclick="downloadLayerData('geotif')">GeoTIFF (.tif)</div>
+        <div class="dl-dd-item" onclick="downloadLayerData('nc')">netCDF (.nc)</div>
+        <div class="dl-dd-item" onclick="downloadLayerData('snippets')">Code Snippets (R / Python / QGIS)</div>
+      </div>
+    </div>
     <button class="bt sm" id="mapExportBtn" onclick="exportMap()" title="Export current map view as PNG image">Export</button>
     <button class="bt sm" id="mapFullscreen" onclick="toggleMapFullscreen()" title="Toggle full-screen map view">Expand</button>
     <button class="bt sm" id="clearAreaBtn" style="display:none;color:var(--co)" onclick="clearAreaSelection()">Clear Area</button>

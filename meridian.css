@@ -359,6 +359,14 @@ html.light .mdc-btn.active{background:rgba(139,105,20,.15);color:#6B5210;border-
 .bt.sm.loading{position:relative;color:var(--ac)}
 .bt.sm.loading::after{content:'';position:absolute;right:4px;top:50%;width:6px;height:6px;margin-top:-3px;border-radius:50%;background:var(--ac);animation:glow 1.4s ease infinite}
 #wmsOpacity{width:80px;accent-color:var(--ac);vertical-align:middle}
+.dl-dropdown{position:absolute;bottom:100%;right:0;margin-bottom:4px;background:var(--bs);border:1px solid var(--bd);border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.35);z-index:900;min-width:180px;overflow:hidden}
+.dl-dd-item{padding:8px 14px;font-size:12px;font-family:var(--mf);color:var(--ts);cursor:pointer;transition:background .15s}
+.dl-dd-item:hover{background:var(--be);color:var(--ac)}
+#dlDataBtn:disabled{opacity:.45;cursor:not-allowed}
+.dl-snippet-block{position:relative;margin-bottom:14px}
+.dl-snippet-block pre{background:var(--bi);border:1px solid var(--bd);border-radius:6px;padding:12px 14px;font-size:11.5px;font-family:var(--mf);color:var(--ts);overflow-x:auto;white-space:pre;line-height:1.5;max-height:260px;overflow-y:auto}
+.dl-snippet-block .dl-copy-btn{position:absolute;top:6px;right:6px;background:var(--be);border:1px solid var(--bd);border-radius:4px;color:var(--tm);font-size:10px;padding:3px 8px;cursor:pointer;font-family:var(--mf)}
+.dl-snippet-block .dl-copy-btn:hover{color:var(--ac);border-color:var(--ab)}
 .meridian-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s}
 .meridian-modal{background:var(--bs);border:1px solid var(--bd);border-radius:12px;max-width:700px;width:92%;max-height:80vh;overflow-y:auto;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.4);animation:fadeIn .25s}
 .meridian-modal h3{font-size:16px;margin-bottom:14px;color:var(--ac);font-family:var(--sf)}
