@@ -31,7 +31,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
   script-src 'self' 'unsafe-inline' 'unsafe-eval' cdn.plot.ly cdnjs.cloudflare.com d3js.org unpkg.com cdn.jsdelivr.net cloudflareinsights.com *.cloudflareinsights.com;
   style-src 'self' 'unsafe-inline' unpkg.com cdnjs.cloudflare.com fonts.googleapis.com;
   font-src fonts.gstatic.com;
-  img-src 'self' data: blob: *.basemaps.cartocdn.com server.arcgisonline.com gibs.earthdata.nasa.gov api.gbif.org coastwatch.pfeg.noaa.gov coastwatch.noaa.gov polarwatch.noaa.gov pae-paha.pacioos.hawaii.edu oceanwatch.pifsc.noaa.gov www.ncei.noaa.gov tiles.arcgis.com;
+  img-src 'self' data: blob: *.basemaps.cartocdn.com server.arcgisonline.com gibs.earthdata.nasa.gov api.gbif.org coastwatch.pfeg.noaa.gov coastwatch.noaa.gov polarwatch.noaa.gov pae-paha.pacioos.hawaii.edu oceanwatch.pifsc.noaa.gov www.ncei.noaa.gov tiles.arcgis.com wms.gebco.net;
   worker-src blob: cdnjs.cloudflare.com;
   connect-src 'self'
     api.anthropic.com
@@ -79,6 +79,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     api.biorxiv.org
     www.gmrt.org
     gateway.api.globalfishingwatch.org
+    wms.gebco.net
     raw.githubusercontent.com
     corsproxy.org
     corsproxy.io
@@ -227,6 +228,8 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
     <button class="bt sm" id="ml-sst" onclick="toggleMapLayer('sst')" title="Sea Surface Temperature (NOAA OISST v2.1, 0.25° grid)">SST</button>
     <button class="bt sm" id="ml-chlor" onclick="toggleMapLayer('chlor')" title="Chlorophyll-a concentration (MODIS Aqua, ~4 km, ~8-day lag)">Chlorophyll</button>
     <button class="bt sm" id="ml-bath" onclick="toggleMapLayer('bath')" title="ETOPO1 bathymetry/topography (1 arc-minute resolution)">Bathymetry</button>
+    <button class="bt sm" id="ml-gebco_relief" onclick="toggleGebcoLayer('relief')" title="GEBCO 2024 bathymetry — shaded relief (15 arc-second, ~450m)">GEBCO Relief</button>
+    <button class="bt sm" id="ml-gebco_color" onclick="toggleGebcoLayer('color')" title="GEBCO 2024 bathymetry — color-coded depth (15 arc-second, ~450m)">GEBCO Color</button>
   </span>
   <span class="ctrl-group"><span class="lbl">Base</span>
     <span class="seg-ctrl"><button class="seg-btn on" id="base-dark" onclick="switchBasemap('dark')">Dark</button><button class="seg-btn" id="base-sat" onclick="switchBasemap('satellite')">Satellite</button></span>
@@ -343,6 +346,63 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <div class="sh" onclick="toggleEnvGroup('vars')"><h4>Variables <span id="env-vars-ctx" style="font-weight:400;color:var(--ts);font-size:11px"></span></h4><span style="display:flex;gap:4px;margin-right:8px" onclick="event.stopPropagation()"><button class="bt sm" style="font-size:10px;padding:2px 8px" onclick="EV.forEach(v=>S.envSel.add(v.id));renderEV();_updateQueryMeter()">Select All</button><button class="bt sm" style="font-size:10px;padding:2px 8px" onclick="S.envSel.clear();renderEV();_updateQueryMeter()">Deselect All</button></span><span class="sh-chevron"><svg viewBox="0 0 10 6"><polyline points="1,1 5,5 9,1"/></svg></span></div>
 <div class="sb" id="env-vars-body" style="display:none">
 <div id="evars"></div>
+</div></div>
+<!-- Group D: Bathymetry Data — GEBCO (collapsed) -->
+<div class="sec collapsed" id="env-grp-gebco">
+<div class="sh" onclick="toggleEnvGroup('gebco')"><h4>Bathymetry Data (GEBCO) <span id="env-gebco-ctx" style="font-weight:400;color:var(--ts);font-size:11px"></span></h4><span class="sh-chevron"><svg viewBox="0 0 10 6"><polyline points="1,1 5,5 9,1"/></svg></span></div>
+<div class="sb" id="env-gebco-body" style="display:none">
+<div style="font-size:12px;color:var(--ts);font-family:var(--sf);line-height:1.6;margin-bottom:12px">
+  GEBCO provides global ocean depth data at 15 arc-second resolution (~450m). Use coordinates from Location & Time above, or enter a bounding box below.
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+  <div><label style="font-size:11px;color:var(--tm);font-family:var(--mf)">SOUTH</label><br><input class="fi" style="width:80px;padding:6px;font-size:12px" id="gebco-south" placeholder="-90"/></div>
+  <div><label style="font-size:11px;color:var(--tm);font-family:var(--mf)">NORTH</label><br><input class="fi" style="width:80px;padding:6px;font-size:12px" id="gebco-north" placeholder="90"/></div>
+  <div><label style="font-size:11px;color:var(--tm);font-family:var(--mf)">WEST</label><br><input class="fi" style="width:80px;padding:6px;font-size:12px" id="gebco-west" placeholder="-180"/></div>
+  <div><label style="font-size:11px;color:var(--tm);font-family:var(--mf)">EAST</label><br><input class="fi" style="width:80px;padding:6px;font-size:12px" id="gebco-east" placeholder="180"/></div>
+  <button class="bt sm" onclick="gebcoFillFromEnv()" title="Copy coordinates from current map selection or Location & Time inputs">Use Map Selection</button>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+  <div><label style="font-size:11px;color:var(--tm);font-family:var(--mf)">FORMAT</label><br>
+    <select class="fs" id="gebco-fmt" style="padding:6px;font-size:12px">
+      <option value="nc">netCDF (.nc)</option>
+      <option value="tif">GeoTIFF (.tif)</option>
+      <option value="asc">Esri ASCII (.asc)</option>
+    </select>
+  </div>
+  <button class="bt bt-pri" onclick="window.open('https://download.gebco.net','_blank')" title="Opens GEBCO's interactive subsetting tool in a new tab">Download from GEBCO</button>
+</div>
+<div style="font-size:11px;color:var(--ts);font-family:var(--mf);line-height:1.6;padding:8px 10px;background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd)">
+  <strong style="color:var(--tm)">Full global grid:</strong>
+  <a href="https://www.gebco.net/data-products/gridded-bathymetry-data#global" target="_blank" rel="noopener" style="color:var(--ac)">Download GEBCO 2024 global grid (netCDF, ~7.5 GB)</a>
+  <br><span style="opacity:.7">GEBCO's subsetting tool requires their interactive UI — the button above opens it directly.</span>
+</div>
+</div></div>
+<!-- Group E: Access GEBCO Programmatically (collapsed) -->
+<div class="sec collapsed" id="env-grp-gebcocode">
+<div class="sh" onclick="toggleEnvGroup('gebcocode')"><h4>Access GEBCO Programmatically</h4><span class="sh-chevron"><svg viewBox="0 0 10 6"><polyline points="1,1 5,5 9,1"/></svg></span></div>
+<div class="sb" id="env-gebcocode-body" style="display:none">
+<div id="gebco-coord-note" style="font-size:11px;color:var(--wa);font-family:var(--mf);margin-bottom:10px;display:none">Enter coordinates in Location & Time or Bathymetry Data section above to auto-fill these snippets.</div>
+<div style="margin-bottom:14px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <span style="font-size:12px;font-weight:600;color:var(--tf);font-family:var(--mf)">R — GEBCO via OPeNDAP</span>
+    <button class="bt sm" onclick="copyGebcoSnippet('r')" style="font-size:10px;padding:2px 8px">Copy</button>
+  </div>
+  <pre class="gebco-code" id="gebco-snippet-r" style="background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:10px 12px;font-size:11px;font-family:var(--mf);color:var(--ts);overflow-x:auto;line-height:1.5;white-space:pre;margin:0"></pre>
+</div>
+<div style="margin-bottom:14px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <span style="font-size:12px;font-weight:600;color:var(--tf);font-family:var(--mf)">Python — GEBCO via OPeNDAP</span>
+    <button class="bt sm" onclick="copyGebcoSnippet('python')" style="font-size:10px;padding:2px 8px">Copy</button>
+  </div>
+  <pre class="gebco-code" id="gebco-snippet-python" style="background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:10px 12px;font-size:11px;font-family:var(--mf);color:var(--ts);overflow-x:auto;line-height:1.5;white-space:pre;margin:0"></pre>
+</div>
+<div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+    <span style="font-size:12px;font-weight:600;color:var(--tf);font-family:var(--mf)">QGIS — WMS Connection</span>
+    <button class="bt sm" onclick="copyGebcoSnippet('qgis')" style="font-size:10px;padding:2px 8px">Copy</button>
+  </div>
+  <pre class="gebco-code" id="gebco-snippet-qgis" style="background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);padding:10px 12px;font-size:11px;font-family:var(--mf);color:var(--ts);overflow-x:auto;line-height:1.5;white-space:pre;margin:0"></pre>
+</div>
 </div></div>
 <!-- Progress & results stay outside groups (always visible) -->
 <div id="eprog" style="display:none"></div><div id="esum"></div><div id="echarts"></div><div id="env-mhw"></div><div id="eannotations"></div><div id="ethresholds"></div><div id="esyn"></div><div id="elagcorr"></div><div id="eseason"></div><div id="edepthchart"></div><div id="env-plankton" style="margin-top:10px"></div><div id="eact" style="display:none"></div></div>

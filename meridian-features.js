@@ -1009,6 +1009,14 @@ function initEnvMap(){
       return layer},
     bath:()=>L.tileLayer('https://tiles.arcgis.com/tiles/C8EMgrsFcRFL6LrL/arcgis/rest/services/GEBCO_basemap_NCEI/MapServer/tile/{z}/{y}/{x}',{
       opacity:0.5,maxZoom:10,keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
+    gebco_relief:()=>L.tileLayer.wms('https://wms.gebco.net/mapserv?',{
+      layers:'GEBCO_LATEST',format:'image/png',transparent:true,opacity:0.7,version:'1.1.1',
+      attribution:'GEBCO Compilation Group (2024) GEBCO 2024 Grid',
+      pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
+    gebco_color:()=>L.tileLayer.wms('https://wms.gebco.net/mapserv?',{
+      layers:'GEBCO_LATEST_2',format:'image/png',transparent:true,opacity:0.7,version:'1.1.1',
+      attribution:'GEBCO Compilation Group (2024) GEBCO 2024 Grid',
+      pane:'wmsPane',keepBuffer:4,updateWhenZooming:false,updateWhenIdle:true}),
     dhw:()=>L.tileLayer(
       'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/GHRSST_L4_G1SST_Sea_Surface_Temperature/default/{time}/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
       {time:gibsDate(),maxZoom:7,maxNativeZoom:7,opacity:0.7,pane:'wmsPane',keepBuffer:2,updateWhenZooming:false,updateWhenIdle:true}),
@@ -1169,6 +1177,19 @@ function toggleMapLayer(id){const btn=$('#ml-'+id);if(!_envMap)return;
   if(_envMap.hasLayer(_mapLayers[id])){_envMap.removeLayer(_mapLayers[id]);btn.classList.remove('on');btn.classList.remove('loading')}
   else{_mapLayers[id].addTo(_envMap);btn.classList.add('on')}
   updateLegendControl()}
+function toggleGebcoLayer(mode){
+  // mode: 'relief' or 'color' — mutually exclusive GEBCO sub-layers
+  const reliefId='gebco_relief',colorId='gebco_color';
+  const reliefBtn=$('#ml-gebco_relief'),colorBtn=$('#ml-gebco_color');
+  const targetId=mode==='relief'?reliefId:colorId;
+  const otherId=mode==='relief'?colorId:reliefId;
+  const otherBtn=mode==='relief'?colorBtn:reliefBtn;
+  // Remove other GEBCO layer if active
+  if(_mapLayers[otherId]&&_envMap.hasLayer(_mapLayers[otherId])){
+    _envMap.removeLayer(_mapLayers[otherId]);if(otherBtn)otherBtn.classList.remove('on')}
+  // Toggle target via standard path
+  toggleMapLayer(targetId);
+}
 function clearAreaSelection(){_envBounds=null;_envPolygon=null;_areaStats=null;if(_drawnItems)_drawnItems.clearLayers();$('#area-indicator').innerHTML='';hi('#clearAreaBtn');$('#noaa-filters').style.display='none';const pf=$('#polygon-filter');if(pf)pf.style.display='none'}
 function setPolygonMode(m){_polygonMode=m;$$('.pm-btn').forEach(b=>b.classList.toggle('sel',b.dataset.mode===m));const d={crop:'Bounding box only — data is fetched for the rectangular extent of the polygon. Fastest, may include points outside boundary.',filter:'Point-in-polygon — grid points outside the polygon boundary are excluded from analysis.',cut:'Strict clip — filtered to polygon boundary, vertices embedded in exports, summary annotated with clip region.'};H('#polygon-mode-desc',d[m]||'');toast('Polygon mode: '+m.charAt(0).toUpperCase()+m.slice(1),'info')}
 function updateFilterLabel(el,labelId,unit){const v=$('#'+labelId);if(v)v.textContent=el.value+(unit||'')}
@@ -1497,12 +1518,15 @@ const _mapLegendUrls={
   sst:'inline:sst',
   sst_anom:'inline:sst_anom',
   chlor:'inline:chlor',
-  par:'inline:par'};
+  par:'inline:par',
+  gebco_relief:'inline:gebco',
+  gebco_color:'inline:gebco'};
 const _inlineLegends={
   sst:{grad:'linear-gradient(90deg,#00008B,#0000FF,#00BFFF,#00FF00,#FFFF00,#FF8C00,#FF0000)',min:'0°C',max:'32°C'},
   sst_anom:{grad:'linear-gradient(90deg,#00008B,#4169E1,#B0C4DE,#FFFFFF,#F0C0C0,#DC143C,#8B0000)',min:'-5°C',max:'+5°C'},
   chlor:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0.01',max:'20 mg/m³'},
-  par:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0',max:'0.5 m⁻¹'}};
+  par:{grad:'linear-gradient(90deg,#440154,#3B528B,#21918C,#5EC962,#FDE725)',min:'0',max:'0.5 m⁻¹'},
+  gebco:{grad:'linear-gradient(90deg,#08306b,#2171b5,#6baed6,#c6dbef,#f7fbff,#d9f0a3,#78c679,#31a354,#006837)',min:'-11000m',max:'+8500m'}};
 let _legendControl=null;
 function updateLegendControl(){
   if(!_envMap)return;
@@ -1514,11 +1538,142 @@ function updateLegendControl(){
     _legendControl=new Leg();_envMap.addControl(_legendControl)}
   const container=_legendControl.getContainer();
   container.innerHTML='<div class="ml-title">Legend</div>'+active.map(id=>{
-    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',par:'Kd(PAR)'}[id]||id;
+    const nm={sst:'SST',sst_anom:'SST Anomaly',chlor:'Chlorophyll',par:'Kd(PAR)',gebco_relief:'GEBCO Bathymetry',gebco_color:'GEBCO Bathymetry'}[id]||id;
     const url=_mapLegendUrls[id];
     if(url.startsWith('inline:')){const k=url.split(':')[1],il=_inlineLegends[k];if(!il)return'';
       return`<div style="font-size:10px;color:var(--ts);margin:4px 0 2px">${nm}</div><div class="inline-legend" style="background:${il.grad}"></div><div class="inline-legend-labels"><span>${il.min}</span><span>${il.max}</span></div>`}
     return`<div style="font-size:10px;color:var(--ts);margin:4px 0 2px">${nm}</div><img src="${url}" alt="${nm} legend" onerror="this.style.display='none'"/>`}).join('')}
+
+// ═══ GEBCO BATHYMETRY — coordinate fill, code snippets, copy ═══
+function gebcoFillFromEnv(){
+  if(_envBounds){
+    $('#gebco-south').value=_envBounds.south.toFixed(4);
+    $('#gebco-north').value=_envBounds.north.toFixed(4);
+    $('#gebco-west').value=_envBounds.west.toFixed(4);
+    $('#gebco-east').value=_envBounds.east.toFixed(4);
+    toast('Coordinates filled from map area selection','ok');
+  }else{
+    const lat=$('#elat')?.value,lon=$('#elon')?.value;
+    if(lat&&lon){
+      const la=parseFloat(lat),lo=parseFloat(lon);
+      $('#gebco-south').value=(la-1).toFixed(4);
+      $('#gebco-north').value=(la+1).toFixed(4);
+      $('#gebco-west').value=(lo-1).toFixed(4);
+      $('#gebco-east').value=(lo+1).toFixed(4);
+      toast('Created ±1° box around selected point','ok');
+    }else{toast('Select a location on the map or enter coordinates first','info')}}
+  renderGebcoSnippets();
+}
+function _gebcoCoords(){
+  const s=$('#gebco-south')?.value,n=$('#gebco-north')?.value,
+        w=$('#gebco-west')?.value,e=$('#gebco-east')?.value;
+  if(s&&n&&w&&e)return{south:s,north:n,west:w,east:e};
+  // Fallback to env bounds or point ±1°
+  if(_envBounds)return{south:_envBounds.south.toFixed(4),north:_envBounds.north.toFixed(4),
+    west:_envBounds.west.toFixed(4),east:_envBounds.east.toFixed(4)};
+  const lat=$('#elat')?.value,lon=$('#elon')?.value;
+  if(lat&&lon){const la=parseFloat(lat),lo=parseFloat(lon);
+    return{south:(la-1).toFixed(4),north:(la+1).toFixed(4),west:(lo-1).toFixed(4),east:(lo+1).toFixed(4)}}
+  return null;
+}
+function renderGebcoSnippets(){
+  const c=_gebcoCoords();
+  const note=$('#gebco-coord-note');
+  if(!c){
+    if(note)note.style.display='';
+    const ph={south:'{south}',north:'{north}',west:'{west}',east:'{east}'};
+    _fillSnippets(ph);return;
+  }
+  if(note)note.style.display='none';
+  _fillSnippets(c);
+}
+function _fillSnippets(c){
+  const rEl=$('#gebco-snippet-r'),pyEl=$('#gebco-snippet-python'),qEl=$('#gebco-snippet-qgis');
+  if(rEl)rEl.textContent=
+`# GEBCO Bathymetry via OPeNDAP
+library(ncdf4)
+library(raster)
+
+# Define region of interest
+lon_range <- c(${c.west}, ${c.east})
+lat_range <- c(${c.south}, ${c.north})
+
+# Access GEBCO 2024 via OPeNDAP (CEDA)
+url <- "https://dap.ceda.ac.uk/thredds/dodsC/neodc/gebco/2024/GEBCO_2024.nc"
+nc <- nc_open(url)
+lon <- ncvar_get(nc, "lon")
+lat <- ncvar_get(nc, "lat")
+
+# Subset indices
+lon_idx <- which(lon >= lon_range[1] & lon <= lon_range[2])
+lat_idx <- which(lat >= lat_range[1] & lat <= lat_range[2])
+
+# Extract elevation/depth data
+depth <- ncvar_get(nc, "elevation",
+  start = c(min(lon_idx), min(lat_idx)),
+  count = c(length(lon_idx), length(lat_idx)))
+nc_close(nc)
+
+# Convert to raster
+r <- raster(t(depth),
+  xmn = min(lon[lon_idx]), xmx = max(lon[lon_idx]),
+  ymn = min(lat[lat_idx]), ymx = max(lat[lat_idx]),
+  crs = CRS("+proj=longlat +datum=WGS84"))
+plot(r, main = "GEBCO Bathymetry")`;
+
+  if(pyEl)pyEl.textContent=
+`# GEBCO Bathymetry via OPeNDAP
+import xarray as xr
+import matplotlib.pyplot as plt
+
+# Define region
+lon_min, lon_max = ${c.west}, ${c.east}
+lat_min, lat_max = ${c.south}, ${c.north}
+
+# Access GEBCO 2024 via OPeNDAP (CEDA)
+url = "https://dap.ceda.ac.uk/thredds/dodsC/neodc/gebco/2024/GEBCO_2024.nc"
+ds = xr.open_dataset(url)
+
+# Subset to region
+bathy = ds['elevation'].sel(
+    lon=slice(lon_min, lon_max),
+    lat=slice(lat_min, lat_max)
+)
+
+# Plot
+fig, ax = plt.subplots(figsize=(12, 8))
+bathy.plot(ax=ax, cmap='terrain', robust=True)
+ax.set_title('GEBCO Bathymetry')
+plt.show()
+
+# Save as GeoTIFF
+bathy.rio.set_spatial_dims(x_dim='lon', y_dim='lat')
+bathy.rio.set_crs('EPSG:4326')
+bathy.rio.to_raster('gebco_subset.tif')`;
+
+  if(qEl)qEl.textContent=
+`Add WMS layer in QGIS:
+Layer → Add Layer → Add WMS/WMTS Layer
+URL: https://wms.gebco.net/mapserv?
+Layer: GEBCO_LATEST
+
+Region of interest:
+  South: ${c.south}  North: ${c.north}
+  West:  ${c.west}  East:  ${c.east}`;
+}
+function copyGebcoSnippet(lang){
+  const el=$('#gebco-snippet-'+lang);if(!el)return;
+  navigator.clipboard.writeText(el.textContent).then(()=>toast(lang.toUpperCase()+' snippet copied','ok')).catch(()=>{
+    // Fallback for older browsers
+    const r=document.createRange();r.selectNodeContents(el);const s=window.getSelection();s.removeAllRanges();s.addRange(r);
+    document.execCommand('copy');s.removeAllRanges();toast(lang.toUpperCase()+' snippet copied','ok')});
+}
+// Render snippets when GEBCO sections are opened
+(function(){
+  const _origToggle=window.toggleEnvGroup;
+  if(_origToggle)window.toggleEnvGroup=function(g){_origToggle(g);if(g==='gebcocode')renderGebcoSnippets()};
+  else setTimeout(()=>{const t=window.toggleEnvGroup;if(t){const orig=t;window.toggleEnvGroup=function(g){orig(g);if(g==='gebcocode')renderGebcoSnippets()}}},500);
+})();
 
 // ═══ WMS OPACITY SLIDER ═══
 function setWmsOpacity(val){const v=parseFloat(val);Object.keys(_mapLayers).forEach(id=>{if(_mapLayers[id]?.setOpacity)_mapLayers[id].setOpacity(v)});Object.keys(_gibsLayers).forEach(id=>{if(_gibsLayers[id]?.setOpacity)_gibsLayers[id].setOpacity(v)})}
