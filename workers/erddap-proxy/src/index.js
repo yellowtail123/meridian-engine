@@ -16,6 +16,18 @@ const ALLOWED_HOSTS = [
   'psl.noaa.gov',
   'www.cpc.ncep.noaa.gov',
   'dap.ceda.ac.uk',
+  'pae-paha.pacioos.hawaii.edu',
+  'oceanwatch.pifsc.noaa.gov',
+  'polarwatch.noaa.gov',
+  'upwell.pfeg.noaa.gov',
+  'apdrc.soest.hawaii.edu',
+  'erddap.marine.copernicus.eu',
+  'podaac-opendap.jpl.nasa.gov',
+  'oceandata.sci.gsfc.nasa.gov',
+  'www.ngdc.noaa.gov',
+  'gml.noaa.gov',
+  'scrippsco2.ucsd.edu',
+  'members.oceantrack.org',
 ];
 
 const RATE_LIMIT_MAX = 120; // per minute per IP
