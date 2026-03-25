@@ -835,3 +835,17 @@ html.light .msg.a{background:#ffffff;border-color:#d0cbc3}
 .mt-sm{margin-top:8px}.mt-md{margin-top:12px}.mt-lg{margin-top:16px}.mb-sm{margin-bottom:8px}.mb-md{margin-bottom:12px}.mb-lg{margin-bottom:16px}
 .rounded{border-radius:var(--rd)}.rounded-sm{border-radius:6px}
 .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* ═══ PRISMA 2020 Flow Chart ═══ */
+.prisma-container{background:var(--bs);border:1px solid var(--bd);border-radius:var(--rd);max-width:960px;width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.prisma-header{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 20px 12px;border-bottom:1px solid var(--bd);gap:12px;flex-wrap:wrap}
+.prisma-svg-wrap{padding:16px 20px;overflow-x:auto}
+.prisma-svg-wrap svg{min-width:600px}
+.prisma-export-bar{display:flex;gap:6px;align-items:center;padding:12px 20px;border-top:1px solid var(--bd);flex-wrap:wrap}
+.prisma-num-svg{cursor:pointer;transition:opacity .15s}.prisma-num-svg:hover{opacity:.7}
+.prisma-num-svg.ov{text-decoration:underline;text-decoration-style:dashed}
+.prisma-add-reason{cursor:pointer}.prisma-add-reason:hover{opacity:1!important}
+.prisma-excl-row{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--tm);font-family:var(--mf);margin-top:2px}
+.prisma-excl-reason,.prisma-excl-count{cursor:pointer}.prisma-excl-reason:hover,.prisma-excl-count:hover{color:var(--ac)}
+.prisma-excl-del{background:none;border:none;color:var(--co);cursor:pointer;font-size:14px;padding:0 2px;opacity:.5}.prisma-excl-del:hover{opacity:1}
+.prisma-excl-empty,.prisma-excl-add{font-size:11px;color:var(--tm);opacity:.6;cursor:pointer;font-family:var(--mf);margin-top:2px}.prisma-excl-empty:hover,.prisma-excl-add:hover{opacity:1;color:var(--ac)}
+html.light .prisma-container{box-shadow:0 12px 40px rgba(0,0,0,.12)}
