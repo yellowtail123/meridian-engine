@@ -17,7 +17,7 @@ const CONFIDENCE={
 // Widens spatial window around the target point and averages nearby grid cells.
 async function _spatialRelax(v,mode,df,dt,lat,lon,stride,isHist){
   const expansions=[0.25,0.5,1.0]; // degrees (~25km, ~50km, ~100km)
-  const sources=_fusionSources[v.id];
+  const sources=(typeof _fusionSources!=='undefined'&&_fusionSources)?_fusionSources[v.id]:null;
   // Use top 2 sources per expansion step
   const topSrc=sources?sources.slice(0,2):[];
   const directSrc=[{server:v.server,ds:v.ds,v:v.v,dm:v.dm,z:v.z,lon360:v.lon360,lag:v.lag,minDate:v.minDate}];
@@ -66,7 +66,7 @@ async function _spatialRelax(v,mode,df,dt,lat,lon,stride,isHist){
 async function _temporalRelax(v,lat,lon,isHist){
   if(isHist)return null; // Only applies to latest mode
   const windows=[14,30,90]; // days back
-  const sources=_fusionSources[v.id];
+  const sources=(typeof _fusionSources!=='undefined'&&_fusionSources)?_fusionSources[v.id]:null;
   const directSrc={server:v.server,ds:v.ds,v:v.v,dm:v.dm,z:v.z,lon360:v.lon360,lag:v.lag,minDate:v.minDate};
   const candidates=[directSrc,...(sources||[]).slice(0,2)];
 

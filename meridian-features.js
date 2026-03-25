@@ -1187,9 +1187,8 @@ function clearMap(){
   // Remove GIBS layers (True Color, Sea Ice)
   Object.keys(_gibsLayers).forEach(id=>{
     if(_gibsLayers[id]&&_envMap.hasLayer(_gibsLayers[id]))_envMap.removeLayer(_gibsLayers[id]);
-    const btn=$('#gibs'+id.charAt(0).toUpperCase()+id.slice(1)+'Btn');if(btn)btn.classList.remove('on')});
+    const btn=$('#'+id+'Btn');if(btn)btn.classList.remove('on')});
   _gibsLayers={};
-  $('#gibsTCBtn')?.classList.remove('on');
   // Remove drawn shapes, area selection, markers (except primary)
   clearAreaSelection();
   // Remove measure layers
@@ -1355,7 +1354,7 @@ function switchBasemap(mode){
     if(darkBtn)darkBtn.classList.remove('on');if(satBtn)satBtn.classList.add('on');
   }else{
     if(_satTileLayer&&_envMap.hasLayer(_satTileLayer))_envMap.removeLayer(_satTileLayer);
-    if(_baseTileLayer&&_envMap.hasLayer(_baseTileLayer))_envMap.removeLayer(_baseTileLayer);
+    if(_baseTileLayer&&!_envMap.hasLayer(_baseTileLayer)){_baseTileLayer.addTo(_envMap);_baseTileLayer.bringToBack()}
     if(_landMaskLayer)_landMaskLayer.setStyle({fillOpacity:1,fillColor:'#4A4A4A',color:'#666666',weight:1.2});
     if(_coastlineLayer)_coastlineLayer.setStyle({color:'#666666',weight:0.8,opacity:0.6});
     if(darkBtn)darkBtn.classList.add('on');if(satBtn)satBtn.classList.remove('on')}}
@@ -2955,7 +2954,7 @@ async function _prismaAutoPopulate(){
       const excluded=screenData.filter(s=>s.decision==='exclude');
       if(excluded.length){const reasons={};excluded.forEach(s=>{if(s.reason){reasons[s.reason.trim()]=(reasons[s.reason.trim()]||0)+1}});
       d.screenExclReasons=Object.entries(reasons).map(([reason,count])=>({reason,count}))}
-    }catch(e){_warn('prisma-screen-fetch',e)}
+    }catch(e){console.warn('prisma-screen-fetch',e)}
   }
   return d;
 }
@@ -4147,7 +4146,7 @@ goTab=function(id){_origGoTabBase(id);
 
 // ═══ PHASE 5b: AI TAB PREVIEW ═══
 (function(){
-  const aks=$('#aks');if(!aks||S.apiK)return;
+  const aks=$('#ai-onboard');if(!aks||S.apiK)return;
   const preview=document.createElement('div');
   preview.id='ai-preview';
   preview.style.cssText='margin-top:12px;padding:16px 20px;background:linear-gradient(135deg,var(--am),rgba(123,158,135,.06));border:1px solid var(--ab);border-radius:var(--rd)';

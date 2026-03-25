@@ -16,7 +16,7 @@ function _renderStudyDesignUI() {
     ${window._gapData && window._gapData.length ? `<button class="bt sm" onclick="_sdFromGap()" style="margin-bottom:10px">From gap analysis</button>` : ''}
 
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="bt on" onclick="_sdShowCalc('ttest')">t-test / Means</button>
+      <button class="bt sm on" onclick="_sdShowCalc('ttest')">t-test / Means</button>
       <button class="bt sm" onclick="_sdShowCalc('proportion')">Proportion Test</button>
       <button class="bt sm" onclick="_sdShowCalc('rarefaction')">Species Rarefaction</button>
       <button class="bt sm" onclick="_sdShowCalc('transect')">Transect / Quadrat</button>

@@ -105,6 +105,7 @@ function computeEnsembleTS(sourceSeries){
   return{ensemble,pairs,sources:sourceSeries}}
 async function fetchFusionData(paramIds,lat,lon,mode,df,dt,isHist){
   const results={};
+  if(typeof _fusionSources==='undefined'||!_fusionSources)return results;
   const _fDaySpan=mode!=='latest'&&df&&dt?Math.max(1,Math.round((new Date(dt)-new Date(df))/86400000)):1;
   const _fStride=Math.max(1,Math.ceil(_fDaySpan/730));
   const jobs=paramIds.filter(id=>_fusionSources[id]&&_fusionSources[id].length>=2).map(async paramId=>{

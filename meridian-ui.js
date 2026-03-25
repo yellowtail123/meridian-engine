@@ -896,7 +896,7 @@ function exportReproBundle(){
   const bundle={version:'1.0',exportedAt:new Date().toISOString(),platform:'Meridian',
     settings:{lat:$('#elat')?.value,lon:$('#elon')?.value,mode:$('#emode')?.value,
       dateFrom:$('#edf')?.value,dateTo:$('#edt')?.value,selectedVars:[...S.envSel],
-      fusionMode:_fusionMode,seasonalFilter:getSeasonalMonths(),skillLevel:S.skillLevel},
+      fusionMode:window._fusionMode||'single',seasonalFilter:getSeasonalMonths(),skillLevel:S.skillLevel},
     provenance:S.envProvenance,
     data:{},statistics:{},workflow:window._activeWorkflow||null};
   // Include all env time series data

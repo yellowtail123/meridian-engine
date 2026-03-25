@@ -14,6 +14,9 @@ function dbGetChat(){return new Promise((r,j)=>{const tx=db.transaction('chats',
 function dbPut(p){return new Promise((r,j)=>{const tx=db.transaction('papers','readwrite');tx.objectStore('papers').put(p);tx.oncomplete=()=>r();tx.onerror=e=>j(e.target.error)})}
 function dbAll(){return new Promise((r,j)=>{const tx=db.transaction('papers','readonly');const req=tx.objectStore('papers').getAll();req.onsuccess=()=>r(req.result);req.onerror=e=>j(e.target.error)})}
 function dbDel(id){return new Promise((r,j)=>{const tx=db.transaction('papers','readwrite');tx.objectStore('papers').delete(id);tx.oncomplete=()=>r();tx.onerror=e=>j(e.target.error)})}
+let _undoPaper=null;
+async function dbDelWithUndo(id){_undoPaper=S.lib.find(p=>p.id===id)||null;await dbDel(id);await loadLib();renderLib();if(_undoPaper){const bar=document.createElement('div');bar.className='undo-bar';bar.innerHTML='<span>Deleted "'+escHTML((_undoPaper.title||'').slice(0,50))+'"</span><button class="bt sm" onclick="_restoreUndoPaper()">Undo</button>';document.body.appendChild(bar);setTimeout(()=>{if(bar.parentElement)bar.remove()},8000)}}
+async function _restoreUndoPaper(){if(!_undoPaper)return;await dbPut(_undoPaper);_undoPaper=null;await loadLib();renderLib();document.querySelectorAll('.undo-bar').forEach(b=>b.remove());toast('Paper restored','ok')}
 // ═══ SCREENING DB HELPERS ═══
 function dbPutScreen(s){return new Promise((r,j)=>{const tx=db.transaction('screening','readwrite');tx.objectStore('screening').put(s);tx.oncomplete=()=>r();tx.onerror=e=>j(e.target.error)})}
 function dbGetScreen(paperId){return new Promise((r,j)=>{const tx=db.transaction('screening','readonly');const req=tx.objectStore('screening').get(paperId);req.onsuccess=()=>r(req.result||null);req.onerror=e=>j(e.target.error)})}
@@ -32,6 +35,7 @@ const btns=document.querySelectorAll('.bt.sm.on');btns.forEach(b=>{if(b.textCont
 async function saveAllToLib(){for(const p of S.litR)await savePaper(p);goTab('library')}
 async function loadLib(){if(!db)await openDB();S.lib=await dbAll();const c=$('#libc');if(c){if(S.lib.length){c.textContent=S.lib.length;sh(c)}else hi(c)}}
 
+let _libFiltered=[];
 function renderLib(resetLimit){
   if(resetLimit)_libLimit=30;
   if(typeof _simCardCount!=='undefined')_simCardCount=0;
@@ -46,7 +50,10 @@ function renderLib(resetLimit){
   const numP=/(\d+\.?\d*)\s*(°C|ppm|mg\/[lL]|cm|mm|kg|g|m|%|PSU|yr|years?|samples?|specimens?)/gi;
   const colKeys=Object.keys(S.cols);
   const projBar=projects.length>1||S.lib.length>0?`<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Project:</span>${projects.map(p=>`<button class="bt sm ${curProj===p?'on':''}" onclick="switchProject('${escJSAttr(p)}')" ondblclick="renameProject('${escJSAttr(p)}')" title="Click to switch, double-click to rename">${escHTML(p)} (${S.lib.filter(x=>(x.project||'Default')===p).length})</button>`).join('')}<button class="bt sm" onclick="createProject()" title="Create a new project">+ New Project</button></div>`:'';
-  const colBar=`<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Collections:</span><button class="bt sm" onclick="newCol()">+ New</button>${colKeys.map(k=>`<button class="bt sm ${S.activeCol===k?'on':''}" onclick="S.activeCol=S.activeCol==='${k}'?'':('${k}');renderLib(true)">${S.cols[k].name} (${S.cols[k].paperIds.length})</button>`).join('')}${S.activeCol?`<button class="bt sm" onclick="S.activeCol='';renderLib(true)">All Papers</button>`:''}</div>`;
+  const colBar=`<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Collections:</span><button class="bt sm" onclick="newCol()">+ New</button>${colKeys.map(k=>`<button class="bt sm ${S.activeCol===k?'on':''}" onclick="S.activeCol=S.activeCol==='${k}'?'':('${k}');renderLib(true)">${escHTML(S.cols[k].name)} (${S.cols[k].paperIds.length})</button>`).join('')}${S.activeCol?`<button class="bt sm" onclick="S.activeCol='';renderLib(true)">All Papers</button>`:''}</div>`;
+  // Compute status counts BEFORE status filter is applied
+  const statusCounts={all:fl.length,unread:0,skimming:0,read:0,reviewed:0};
+  fl.forEach(p=>{const st=_readingStatus[p.id]||'unread';if(statusCounts.hasOwnProperty(st))statusCounts[st]++});
   // Apply reading status filter
   if(S.libStatusFilter&&S.libStatusFilter!=='all'){fl=fl.filter(p=>{const st=_readingStatus[p.id]||'unread';return st===S.libStatusFilter})}
   // Apply sort
@@ -58,9 +65,7 @@ function renderLib(resetLimit){
   else if(sortKey==='cited-least')fl=[...fl].sort((a,b)=>(a.cited||0)-(b.cited||0));
   else if(sortKey==='title-az')fl=[...fl].sort((a,b)=>(a.title||'').localeCompare(b.title||''));
   else if(sortKey==='status')fl=[...fl].sort((a,b)=>{const order={reviewed:0,read:1,skimming:2,unread:3};return(order[_readingStatus[a.id]||'unread']||3)-(order[_readingStatus[b.id]||'unread']||3)});
-  // Compute status counts from current filtered set (before status filter is applied)
-  const statusCounts={all:fl.length,unread:0,skimming:0,read:0,reviewed:0};
-  fl.forEach(p=>{const st=_readingStatus[p.id]||'unread';if(statusCounts.hasOwnProperty(st))statusCounts[st]++});
+  _libFiltered=fl;
   if(_picoMode){_renderPicoView(fl);return}
   H('#lib-content',`<div class="seg-ctrl" style="margin-bottom:10px"><button class="seg-btn on" onclick="_picoMode=false;renderLib(true)">Standard View</button><button class="seg-btn" onclick="_picoMode=true;renderLib(true)">Systematic Review</button></div>
   <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap"><input class="si" id="lib-search-input" placeholder="Search papers... (try author:Smith year:2023)" value="${sq}" oninput="_dRenderLib()" style="flex:1;min-width:200px"/>
@@ -69,7 +74,7 @@ function renderLib(resetLimit){
   ${projBar}
   <div class="seg-ctrl" style="margin-bottom:10px">${[['all','All'],['unread','Unread'],['skimming','Skimming'],['read','Read'],['reviewed','Reviewed']].map(([k,l])=>`<button class="seg-btn ${(S.libStatusFilter||'all')===k?'on':''}" onclick="S.libStatusFilter='${k}';renderLib(true)">${l} (${statusCounts[k]||0})</button>`).join('')}</div>
   ${_libToolbarHTML(fl)}
-  ${S.batchMode?`<div id="batch-bar" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--am);border:1px solid var(--ab);border-radius:6px;font-size:12px;font-family:var(--mf)"><span style="color:var(--ac)">${S.batchSelected.size} selected</span><button class="bt sm" onclick="batchTag()">Tag All</button><button class="bt sm" onclick="batchSetStatus()">Set Status</button><button class="bt sm" onclick="batchAddToCol()">Add to Collection</button><button class="bt sm" onclick="batchExport()">Export Selected</button><button class="bt sm" style="color:var(--co)" onclick="batchDelete()">Delete Selected</button><button class="bt sm" onclick="S.batchSelected=new Set(fl.map(p=>p.id));renderLib()">Select All</button><button class="bt sm" onclick="S.batchSelected.clear();renderLib()">Clear</button></div>`:''}
+  ${S.batchMode?`<div id="batch-bar" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--am);border:1px solid var(--ab);border-radius:6px;font-size:12px;font-family:var(--mf)"><span style="color:var(--ac)">${S.batchSelected.size} selected</span><button class="bt sm" onclick="batchTag()">Tag All</button><button class="bt sm" onclick="batchSetStatus()">Set Status</button><button class="bt sm" onclick="batchAddToCol()">Add to Collection</button><button class="bt sm" onclick="batchExport()">Export Selected</button><button class="bt sm" style="color:var(--co)" onclick="batchDelete()">Delete Selected</button><button class="bt sm" onclick="S.batchSelected=new Set(_libFiltered.map(p=>p.id));renderLib()">Select All</button><button class="bt sm" onclick="S.batchSelected.clear();renderLib()">Clear</button></div>`:''}
   ${colBar}
   ${typeof PADI!=='undefined'?PADI.profileHTML():''}
   <div id="lib-summary"></div>
@@ -224,7 +229,7 @@ function _renderScreeningCard(papers,screening){
 }
 
 function _picoScreenPaper(decision){
-  const papers=S.lib;
+  const papers=_libFiltered.length?_libFiltered:S.lib;
   const p=papers[_picoScreenIdx];if(!p)return;
   const screening=safeParse('meridian_screening',{});
   screening[p.id]=screening[p.id]||{};
@@ -435,7 +440,7 @@ async function clearAllLibrary(){
 function batchAddToCol(){if(!S.batchSelected.size)return toast('Select papers first','err');const keys=Object.keys(S.cols);if(!keys.length)return toast('Create a collection first','err');const opts=keys.map((k,i)=>`${i+1}: ${S.cols[k].name}`).join('\n');const choice=prompt('Add '+S.batchSelected.size+' papers to collection:\n'+opts+'\n(enter number)');if(!choice)return;const col=S.cols[keys[parseInt(choice)-1]];if(!col)return;S.batchSelected.forEach(id=>{if(!col.paperIds.includes(id))col.paperIds.push(id)});saveCol(col).then(renderLib);toast(S.batchSelected.size+' papers added to '+col.name,'ok')}
 function batchSetStatus(){if(!S.batchSelected.size)return toast('Select papers first','err');const st=prompt('Set status for '+S.batchSelected.size+' papers:\n1: unread\n2: skimming\n3: read\n4: reviewed');const map={'1':'unread','2':'skimming','3':'read','4':'reviewed'};if(!map[st])return;S.batchSelected.forEach(id=>{_readingStatus[id]=map[st]});safeStore('meridian_reading_status',_readingStatus);renderLib();toast('Status set to '+map[st],'ok')}
 function batchExport(){if(!S.batchSelected.size)return toast('Select papers first','err');const papers=S.lib.filter(p=>S.batchSelected.has(p.id));const rows=['Title,Authors,Year,Journal,Citations,Tags',...papers.map(p=>[`"${(p.title||'').replace(/"/g,"'")}"`,`"${(p.authors||[]).join('; ')}"`,p.year||'',`"${p.journal||''}"`,p.cited||'',`"${(p.tags||[]).join('; ')}"`].join(','))];dl(rows.join('\n'),'selected_papers.csv','text/csv');toast(papers.length+' papers exported','ok')}
-function promptTag(id){const t=prompt('Add tags (comma-separated):');if(t){const p=S.lib.find(x=>x.id===id);if(p){p.tags=p.tags||[];t.split(',').map(x=>x.trim()).filter(Boolean).forEach(tag=>p.tags.push(tag));dbPut(p).then(loadLib).then(renderLib).catch(()=>toast('Failed to save tags','err'));if(typeof PADI!=='undefined'&&PADI.engTrack)PADI.engTrack(id,'tag')}}}
+function promptTag(id){const t=prompt('Add tags (comma-separated):');if(t){const p=S.lib.find(x=>x.id===id);if(p){p.tags=p.tags||[];t.split(',').map(x=>x.trim()).filter(Boolean).forEach(tag=>{if(!p.tags.includes(tag))p.tags.push(tag)});dbPut(p).then(loadLib).then(renderLib).catch(()=>toast('Failed to save tags','err'));if(typeof PADI!=='undefined'&&PADI.engTrack)PADI.engTrack(id,'tag')}}}
 function newCol(){const n=prompt('Collection name:');if(!n)return;const id='col'+Date.now();S.cols[id]={id,name:n,paperIds:[]};saveCol(S.cols[id]).then(renderLib).catch(()=>toast('Failed to create collection','err'))}
 function addToCol(paperId){const keys=Object.keys(S.cols);if(!keys.length)return toast('Create a collection first (Library tab)','err');const opts=keys.map((k,i)=>`${i+1}: ${S.cols[k].name}`).join('\n');const choice=prompt('Add to collection:\n'+opts+'\n(enter number)');if(!choice)return;const col=S.cols[keys[parseInt(choice)-1]];if(!col)return;if(!col.paperIds.includes(paperId))col.paperIds.push(paperId);saveCol(col).then(renderLib).catch(()=>toast('Failed to add to collection','err'))}
 async function extractFindings(id){
@@ -670,7 +675,8 @@ function logSearchAudit(query,filters,engineStatus,srcCounts,totalHits,dedupedCo
 function renderSearchLog(){
   const el=$('#searchLogContent');if(!el)return;
   if(!_searchAudit.length){el.innerHTML='<p style="color:var(--tm);font-size:12px">No searches recorded yet.</p>';return}
-  el.innerHTML=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th>Date</th><th>Query</th><th>Filters</th><th>OA</th><th>SS</th><th>CR</th><th>PM</th><th>Total</th><th>Deduped</th></tr></thead><tbody>${_searchAudit.slice().reverse().map(a=>`<tr><td style="white-space:nowrap">${a.timestamp.slice(0,16).replace('T',' ')}</td><td>${escHTML(a.query)}</td><td>${[a.filters.yf&&'from:'+a.filters.yf,a.filters.yt&&'to:'+a.filters.yt,a.filters.oa&&'OA'].filter(Boolean).join(', ')||'—'}</td>${['OA','SS','CR','PM'].map(k=>`<td style="color:${a.apis[k]?.ok?'var(--sg)':'var(--co)'}">${a.apis[k]?.count??'—'}</td>`).join('')}<td>${a.totalHits}</td><td style="color:var(--ac)">${a.dedupedCount}</td></tr>`).join('')}</tbody></table></div><button class="bt sm" onclick="exportSearchLog()" style="margin-top:8px">Export CSV</button><button class="bt sm" style="color:var(--co);margin-top:8px;margin-left:6px" onclick="_searchAudit=[];safeStore('meridian_search_audit',[]);renderSearchLog()">Clear</button>`}
+  const engKeys=['OA','SS','CR','PM','ES','BR'];
+  el.innerHTML=`<div style="overflow-x:auto"><table class="dt"><thead><tr><th>Date</th><th>Query</th><th>Filters</th>${engKeys.map(k=>'<th>'+k+'</th>').join('')}<th>Total</th><th>Deduped</th></tr></thead><tbody>${_searchAudit.slice().reverse().map(a=>`<tr><td style="white-space:nowrap">${a.timestamp.slice(0,16).replace('T',' ')}</td><td>${escHTML(a.query)}</td><td>${[a.filters.yf&&'from:'+a.filters.yf,a.filters.yt&&'to:'+a.filters.yt,a.filters.oa&&'OA'].filter(Boolean).join(', ')||'—'}</td>${engKeys.map(k=>`<td style="color:${a.apis[k]?.ok?'var(--sg)':'var(--co)'}">${a.apis[k]?.count??'—'}</td>`).join('')}<td>${a.totalHits}</td><td style="color:var(--ac)">${a.dedupedCount}</td></tr>`).join('')}</tbody></table></div><button class="bt sm" onclick="exportSearchLog()" style="margin-top:8px">Export CSV</button><button class="bt sm" style="color:var(--co);margin-top:8px;margin-left:6px" onclick="_searchAudit=[];safeStore('meridian_search_audit',[]);renderSearchLog()">Clear</button>`}
 function exportSearchLog(){
   const rows=['Date,Query,Year From,Year To,OA Only,OA Count,SS Count,CR Count,PM Count,Total Hits,Deduped',..._searchAudit.map(a=>[a.timestamp.slice(0,16),'"'+a.query.replace(/"/g,"'")+'"',a.filters.yf,a.filters.yt,a.filters.oa,a.apis.OA?.count||0,a.apis.SS?.count||0,a.apis.CR?.count||0,a.apis.PM?.count||0,a.totalHits,a.dedupedCount].join(','))];
   dl(rows.join('\n'),'search_audit_log.csv','text/csv');toast('Search log exported','ok')}

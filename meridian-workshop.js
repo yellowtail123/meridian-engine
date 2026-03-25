@@ -175,11 +175,11 @@ btns.forEach(b=>{const nm=b.textContent.trim().replace(/^[\u{1F4CA}\u{1F9EA}\u{1
 const tip=_STAT_TOOLTIPS[nm];if(tip){b.classList.add('m-tip');b.setAttribute('data-tip',tip)}
 b.addEventListener('contextmenu',e=>{e.preventDefault();_pinTest(nm)})});
 /* category headers */
-wrap.querySelectorAll('div[style*="font-weight:600"]').forEach(h=>{h.style.cssText='font-weight:600;font-size:15px;margin:10px 0 4px;padding-left:12px;border-left:3px solid var(--ac)'});
+wrap.querySelectorAll('div[style*="letter-spacing"]').forEach(h=>{if(h.querySelector('button'))return;h.classList.add('stat-cat-hdr');h.style.cssText='font-weight:600;font-size:13px;color:var(--ac);font-family:var(--mf);margin:10px 0 4px;padding-left:12px;border-left:3px solid var(--ac);letter-spacing:.5px'});
 }
 function _filterStatTests(q){const wrap=$('#wtest-body');if(!wrap)return;const lq=q.toLowerCase();
 wrap.querySelectorAll('button.bt.sm').forEach(b=>{const nm=b.textContent.toLowerCase();const tip=(b.getAttribute('data-tip')||'').toLowerCase();b.style.display=(nm.includes(lq)||tip.includes(lq))?'':'none'});
-wrap.querySelectorAll('div[style*="border-left"]').forEach(h=>{const sec=h.nextElementSibling;if(!sec)return;const vis=[...sec.querySelectorAll('button.bt.sm')].some(b=>b.style.display!=='none');h.style.display=vis?'':'none'})}
+wrap.querySelectorAll('.stat-cat-hdr').forEach(h=>{const sec=h.nextElementSibling;if(!sec)return;const vis=[...sec.querySelectorAll('button.bt.sm')].some(b=>b.style.display!=='none');h.style.display=vis?'':'none'})}
 function _pinTest(name){const i=_pinnedTests.indexOf(name);if(i>-1){_pinnedTests.splice(i,1)}else{if(_pinnedTests.length>=8)return;_pinnedTests.push(name)}
 localStorage.setItem('meridian_pinned_tests',JSON.stringify(_pinnedTests));const wrap=$('#wtest-body');if(wrap)_buildPinRow(wrap)}
 function _buildPinRow(wrap){let row=wrap.querySelector('.stat-pinned');

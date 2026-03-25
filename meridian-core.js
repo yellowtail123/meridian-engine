@@ -246,8 +246,9 @@ const _errPipeline=(function(){
   }
 
   // ── Copy formatted report ──
-  function copyReport(id){
-    const err=_errors.find(e=>e.id===id);
+  async function copyReport(id){
+    let err=_errors.find(e=>e.id===id);
+    if(!err){const stored=await _loadErrors();err=stored.find(e=>e.id===id)}
     if(!err)return;
     const lines=[
       '## Meridian Error Report',
@@ -305,7 +306,8 @@ const _errPipeline=(function(){
 
   // ── AI diagnosis ──
   async function diagnose(id){
-    const err=_errors.find(e=>e.id===id);
+    let err=_errors.find(e=>e.id===id);
+    if(!err){const stored=await _loadErrors();err=stored.find(e=>e.id===id)}
     if(!err)return;
     if(!window.S?.apiK){if(typeof toast==='function')toast('Set an API key in the AI tab first','err');return}
     const btn=document.querySelector(`[data-eid="${id}"] button:last-child`);
@@ -366,7 +368,8 @@ const _releaseSlot=()=>{_concActive--;if(_concQueue.length){_concActive++;_concQ
 
 // ═══ SHARED UTILITIES & INFRASTRUCTURE ═══
 const _toastWrap=document.createElement('div');_toastWrap.className='toast-wrap';document.body.appendChild(_toastWrap);
-function toast(msg,type='info',ms=3500){if(_toastWrap.children.length>=5){_toastWrap.firstChild.remove()}const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;_toastWrap.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},ms)}
+let _lastToastMsg='',_lastToastT=0;
+function toast(msg,type='info',ms=3500){const now=Date.now();if(msg===_lastToastMsg&&now-_lastToastT<2000)return;_lastToastMsg=msg;_lastToastT=now;if(_toastWrap.children.length>=5){_toastWrap.firstChild.remove()}const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;_toastWrap.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300)},ms)}
 // ═══ UTILITIES ═══
 function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms)}}
 function escHTML(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -1030,7 +1033,7 @@ async function _syncOnLogin(){
       if(cp.local_id&&localById[cp.local_id])continue;
       // Skip if paper was locally deleted (tombstone check)
       if(cp.local_id&&_isDeletedTombstone(cp.local_id)){
-        try{await _supaDeletePaper(cp.local_id);cloudDeleted++}catch(e){_warn('sync-tombstone-delete',e)}
+        try{await _supaDeletePaper(cp.local_id);cloudDeleted++}catch(e){console.warn('sync-tombstone-delete',e)}
         continue;
       }
       const lp={
