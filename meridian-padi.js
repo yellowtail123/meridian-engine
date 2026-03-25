@@ -484,9 +484,9 @@ function _badgeHTML(pred){
 
 function _termSuggestionDropdown(terms){
   if(!terms||!terms.length)return'';
-  return`<div id="padi-suggest" style="position:absolute;left:0;right:0;top:100%;background:var(--bs);border:1px solid var(--bd);border-radius:0 0 6px 6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3)">${terms.map(t=>
-    `<div style="padding:6px 12px;font-size:12px;font-family:var(--mf);cursor:pointer;display:flex;justify-content:space-between;color:var(--ts)" onmousedown="event.preventDefault();const i=$('#lq');i.value=i.value+' '+this.dataset.term;$('#padi-suggest')?.remove()" data-term="${escHTML(t.term)}"><span style="color:var(--ac)">${escHTML(t.term)}</span>${t.saves?`<span style="color:var(--sg);font-size:10px">${t.saves} saves</span>`:''}</div>`
-  ).join('')}</div>`;
+  return terms.map(t=>
+    `<div style="padding:6px 12px;font-size:12px;font-family:var(--mf);cursor:pointer;display:flex;justify-content:space-between;color:var(--ts)" onmousedown="event.preventDefault();const i=$('#lq');i.value=i.value+' '+this.dataset.term;hi('#padi-suggest')" data-term="${escHTML(t.term)}"><span style="color:var(--ac)">${escHTML(t.term)}</span>${t.saves?`<span style="color:var(--sg);font-size:10px">${t.saves} saves</span>`:''}</div>`
+  ).join('');
 }
 
 let _simCardCount=0;
@@ -643,28 +643,37 @@ function recommendSimilar(paperId){
 }
 
 // ═══ SEARCH TERM SUGGESTION LISTENER ═══
+// Persistent container lives in #litSearchRow (not .si-wrap) to avoid DOM
+// mutations inside the input's parent flex container, which causes focus
+// loss in WebKit/Safari during typing.
 let _suggestTimer=null;
 const lqEl=$('#lq');
 if(lqEl){
-  const wrapper=lqEl.parentElement;
-  if(wrapper)wrapper.style.position='relative';
+  let _suggestEl=null;
+  function _getSuggestEl(){
+    if(!_suggestEl){
+      _suggestEl=document.createElement('div');
+      _suggestEl.id='padi-suggest';
+      _suggestEl.style.cssText='position:absolute;left:0;right:0;top:100%;background:var(--bs);border:1px solid var(--bd);border-radius:0 0 6px 6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3);display:none';
+      ($('#litSearchRow')||lqEl.parentElement).appendChild(_suggestEl);
+    }
+    return _suggestEl;
+  }
   lqEl.addEventListener('input',function(){
     clearTimeout(_suggestTimer);
-    const existing=$('#padi-suggest');if(existing)existing.remove();
+    hi(_getSuggestEl());
     _suggestTimer=setTimeout(()=>{
-      const val=this.value.trim();
-      if(!val||graph.nodes.size<3)return;
+      const el=_getSuggestEl();
+      const val=lqEl.value.trim();
+      if(!val||graph.nodes.size<3){hi(el);return}
       const terms=val.split(/\s+/);
       const suggestions=graph.suggest(terms,5);
-      if(!suggestions.length)return;
-      const container=wrapper||this.parentElement;
-      if(!container)return;
-      container.style.position='relative';
-      const old=$('#padi-suggest');if(old)old.remove();
-      container.insertAdjacentHTML('beforeend',_termSuggestionDropdown(suggestions));
+      if(!suggestions.length){hi(el);return}
+      el.innerHTML=_termSuggestionDropdown(suggestions);
+      sh(el);
     },400);
   });
-  lqEl.addEventListener('blur',()=>{setTimeout(()=>{const s=$('#padi-suggest');if(s)s.remove()},200)});
+  lqEl.addEventListener('blur',()=>{setTimeout(()=>hi(_getSuggestEl()),200)});
 }
 
 // Public API

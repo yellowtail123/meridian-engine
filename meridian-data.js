@@ -659,7 +659,7 @@ async function runBatchImport(){
 // ═══ SEARCH HISTORY ═══
 function saveSearchHist(q){if(!q)return;_searchHist=_searchHist.filter(h=>h!==q);_searchHist.unshift(q);if(_searchHist.length>20)_searchHist=_searchHist.slice(0,20);safeStore('meridian_search_hist',_searchHist)}
 function showSearchHist(){const el=$('#searchHist');if(!_searchHist.length){hi(el);return}const q=$('#lq').value.toLowerCase();const fl=q?_searchHist.filter(h=>h.toLowerCase().includes(q)):_searchHist;if(!fl.length){hi(el);return}H(el,fl.slice(0,10).map(h=>{const origIdx=_searchHist.indexOf(h);return`<div onclick="$('#lq').value=_searchHist[${origIdx}]||'';hi('#searchHist');_litPage=0;litSearch()"><span>${escHTML(h)}</span><span class="sh-del" onclick="event.stopPropagation();delSearchHistIdx(${origIdx})">×</span></div>`}).join(''));sh(el)}
-function filterSearchHist(){showSearchHist()}
+let _filterHistTimer;function filterSearchHist(){clearTimeout(_filterHistTimer);_filterHistTimer=setTimeout(showSearchHist,120)}
 function delSearchHistIdx(idx){if(idx>=0&&idx<_searchHist.length)_searchHist.splice(idx,1);safeStore('meridian_search_hist',_searchHist);showSearchHist()}
 function delSearchHist(q){const idx=_searchHist.indexOf(q);if(idx!==-1)_searchHist.splice(idx,1);safeStore('meridian_search_hist',_searchHist);showSearchHist()}
 // ═══ SEARCH AUDIT LOG ═══
