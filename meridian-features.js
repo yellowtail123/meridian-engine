@@ -3492,8 +3492,8 @@ function enhanceLitTab(){
   if(filterRow){
     const greyBtn=document.createElement('button');greyBtn.className='bt sm';greyBtn.textContent='Grey Lit';
     greyBtn.onclick=greyLitSearch;greyBtn.style.cssText='color:var(--wa);border-color:rgba(212,160,74,.2)';
-    const filtersBtn=$('#litFiltersBtn');
-    if(filtersBtn)filterRow.insertBefore(greyBtn,filtersBtn)}
+    const filtersWrap=$('#litFiltersBtn')?.parentElement;
+    if(filtersWrap)filterRow.insertBefore(greyBtn,filtersWrap)}
   // Add search log section — collapsed by default with summary line
   const logSection=document.createElement('div');logSection.id='litLogSection';
   logSection.innerHTML=`<div class="sec" style="margin-top:14px"><div class="sh" onclick="const sb=this.nextElementSibling;const open=sb.style.display!=='none';sb.style.display=open?'none':'block';this.querySelector('.sh-chevron').style.transform=open?'rotate(-90deg)':'';if(!open&&typeof renderSearchLog==='function')renderSearchLog()"><h4>Search Audit Log · ${_searchAudit.length} searches</h4><span class="sh-chevron" style="margin-left:auto;display:inline-flex;transform:rotate(-90deg);transition:transform .25s"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="var(--tm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg></span></div><div class="sb" style="display:none" id="searchLogContent"></div></div>`;
