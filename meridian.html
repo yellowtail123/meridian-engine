@@ -126,12 +126,13 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <button class="sb-item active" data-tab="home" title="Home"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2.5 8.5V14h4v-4h3v4h4V8.5"/><path d="M1 9l7-7 7 7"/></svg></span><span class="sb-label">Home</span></button>
 <!-- LITERATURE (collapsible) -->
 <div class="sb-group sb-collapsible" data-group="literature" data-expanded="false">
-<button class="sb-ghdr" onclick="toggleSbGroup('literature')" title="Literature"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Literature</span><span class="sb-gcount sb-label">4</span><span class="sb-chevron"><svg viewBox="0 0 16 16"><polyline points="6 4 10 8 6 12"/></svg></span></button>
+<button class="sb-ghdr" onclick="toggleSbGroup('literature')" title="Literature"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Literature</span><span class="sb-gcount sb-label">5</span><span class="sb-chevron"><svg viewBox="0 0 16 16"><polyline points="6 4 10 8 6 12"/></svg></span></button>
 <div class="sb-gitems">
 <button class="sb-item sb-sub" data-tab="lit" title="Search"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5"/><line x1="10.5" y1="10.5" x2="14" y2="14"/></svg></span><span class="sb-label">Search</span></button>
 <button class="sb-item sb-sub" data-tab="library" title="Library"><span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="2" y="3" width="4" height="11" rx="0.5"/><rect x="7" y="2" width="3.5" height="12" rx="0.5"/><path d="M12 14l2-12" stroke-width="1.5"/></svg></span><span class="sb-label">Library</span><span class="tc sb-badge" id="libc" style="display:none">0</span></button>
 <button class="sb-item sb-sub" data-tab="gaps" title="Gap Analysis"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 2h4l1.5 2L10 2h3v4l-2 1.5L13 9v4h-4l-1 -2-1 2H3V9l2-1.5L3 6z"/></svg></span><span class="sb-label">Gap Analysis</span></button>
 <button class="sb-item sb-sub" data-tab="graph" title="Citations"><span class="sb-icon"><svg viewBox="0 0 16 16"><circle cx="3" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/><circle cx="8" cy="8" r="1.8"/><circle cx="3" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/><line x1="4.3" y1="3.7" x2="6.5" y2="7"/><line x1="11.7" y1="3.7" x2="9.5" y2="7"/><line x1="6.5" y1="9" x2="4.3" y2="12"/><line x1="9.5" y1="9" x2="11.7" y2="12"/></svg></span><span class="sb-label">Citations</span></button>
+<button class="sb-item sb-sub" data-tab="prisma" title="PRISMA"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 2h10v3H3z" rx="0.5"/><path d="M8 5v2"/><path d="M4 7h8v2.5H4z" rx="0.5"/><path d="M8 9.5v1.5"/><path d="M5 11h6v3H5z" rx="0.5"/></svg></span><span class="sb-label">PRISMA</span></button>
 </div></div>
 <!-- SPECIES (standalone) -->
 <button class="sb-item" data-tab="species" title="Species"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 8c2-3 5-5 8-4 2.5.6 4 2.5 4.5 4-.5 1.5-2 3.4-4.5 4-3 1-6-1-8-4z"/><circle cx="12" cy="8" r="1" style="fill:currentColor" stroke="none"/><path d="M2 8L0 5.5M2 8L0 10.5"/></svg></span><span class="sb-label">Species</span></button>
@@ -538,6 +539,7 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 <div id="gapContent"><div class="empty-state"><div class="empty-state-icon">&#x1F50D;</div><div class="empty-state-title">No gaps analysed yet</div><div class="empty-state-desc">Click "Discover Gaps" to scan your library for research gaps. Add papers to your library first.</div></div></div>
 </div>
+<div class="tp" id="tab-prisma"><div id="prisma-content"></div></div>
 <div class="tp" id="tab-publications"><div id="pub-content"></div></div>
 <div class="tp" id="tab-archive"><div id="arch-content"></div></div>
 <div class="tp" id="tab-fielddata"><div id="fd-content"></div></div>

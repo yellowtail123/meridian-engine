@@ -848,4 +848,18 @@ html.light .msg.a{background:#ffffff;border-color:#d0cbc3}
 .prisma-excl-reason,.prisma-excl-count{cursor:pointer}.prisma-excl-reason:hover,.prisma-excl-count:hover{color:var(--ac)}
 .prisma-excl-del{background:none;border:none;color:var(--co);cursor:pointer;font-size:14px;padding:0 2px;opacity:.5}.prisma-excl-del:hover{opacity:1}
 .prisma-excl-empty,.prisma-excl-add{font-size:11px;color:var(--tm);opacity:.6;cursor:pointer;font-family:var(--mf);margin-top:2px}.prisma-excl-empty:hover,.prisma-excl-add:hover{opacity:1;color:var(--ac)}
+/* PRISMA paper table */
+.prisma-table{width:100%;border-collapse:collapse;font-size:13px;font-family:var(--mf)}
+.prisma-table thead{border-bottom:2px solid var(--bd)}
+.prisma-th{padding:8px 10px;text-align:left;color:var(--tm);font-size:11px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap}
+.prisma-th:hover{color:var(--ac)}
+.prisma-tr{border-bottom:1px solid var(--bd);transition:background .1s}
+.prisma-tr:hover{background:var(--am)}
+.prisma-tr td{padding:6px 10px;vertical-align:middle}
+.prisma-tr.prisma-deleted{opacity:.5}
+.prisma-td-title{max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ts)}
+.prisma-stage-sel{background:var(--bi);border:1px solid;border-radius:6px;padding:3px 6px;font-size:11px;font-family:var(--mf);cursor:pointer;outline:none}
+.prisma-stage-sel:focus{box-shadow:0 0 0 2px var(--am)}
+.prisma-ov-dot{color:var(--wa);font-size:14px;cursor:pointer;margin-left:2px;vertical-align:middle}
+.prisma-ov-dot:hover{color:var(--ac)}
 html.light .prisma-container{box-shadow:0 12px 40px rgba(0,0,0,.12)}

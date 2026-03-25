@@ -2876,167 +2876,125 @@ function exportEvidenceMarkdown(){
   const body=rows.map(r=>`| ${r.species} | ${r.location} | ${r.n} | ${r.method} | ${r.finding} | ${r.yearRange} | ${r.paper} | ${r.doi} |`).join('\n');
   dl(hdr+'\n'+sep+'\n'+body,'evidence_table.md','text/plain');toast('Evidence Markdown exported','ok')}
 
-// ═══ PRISMA 2020 FLOW CHART ═══
+// ═══ PRISMA 2020 FLOW CHART — DEDICATED TAB ═══
 let _prismaState=null;
 const _PRISMA_KEY='meridian_prisma';
+let _prismaTableSort='stage';
+let _prismaTableDir=1;
+let _prismaTableFilter='all';
+let _prismaDeletedPapers=safeParse('meridian_prisma_deleted',[]);
+const _PRISMA_STAGES=['identification','screening','eligibility','included','excluded'];
+const _PRISMA_STAGE_LABELS={identification:'Identification',screening:'Screening',eligibility:'Eligibility',included:'Included',excluded:'Excluded'};
+const _PRISMA_STAGE_COLORS={identification:'var(--ac)',screening:'var(--wa)',eligibility:'var(--lv)',included:'var(--sg)',excluded:'var(--co)'};
 
-function _prismaLoad(){
-  _prismaState=safeParse(_PRISMA_KEY,null);
-  return _prismaState;
-}
-
+function _prismaLoad(){_prismaState=safeParse(_PRISMA_KEY,null);return _prismaState}
 function _prismaSave(){
   if(!_prismaState)return;
   _prismaState.updatedAt=new Date().toISOString();
   safeStore(_PRISMA_KEY,_prismaState);
-  // Sync to Supabase if logged in
-  if(typeof _queuePush==='function'&&typeof _supaUser!=='undefined'&&_supaUser){
-    _queuePush({type:'save_settings'});
-  }
+  if(typeof _queuePush==='function'&&typeof _supaUser!=='undefined'&&_supaUser)_queuePush({type:'save_settings'});
 }
 
 function _prismaDefaults(){
-  return{
-    // Identification
-    dbOA:0,dbSS:0,dbCR:0,dbPM:0,
-    otherDOI:0,otherBib:0,otherManual:0,
-    duplicatesRemoved:0,
-    // Screening
-    recordsScreened:0,recordsExcluded:0,
-    screenExclReasons:[],
-    // Eligibility
-    fullTextAssessed:0,fullTextExcluded:0,
-    eligExclReasons:[],
-    // Included
+  return{dbOA:0,dbSS:0,dbCR:0,dbPM:0,otherDOI:0,otherBib:0,otherManual:0,duplicatesRemoved:0,
+    recordsScreened:0,recordsExcluded:0,screenExclReasons:[],
+    fullTextAssessed:0,fullTextExcluded:0,eligExclReasons:[],
     studiesIncluded:0,quantSynthesis:0,qualSynthesis:0,
-    // Overrides (user-edited values override auto)
-    overrides:{},
-    // Metadata
-    updatedAt:new Date().toISOString()
-  };
+    stageOverrides:{},overrides:{},updatedAt:new Date().toISOString()};
+}
+
+function _prismaGetPaperStage(p){
+  // Manual override first
+  if(_prismaState?.stageOverrides?.[p.id])return _prismaState.stageOverrides[p.id];
+  // Auto-classify from reading status
+  const rs=safeParse('meridian_reading_status',{});
+  const st=rs[p.id]||'unread';
+  if(st==='reviewed')return'included';
+  if(st==='read')return'eligibility';
+  if(st==='skimming'||st==='unread')return'screening';
+  return'screening';
+}
+
+function _prismaSetPaperStage(paperId,stage){
+  if(!_prismaState)return;
+  if(!_prismaState.stageOverrides)_prismaState.stageOverrides={};
+  _prismaState.stageOverrides[paperId]=stage;
+  _prismaSave();
 }
 
 async function _prismaAutoPopulate(){
   const d=_prismaState||_prismaDefaults();
-  // Identification — from search audit log
   const apiTotals={OA:0,SS:0,CR:0,PM:0};
   let totalHits=0,totalDeduped=0;
   _searchAudit.forEach(a=>{
     Object.entries(a.apis).forEach(([k,v])=>{if(v.count)apiTotals[k]=(apiTotals[k]||0)+v.count});
-    totalHits+=a.totalHits||0;
-    totalDeduped+=a.dedupedCount||0;
+    totalHits+=a.totalHits||0;totalDeduped+=a.dedupedCount||0;
   });
   d.dbOA=apiTotals.OA;d.dbSS=apiTotals.SS;d.dbCR=apiTotals.CR;d.dbPM=apiTotals.PM;
   d.duplicatesRemoved=Math.max(0,totalHits-totalDeduped);
-
-  // Other sources — count papers by import source
-  d.otherDOI=S.lib.filter(p=>p.src==='CR'&&!_searchAudit.some(a=>a.apis.CR?.ok)).length;
-  let bibCount=0,risCount=0,manualCount=0;
+  let bibCount=0,risCount=0,manualCount=0,doiCount=0;
   S.lib.forEach(p=>{
-    if(p.src==='BIB')bibCount++;
-    else if(p.src==='RIS')risCount++;
+    if(p.src==='BIB')bibCount++;else if(p.src==='RIS')risCount++;
     else if(!p.src)manualCount++;
   });
-  d.otherBib=bibCount+risCount;
-  d.otherManual=manualCount;
-
-  // Screening — from reading status
-  const rs=safeParse('meridian_reading_status',{});
-  let unread=0,skimming=0,read=0,reviewed=0;
-  S.lib.forEach(p=>{
-    const st=rs[p.id]||'unread';
-    if(st==='unread')unread++;
-    else if(st==='skimming')skimming++;
-    else if(st==='read')read++;
-    else if(st==='reviewed')reviewed++;
-  });
-
-  // Screening data from IndexedDB
-  const screenData=await dbGetAllScreening();
-  const excluded=screenData.filter(s=>s.decision==='exclude');
-  const included=screenData.filter(s=>s.decision==='include');
-
-  d.recordsScreened=screenData.length||S.lib.length;
-  d.recordsExcluded=excluded.length;
-
-  // Eligibility — read = full-text assessed
-  d.fullTextAssessed=read+reviewed;
-  d.fullTextExcluded=0; // user fills in
-
-  // Included — reviewed papers
-  d.studiesIncluded=reviewed;
-
-  // Auto-populate exclusion reasons from screening data
-  if(!d.screenExclReasons.length&&excluded.length){
-    const reasons={};
-    excluded.forEach(s=>{if(s.reason){const r=s.reason.trim();reasons[r]=(reasons[r]||0)+1}});
-    d.screenExclReasons=Object.entries(reasons).map(([reason,count])=>({reason,count}));
+  d.otherBib=bibCount+risCount;d.otherManual=manualCount;d.otherDOI=doiCount;
+  // Compute stage counts from papers
+  const stageCounts={identification:0,screening:0,eligibility:0,included:0,excluded:0};
+  S.lib.forEach(p=>{const st=_prismaGetPaperStage(p);if(stageCounts.hasOwnProperty(st))stageCounts[st]++});
+  // Add deleted papers as excluded at screening
+  const deletedCount=_prismaDeletedPapers.length;
+  d.recordsScreened=S.lib.length+deletedCount;
+  d.recordsExcluded=stageCounts.excluded+deletedCount;
+  d.fullTextAssessed=stageCounts.eligibility+stageCounts.included;
+  d.fullTextExcluded=0;
+  d.studiesIncluded=stageCounts.included;
+  // Auto exclusion reasons from screening data
+  if(!d.screenExclReasons.length){
+    try{
+      const screenData=await dbGetAllScreening();
+      const excluded=screenData.filter(s=>s.decision==='exclude');
+      if(excluded.length){const reasons={};excluded.forEach(s=>{if(s.reason){reasons[s.reason.trim()]=(reasons[s.reason.trim()]||0)+1}});
+      d.screenExclReasons=Object.entries(reasons).map(([reason,count])=>({reason,count}))}
+    }catch(e){_warn('prisma-screen-fetch',e)}
   }
-
   return d;
 }
 
 function _prismaVal(key){
   if(!_prismaState)return 0;
-  if(_prismaState.overrides&&_prismaState.overrides.hasOwnProperty(key))return _prismaState.overrides[key];
+  if(_prismaState.overrides?.hasOwnProperty(key))return _prismaState.overrides[key];
   return _prismaState[key]||0;
 }
+function _prismaIsOverridden(key){return _prismaState?.overrides?.hasOwnProperty(key)}
 
-function _prismaIsOverridden(key){
-  return _prismaState?.overrides?.hasOwnProperty(key);
-}
-
-async function openPRISMAPanel(){
+// ── Tab init ──
+async function initPrisma(){
   _prismaLoad();
   const auto=await _prismaAutoPopulate();
   if(!_prismaState){_prismaState={..._prismaDefaults(),...auto}}
-  else{
-    // Merge auto values into existing state (don't overwrite overrides)
-    for(const k of['dbOA','dbSS','dbCR','dbPM','otherDOI','otherBib','otherManual','duplicatesRemoved','recordsScreened','recordsExcluded','fullTextAssessed','studiesIncluded']){
-      if(!_prismaIsOverridden(k))_prismaState[k]=auto[k];
-    }
-    if(!_prismaState.screenExclReasons.length)_prismaState.screenExclReasons=auto.screenExclReasons;
+  else{for(const k of['dbOA','dbSS','dbCR','dbPM','otherDOI','otherBib','otherManual','duplicatesRemoved','recordsScreened','recordsExcluded','fullTextAssessed','studiesIncluded']){
+    if(!_prismaIsOverridden(k))_prismaState[k]=auto[k]}
+    if(!_prismaState.screenExclReasons?.length&&auto.screenExclReasons?.length)_prismaState.screenExclReasons=auto.screenExclReasons;
   }
   _prismaSave();
-  _renderPRISMAModal();
+  _renderPrismaTab();
 }
 
-function _renderPRISMAModal(){
-  let modal=document.getElementById('prismaModal');
-  if(modal)modal.remove();
-  modal=document.createElement('div');modal.id='prismaModal';
-  modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:20px';
-  modal.onclick=e=>{if(e.target===modal)modal.remove()};
-
-  const v=k=>_prismaVal(k);
-  const totalDb=v('dbOA')+v('dbSS')+v('dbCR')+v('dbPM');
-  const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');
-  const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
-
-  const editNum=(key,label)=>{
-    const isOv=_prismaIsOverridden(key);
-    return`<span class="prisma-num${isOv?' prisma-overridden':''}" data-prisma-key="${key}" onclick="_prismaEditNum(this,'${key}')" title="${isOv?'Manually overridden — click to edit':'Click to edit'}">${v(key)}</span>`;
-  };
-
-  const exclList=(reasons,type)=>{
-    if(!reasons||!reasons.length)return`<div class="prisma-excl-empty" onclick="_prismaAddReason('${type}')">+ Add exclusion reason</div>`;
-    return reasons.map((r,i)=>`<div class="prisma-excl-row"><span class="prisma-excl-reason" onclick="_prismaEditReason('${type}',${i},'reason')">${escHTML(r.reason)}</span> <span class="prisma-excl-count" onclick="_prismaEditReason('${type}',${i},'count')">(n=${r.count})</span><button class="prisma-excl-del" onclick="_prismaDelReason('${type}',${i})">×</button></div>`).join('')+`<div class="prisma-excl-add" onclick="_prismaAddReason('${type}')">+ Add reason</div>`;
-  };
-
-  modal.innerHTML=`<div class="prisma-container">
-<div class="prisma-header">
+function _renderPrismaTab(){
+  const el=$('#prisma-content');if(!el)return;
+  el.innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
   <div>
     <h2 style="margin:0;font-size:18px;color:var(--ac);font-family:var(--sf);font-weight:600">PRISMA 2020 Flow Diagram</h2>
-    <p style="margin:4px 0 0;font-size:12px;color:var(--tm);font-family:var(--mf)">Auto-populated from your search and screening activity. Click any number to edit.</p>
+    <p style="margin:4px 0 0;font-size:12px;color:var(--tm);font-family:var(--mf)">Live tracker — auto-updates as you search, screen, and review papers. Click any number to edit.</p>
   </div>
-  <div style="display:flex;gap:6px;align-items:center">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button class="bt sm" onclick="_prismaRefresh()" title="Re-scan search audit and library">Refresh</button>
-    <button class="bt sm" onclick="_prismaResetOverrides()" title="Clear manual overrides" style="color:var(--wa)">Reset</button>
-    <button class="dx" onclick="document.getElementById('prismaModal').remove()" style="font-size:22px;background:none;border:none;color:var(--tm);cursor:pointer">×</button>
+    <button class="bt sm" onclick="_prismaResetOverrides()" title="Clear manual overrides" style="color:var(--wa)">Reset Overrides</button>
   </div>
 </div>
-<div id="prismaSvgWrap" class="prisma-svg-wrap"></div>
-<div class="prisma-export-bar">
+<div id="prismaSvgWrap" class="prisma-svg-wrap" style="padding:0"></div>
+<div class="prisma-export-bar" style="border:1px solid var(--bd);border-radius:var(--rd);padding:10px 14px;margin-top:12px;background:var(--bs)">
   <span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Export:</span>
   <button class="bt sm" onclick="_prismaExportPNG()">PNG (300 DPI)</button>
   <button class="bt sm" onclick="_prismaExportSVG()">SVG</button>
@@ -3044,12 +3002,128 @@ function _renderPRISMAModal(){
   <button class="bt sm" onclick="_prismaExportDOCX()">DOCX</button>
   <button class="bt sm" onclick="_prismaCopyText()" style="margin-left:auto">Copy Numbers</button>
 </div>
+<div style="margin-top:20px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <h3 style="margin:0;font-size:15px;color:var(--tx);font-family:var(--sf);font-weight:600">Paper Tracking</h3>
+    <div class="seg-ctrl" id="prismaStageFilter"></div>
+  </div>
+  <div id="prismaTableWrap"></div>
 </div>`;
-
-  document.body.appendChild(modal);
   _renderPRISMASvg();
+  _renderPrismaStageFilter();
+  _renderPrismaTable();
 }
 
+function _renderPrismaStageFilter(){
+  const el=$('#prismaStageFilter');if(!el)return;
+  const counts={all:S.lib.length,identification:0,screening:0,eligibility:0,included:0,excluded:0};
+  S.lib.forEach(p=>{const st=_prismaGetPaperStage(p);if(counts.hasOwnProperty(st))counts[st]++});
+  counts.excluded+=_prismaDeletedPapers.length;
+  el.innerHTML=['all',..._PRISMA_STAGES].map(k=>{
+    const label=k==='all'?'All':_PRISMA_STAGE_LABELS[k];
+    return`<button class="seg-btn${_prismaTableFilter===k?' on':''}" onclick="_prismaTableFilter='${k}';_renderPrismaTable();_renderPrismaStageFilter()">${label} (${counts[k]||0})</button>`;
+  }).join('');
+}
+
+function _renderPrismaTable(){
+  const wrap=$('#prismaTableWrap');if(!wrap)return;
+  // Build paper list with stages
+  let papers=S.lib.map(p=>({...p,_stage:_prismaGetPaperStage(p),_deleted:false}));
+  // Add deleted papers as excluded
+  _prismaDeletedPapers.forEach(dp=>{papers.push({...dp,_stage:'excluded',_deleted:true})});
+  // Filter
+  if(_prismaTableFilter!=='all')papers=papers.filter(p=>p._stage===_prismaTableFilter);
+  // Sort
+  const sk=_prismaTableSort;const dir=_prismaTableDir;
+  papers.sort((a,b)=>{
+    if(sk==='stage'){const ord={identification:0,screening:1,eligibility:2,included:3,excluded:4};return(ord[a._stage]-ord[b._stage])*dir}
+    if(sk==='title')return(a.title||'').localeCompare(b.title||'')*dir;
+    if(sk==='year')return((a.year||0)-(b.year||0))*dir;
+    if(sk==='source')return(a.src||'').localeCompare(b.src||'')*dir;
+    if(sk==='cited')return((a.cited||0)-(b.cited||0))*dir;
+    return 0;
+  });
+
+  if(!papers.length){
+    wrap.innerHTML=`<div class="empty-state" style="padding:30px 20px"><div class="empty-state-icon" style="font-size:20px;opacity:.3">&#x1F4CB;</div><div class="empty-state-title">${_prismaTableFilter==='all'?'No papers in library':'No papers in this stage'}</div><div class="empty-state-desc">${_prismaTableFilter==='all'?'Search for papers in the Literature tab and save them to Library.':'Papers move between stages automatically based on their reading status.'}</div></div>`;
+    return;
+  }
+
+  const sortHdr=(key,label)=>{
+    const active=_prismaTableSort===key;
+    const arrow=active?(_prismaTableDir===1?' ↑':' ↓'):'';
+    return`<th class="prisma-th" onclick="_prismaTableSort='${key}';_prismaTableDir=${active?-dir:1};_renderPrismaTable()">${label}${arrow}</th>`;
+  };
+
+  const stageOpts=_PRISMA_STAGES.map(s=>`<option value="${s}">${_PRISMA_STAGE_LABELS[s]}</option>`).join('');
+
+  wrap.innerHTML=`<div style="overflow-x:auto"><table class="prisma-table"><thead><tr>
+    ${sortHdr('stage','Stage')}${sortHdr('title','Title')}${sortHdr('year','Year')}${sortHdr('source','Source')}${sortHdr('cited','Cited')}
+    <th style="width:50px">Actions</th>
+  </tr></thead><tbody>
+  ${papers.map(p=>{
+    const stColor=_PRISMA_STAGE_COLORS[p._stage]||'var(--tm)';
+    const isOv=_prismaState?.stageOverrides?.[p.id];
+    return`<tr class="prisma-tr${p._deleted?' prisma-deleted':''}" data-paper-id="${escJSAttr(p.id)}" draggable="${p._deleted?'false':'true'}" ondragstart="_prismaDragStart(event,'${escJSAttr(p.id)}')" ondragover="_prismaDragOver(event)" ondrop="_prismaDrop(event)">
+      <td><select class="prisma-stage-sel" style="color:${stColor};border-color:${stColor}" onchange="_prismaStagePaper('${escJSAttr(p.id)}',this.value)" ${p._deleted?'disabled':''}>${_PRISMA_STAGES.map(s=>`<option value="${s}"${p._stage===s?' selected':''}>${_PRISMA_STAGE_LABELS[s]}</option>`).join('')}</select>${isOv?'<span class="prisma-ov-dot" title="Manually assigned" onclick="_prismaClearStageOverride(\''+escJSAttr(p.id)+'\')">*</span>':''}</td>
+      <td class="prisma-td-title" title="${escHTML(p.title||'')}">${escHTML((p.title||'Untitled').slice(0,80))}${(p.title||'').length>80?'...':''}</td>
+      <td>${p.year||'—'}</td>
+      <td><span class="src-badge src-${(p.src||'?').toLowerCase()}">${escHTML(p.src||'—')}</span></td>
+      <td>${p.cited!=null?Number(p.cited).toLocaleString():'—'}</td>
+      <td>${p._deleted?'<span style="font-size:10px;color:var(--tm)">Removed</span>':`<button class="bt sm" style="padding:2px 6px;font-size:10px" onclick="goTab('library');setTimeout(()=>{const el=document.querySelector('[data-paper-id=\\'${escJSAttr(p.id)}\\']');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})},200)" title="Go to paper in Library">View</button>`}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table></div>`;
+}
+
+// ── Drag and drop between stages ──
+let _prismaDragId=null;
+function _prismaDragStart(e,id){_prismaDragId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',id)}
+function _prismaDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move'}
+function _prismaDrop(e){
+  e.preventDefault();
+  const targetRow=e.target.closest('.prisma-tr');
+  if(!targetRow||!_prismaDragId)return;
+  const targetId=targetRow.dataset.paperId;
+  const targetPaper=S.lib.find(p=>p.id===targetId);
+  if(!targetPaper)return;
+  const targetStage=_prismaGetPaperStage(targetPaper);
+  _prismaSetPaperStage(_prismaDragId,targetStage);
+  _prismaDragId=null;
+  initPrisma();
+}
+
+function _prismaStagePaper(id,stage){
+  _prismaSetPaperStage(id,stage);
+  initPrisma();
+}
+
+function _prismaClearStageOverride(id){
+  if(_prismaState?.stageOverrides)delete _prismaState.stageOverrides[id];
+  _prismaSave();initPrisma();
+}
+
+// ── Hooks for live tracking ──
+function _prismaTrackDeletion(paper){
+  if(!paper||!paper.id)return;
+  // Don't duplicate
+  if(_prismaDeletedPapers.some(p=>p.id===paper.id))return;
+  _prismaDeletedPapers.push({id:paper.id,title:paper.title,authors:paper.authors,year:paper.year,src:paper.src,deletedAt:new Date().toISOString()});
+  if(_prismaDeletedPapers.length>500)_prismaDeletedPapers.splice(0,_prismaDeletedPapers.length-500);
+  safeStore('meridian_prisma_deleted',_prismaDeletedPapers);
+}
+
+// Hook into dbDelWithUndo to track paper removals
+const _origDbDelWithUndo=window.dbDelWithUndo;
+if(typeof _origDbDelWithUndo==='function'){
+  window.dbDelWithUndo=function(id){
+    const paper=S.lib.find(p=>p.id===id);
+    if(paper)_prismaTrackDeletion(paper);
+    return _origDbDelWithUndo(id);
+  };
+}
+
+// ── SVG rendering (reused for tab and export) ──
 function _renderPRISMASvg(){
   const wrap=document.getElementById('prismaSvgWrap');
   if(!wrap)return;
@@ -3058,8 +3132,6 @@ function _renderPRISMASvg(){
   const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');
   const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
   const lt=document.documentElement.classList.contains('light');
-  // Colors
-  const accentRgb=lt?'139,105,20':'201,149,107';
   const accent=lt?'#8B6914':'#C9956B';
   const boxBg=lt?'#ffffff':'#272536';
   const boxBorder=lt?'#d0cbc3':'rgba(201,149,107,.25)';
@@ -3073,336 +3145,184 @@ function _renderPRISMASvg(){
   const inclBg=lt?'rgba(45,107,63,.06)':'rgba(123,158,135,.08)';
   const inclBorder=lt?'rgba(45,107,63,.25)':'rgba(123,158,135,.25)';
   const inclText=lt?'#2D6B3F':'#7B9E87';
-
-  // Exclusion reasons
-  const sReasons=_prismaState.screenExclReasons||[];
-  const eReasons=_prismaState.eligExclReasons||[];
-  const sReasonsH=sReasons.length?sReasons.map(r=>`${escHTML(r.reason)} (n=${r.count})`).join(', '):'None specified';
-  const eReasonsH=eReasons.length?eReasons.map(r=>`${escHTML(r.reason)} (n=${r.count})`).join(', '):'None specified';
-
-  // Layout constants
-  const W=880,pad=20;
-  const colL=pad,colM=320,colR=580;
-  const boxW=250,boxWR=260,rh=36;
+  const sReasons=_prismaState?.screenExclReasons||[];
+  const eReasons=_prismaState?.eligExclReasons||[];
   const editAttr=(key)=>`class="prisma-num-svg${_prismaIsOverridden(key)?' ov':''}" data-key="${key}" onclick="_prismaEditNumSvg(this,'${key}')"`;
+  const sRLines=Math.max(1,sReasons.length);const eRLines=Math.max(1,eReasons.length);
+  const screenExclH=60+sRLines*18;const eligExclH=60+eRLines*18;
+  const W=880,pad=20,colL=pad,colM=320,colR=580,boxW=250,boxWR=260;
+  const y1=50,y2=y1+110,y3=y2+80,y4=y3+80,y5=y4+80,H_total=y5+140;
 
-  // Dynamic height based on exclusion reason lists
-  const sRLines=Math.max(1,sReasons.length);
-  const eRLines=Math.max(1,eReasons.length);
-  const screenExclH=60+sRLines*18;
-  const eligExclH=60+eRLines*18;
-
-  // Y positions
-  const y0=20; // Phase labels
-  const y1=50; // ID boxes
-  const y2=y1+110; // Dedup
-  const y3=y2+80; // Screening
-  const y4=y3+80; // Eligibility
-  const y5=y4+80; // Included
-  const H_total=y5+140;
-
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" id="prismaSvgEl" viewBox="0 0 ${W} ${H_total}" style="width:100%;height:auto;max-height:80vh;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif">
+  wrap.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" id="prismaSvgEl" viewBox="0 0 ${W} ${H_total}" style="width:100%;height:auto;font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif">
   <defs>
     <marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="${arrowCol}"/></marker>
     <marker id="ahx" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6Z" fill="${arrowExcl}"/></marker>
   </defs>
-
-  <!-- PHASE LABELS -->
-  <text x="${pad}" y="${y0+12}" fill="${accent}" font-size="11" font-weight="700" letter-spacing="0.08em">IDENTIFICATION</text>
+  <text x="${pad}" y="32" fill="${accent}" font-size="11" font-weight="700" letter-spacing="0.08em">IDENTIFICATION</text>
   <text x="${pad}" y="${y3-8}" fill="${accent}" font-size="11" font-weight="700" letter-spacing="0.08em">SCREENING</text>
   <text x="${pad}" y="${y4-8}" fill="${accent}" font-size="11" font-weight="700" letter-spacing="0.08em">ELIGIBILITY</text>
   <text x="${pad}" y="${y5-8}" fill="${accent}" font-size="11" font-weight="700" letter-spacing="0.08em">INCLUDED</text>
-
-  <!-- ID: Database records -->
+  <!-- ID: DB -->
   <rect x="${colL}" y="${y1}" width="${boxW}" height="100" rx="8" fill="${boxBg}" stroke="${boxBorder}" stroke-width="1.5"/>
   <text x="${colL+boxW/2}" y="${y1+18}" fill="${textMain}" font-size="12" font-weight="600" text-anchor="middle">Records from databases</text>
-  <text x="${colL+boxW/2}" y="${y1+35}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('_totalDb')}>(n=${totalDb})</text>
+  <text x="${colL+boxW/2}" y="${y1+35}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle">(n=${totalDb})</text>
   <text x="${colL+16}" y="${y1+55}" fill="${textSub}" font-size="11">OpenAlex (n=<tspan ${editAttr('dbOA')}>${v('dbOA')}</tspan>)</text>
   <text x="${colL+16}" y="${y1+70}" fill="${textSub}" font-size="11">Semantic Scholar (n=<tspan ${editAttr('dbSS')}>${v('dbSS')}</tspan>)</text>
   <text x="${colL+16}" y="${y1+85}" fill="${textSub}" font-size="11">CrossRef (n=<tspan ${editAttr('dbCR')}>${v('dbCR')}</tspan>) · PubMed (n=<tspan ${editAttr('dbPM')}>${v('dbPM')}</tspan>)</text>
-
-  <!-- ID: Other sources -->
+  <!-- ID: Other -->
   <rect x="${colM}" y="${y1}" width="${boxW}" height="100" rx="8" fill="${boxBg}" stroke="${boxBorder}" stroke-width="1.5"/>
   <text x="${colM+boxW/2}" y="${y1+18}" fill="${textMain}" font-size="12" font-weight="600" text-anchor="middle">Records from other sources</text>
-  <text x="${colM+boxW/2}" y="${y1+35}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('_totalOther')}>(n=${totalOther})</text>
+  <text x="${colM+boxW/2}" y="${y1+35}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle">(n=${totalOther})</text>
   <text x="${colM+16}" y="${y1+55}" fill="${textSub}" font-size="11">DOI import (n=<tspan ${editAttr('otherDOI')}>${v('otherDOI')}</tspan>)</text>
   <text x="${colM+16}" y="${y1+70}" fill="${textSub}" font-size="11">.bib/.ris import (n=<tspan ${editAttr('otherBib')}>${v('otherBib')}</tspan>)</text>
   <text x="${colM+16}" y="${y1+85}" fill="${textSub}" font-size="11">Manual addition (n=<tspan ${editAttr('otherManual')}>${v('otherManual')}</tspan>)</text>
-
-  <!-- ID: Duplicates removed -->
+  <!-- Duplicates -->
   <rect x="${colR}" y="${y1+15}" width="${boxWR}" height="70" rx="8" fill="${exclBg}" stroke="${exclBorder}" stroke-width="1.5"/>
   <text x="${colR+boxWR/2}" y="${y1+40}" fill="${exclText}" font-size="12" font-weight="600" text-anchor="middle">Duplicates removed</text>
   <text x="${colR+boxWR/2}" y="${y1+60}" fill="${exclText}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('duplicatesRemoved')}>(n=${v('duplicatesRemoved')})</text>
-
-  <!-- Arrows: DB→Dedup, Other→Dedup -->
+  <!-- Arrows ID -->
   <line x1="${colL+boxW/2}" y1="${y1+100}" x2="${colL+boxW/2}" y2="${y2}" stroke="${arrowCol}" stroke-width="1.5" marker-end="url(#ah)"/>
   <line x1="${colM+boxW/2}" y1="${y1+100}" x2="${colM+boxW/2}" y2="${y2}" stroke="${arrowCol}" stroke-width="1.5"/>
   <line x1="${colM+boxW/2}" y1="${y2-15}" x2="${colL+boxW/2+8}" y2="${y2-15}" stroke="${arrowCol}" stroke-width="1.5"/>
-  <!-- Arrow: to duplicates box -->
   <line x1="${colL+boxW}" y1="${y1+50}" x2="${colR}" y2="${y1+50}" stroke="${arrowExcl}" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#ahx)"/>
-
-  <!-- Dedup result -->
+  <!-- Dedup -->
   <rect x="${colL}" y="${y2}" width="${boxW}" height="50" rx="8" fill="${boxBg}" stroke="${boxBorder}" stroke-width="1.5"/>
   <text x="${colL+boxW/2}" y="${y2+20}" fill="${textMain}" font-size="12" font-weight="600" text-anchor="middle">Records after deduplication</text>
   <text x="${colL+boxW/2}" y="${y2+40}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle">(n=${afterDedup})</text>
-
-  <!-- Arrow: Dedup→Screening -->
   <line x1="${colL+boxW/2}" y1="${y2+50}" x2="${colL+boxW/2}" y2="${y3}" stroke="${arrowCol}" stroke-width="1.5" marker-end="url(#ah)"/>
-
   <!-- Screening -->
   <rect x="${colL}" y="${y3}" width="${boxW}" height="50" rx="8" fill="${boxBg}" stroke="${boxBorder}" stroke-width="1.5"/>
   <text x="${colL+boxW/2}" y="${y3+20}" fill="${textMain}" font-size="12" font-weight="600" text-anchor="middle">Records screened</text>
   <text x="${colL+boxW/2}" y="${y3+40}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('recordsScreened')}>(n=${v('recordsScreened')})</text>
-
-  <!-- Screening excluded -->
   <rect x="${colR}" y="${y3}" width="${boxWR}" height="${screenExclH}" rx="8" fill="${exclBg}" stroke="${exclBorder}" stroke-width="1.5"/>
   <text x="${colR+boxWR/2}" y="${y3+18}" fill="${exclText}" font-size="12" font-weight="600" text-anchor="middle">Records excluded</text>
   <text x="${colR+boxWR/2}" y="${y3+36}" fill="${exclText}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('recordsExcluded')}>(n=${v('recordsExcluded')})</text>
   ${sReasons.map((r,i)=>`<text x="${colR+14}" y="${y3+54+i*18}" fill="${textSub}" font-size="10">${escHTML(r.reason)} (n=${r.count})</text>`).join('')}
   <text x="${colR+14}" y="${y3+54+sReasons.length*18}" fill="${textSub}" font-size="10" opacity=".6" class="prisma-add-reason" onclick="_prismaAddReason('screen')">+ Add reason</text>
-
-  <!-- Arrow: Screening→Excluded -->
   <line x1="${colL+boxW}" y1="${y3+25}" x2="${colR}" y2="${y3+25}" stroke="${arrowExcl}" stroke-width="1.5" marker-end="url(#ahx)"/>
-  <!-- Arrow: Screening→Eligibility -->
   <line x1="${colL+boxW/2}" y1="${y3+50}" x2="${colL+boxW/2}" y2="${y4}" stroke="${arrowCol}" stroke-width="1.5" marker-end="url(#ah)"/>
-
   <!-- Eligibility -->
   <rect x="${colL}" y="${y4}" width="${boxW}" height="50" rx="8" fill="${boxBg}" stroke="${boxBorder}" stroke-width="1.5"/>
   <text x="${colL+boxW/2}" y="${y4+20}" fill="${textMain}" font-size="12" font-weight="600" text-anchor="middle">Full-text articles assessed</text>
   <text x="${colL+boxW/2}" y="${y4+40}" fill="${accent}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('fullTextAssessed')}>(n=${v('fullTextAssessed')})</text>
-
-  <!-- Eligibility excluded -->
   <rect x="${colR}" y="${y4}" width="${boxWR}" height="${eligExclH}" rx="8" fill="${exclBg}" stroke="${exclBorder}" stroke-width="1.5"/>
   <text x="${colR+boxWR/2}" y="${y4+18}" fill="${exclText}" font-size="12" font-weight="600" text-anchor="middle">Full-text articles excluded</text>
   <text x="${colR+boxWR/2}" y="${y4+36}" fill="${exclText}" font-size="16" font-weight="700" text-anchor="middle" ${editAttr('fullTextExcluded')}>(n=${v('fullTextExcluded')})</text>
   ${eReasons.map((r,i)=>`<text x="${colR+14}" y="${y4+54+i*18}" fill="${textSub}" font-size="10">${escHTML(r.reason)} (n=${r.count})</text>`).join('')}
   <text x="${colR+14}" y="${y4+54+eReasons.length*18}" fill="${textSub}" font-size="10" opacity=".6" class="prisma-add-reason" onclick="_prismaAddReason('elig')">+ Add reason</text>
-
-  <!-- Arrow: Eligibility→Excluded -->
   <line x1="${colL+boxW}" y1="${y4+25}" x2="${colR}" y2="${y4+25}" stroke="${arrowExcl}" stroke-width="1.5" marker-end="url(#ahx)"/>
-  <!-- Arrow: Eligibility→Included -->
   <line x1="${colL+boxW/2}" y1="${y4+50}" x2="${colL+boxW/2}" y2="${y5}" stroke="${arrowCol}" stroke-width="1.5" marker-end="url(#ah)"/>
-
   <!-- Included -->
   <rect x="${colL}" y="${y5}" width="${boxW}" height="100" rx="8" fill="${inclBg}" stroke="${inclBorder}" stroke-width="1.5"/>
   <text x="${colL+boxW/2}" y="${y5+20}" fill="${inclText}" font-size="13" font-weight="700" text-anchor="middle">Studies included in review</text>
   <text x="${colL+boxW/2}" y="${y5+42}" fill="${inclText}" font-size="20" font-weight="700" text-anchor="middle" ${editAttr('studiesIncluded')}>(n=${v('studiesIncluded')})</text>
   <text x="${colL+16}" y="${y5+65}" fill="${textSub}" font-size="11">Quantitative synthesis (n=<tspan ${editAttr('quantSynthesis')}>${v('quantSynthesis')}</tspan>)</text>
   <text x="${colL+16}" y="${y5+82}" fill="${textSub}" font-size="11">Qualitative synthesis (n=<tspan ${editAttr('qualSynthesis')}>${v('qualSynthesis')}</tspan>)</text>
-</svg>`;
-
-  wrap.innerHTML=svg;
+  </svg>`;
 }
 
+// ── Number editing ──
 function _prismaEditNumSvg(el,key){
-  // Virtual keys that are sums — not directly editable
-  if(key==='_totalDb'||key==='_totalOther'){
-    toast('Edit the individual database counts below','info',2000);return;
-  }
-  const cur=_prismaVal(key);
-  const input=prompt('Edit value for this field:',cur);
-  if(input===null)return;
-  const num=parseInt(input,10);
+  if(key==='_totalDb'||key==='_totalOther'){toast('Edit the individual database counts below','info',2000);return}
+  const cur=_prismaVal(key);const input=prompt('Edit value for this field:',cur);
+  if(input===null)return;const num=parseInt(input,10);
   if(isNaN(num)||num<0){toast('Enter a non-negative number','err');return}
   if(!_prismaState.overrides)_prismaState.overrides={};
-  _prismaState.overrides[key]=num;
-  _prismaSave();
-  _renderPRISMASvg();
+  _prismaState.overrides[key]=num;_prismaSave();_renderPRISMASvg();
 }
 
+// ── Exclusion reasons ──
 function _prismaAddReason(type){
-  const reason=prompt('Exclusion reason (e.g. "Wrong species", "No control group"):');
-  if(!reason)return;
-  const countStr=prompt('Count (n):','0');
-  const count=parseInt(countStr,10)||0;
+  const reason=prompt('Exclusion reason (e.g. "Wrong species", "No control group"):');if(!reason)return;
+  const count=parseInt(prompt('Count (n):','0'),10)||0;
   const arr=type==='screen'?'screenExclReasons':'eligExclReasons';
   if(!_prismaState[arr])_prismaState[arr]=[];
-  _prismaState[arr].push({reason:reason.trim(),count});
-  _prismaSave();
-  _renderPRISMASvg();
+  _prismaState[arr].push({reason:reason.trim(),count});_prismaSave();_renderPRISMASvg();
 }
-
 function _prismaEditReason(type,idx,field){
   const arr=type==='screen'?'screenExclReasons':'eligExclReasons';
   const r=_prismaState[arr]?.[idx];if(!r)return;
-  if(field==='reason'){
-    const v=prompt('Edit exclusion reason:',r.reason);
-    if(v!==null)r.reason=v.trim();
-  }else{
-    const v=prompt('Edit count:',r.count);
-    if(v!==null)r.count=parseInt(v,10)||0;
-  }
-  _prismaSave();
-  _renderPRISMASvg();
+  if(field==='reason'){const v=prompt('Edit exclusion reason:',r.reason);if(v!==null)r.reason=v.trim()}
+  else{const v=prompt('Edit count:',r.count);if(v!==null)r.count=parseInt(v,10)||0}
+  _prismaSave();_renderPRISMASvg();
 }
-
 function _prismaDelReason(type,idx){
   const arr=type==='screen'?'screenExclReasons':'eligExclReasons';
-  if(_prismaState[arr])_prismaState[arr].splice(idx,1);
-  _prismaSave();
-  _renderPRISMASvg();
+  if(_prismaState[arr])_prismaState[arr].splice(idx,1);_prismaSave();_renderPRISMASvg();
 }
 
+// ── Refresh / Reset ──
 async function _prismaRefresh(){
   const auto=await _prismaAutoPopulate();
-  // Reset non-overridden values to fresh auto values
   for(const k of['dbOA','dbSS','dbCR','dbPM','otherDOI','otherBib','otherManual','duplicatesRemoved','recordsScreened','recordsExcluded','fullTextAssessed','studiesIncluded']){
-    if(!_prismaIsOverridden(k))_prismaState[k]=auto[k];
-  }
-  _prismaSave();
-  _renderPRISMASvg();
-  toast('PRISMA numbers refreshed from activity','ok');
+    if(!_prismaIsOverridden(k))_prismaState[k]=auto[k]}
+  _prismaSave();_renderPRISMASvg();_renderPrismaStageFilter();_renderPrismaTable();
+  toast('PRISMA numbers refreshed','ok');
 }
-
 function _prismaResetOverrides(){
-  if(!_prismaState)return;
-  _prismaState.overrides={};
-  _prismaSave();
-  _prismaRefresh();
+  if(!_prismaState)return;_prismaState.overrides={};_prismaState.stageOverrides={};
+  _prismaSave();_prismaRefresh();
 }
 
+// ── Export functions ──
 function _prismaGetSvgSource(){
-  const el=document.getElementById('prismaSvgEl');
-  if(!el)return null;
-  const clone=el.cloneNode(true);
-  // Inline computed styles for export
-  const lt=document.documentElement.classList.contains('light');
+  const el=document.getElementById('prismaSvgEl');if(!el)return null;
+  const clone=el.cloneNode(true);const lt=document.documentElement.classList.contains('light');
   clone.setAttribute('style','font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;background:'+(lt?'#ffffff':'#1F1D2B'));
-  // Add white/dark background rect
   const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
   bg.setAttribute('width','100%');bg.setAttribute('height','100%');bg.setAttribute('fill',lt?'#ffffff':'#1F1D2B');
-  clone.insertBefore(bg,clone.firstChild);
-  return new XMLSerializer().serializeToString(clone);
+  clone.insertBefore(bg,clone.firstChild);return new XMLSerializer().serializeToString(clone);
 }
-
-function _prismaExportSVG(){
-  const src=_prismaGetSvgSource();
-  if(!src)return toast('No chart to export','err');
-  dl(src,'prisma_2020_flow.svg','image/svg+xml');
-  toast('SVG exported','ok');
-}
-
+function _prismaExportSVG(){const src=_prismaGetSvgSource();if(!src)return toast('No chart','err');dl(src,'prisma_2020_flow.svg','image/svg+xml');toast('SVG exported','ok')}
 function _prismaExportPNG(){
-  const src=_prismaGetSvgSource();
-  if(!src)return toast('No chart to export','err');
-  const svgEl=document.getElementById('prismaSvgEl');
-  const vb=svgEl.viewBox.baseVal;
-  const scale=300/96; // 300 DPI
-  const w=vb.width*scale,h=vb.height*scale;
-  const canvas=document.createElement('canvas');
-  canvas.width=w;canvas.height=h;
-  const ctx=canvas.getContext('2d');
-  const img=new Image();
-  img.onload=()=>{
-    const lt=document.documentElement.classList.contains('light');
-    ctx.fillStyle=lt?'#ffffff':'#1F1D2B';
-    ctx.fillRect(0,0,w,h);
-    ctx.drawImage(img,0,0,w,h);
-    canvas.toBlob(blob=>{
-      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='prisma_2020_flow.png';a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-      toast('PNG exported (300 DPI)','ok');
-    },'image/png');
-  };
-  img.onerror=()=>toast('PNG export failed','err');
+  const src=_prismaGetSvgSource();if(!src)return toast('No chart','err');
+  const svgEl=document.getElementById('prismaSvgEl');const vb=svgEl.viewBox.baseVal;
+  const scale=300/96,w=vb.width*scale,h=vb.height*scale;
+  const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');
+  const img=new Image();img.onload=()=>{
+    const lt=document.documentElement.classList.contains('light');ctx.fillStyle=lt?'#ffffff':'#1F1D2B';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+    canvas.toBlob(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='prisma_2020_flow.png';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('PNG exported (300 DPI)','ok')},'image/png');
+  };img.onerror=()=>toast('PNG export failed','err');
   img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(src)));
 }
-
 function _prismaExportPDF(){
-  const src=_prismaGetSvgSource();
-  if(!src)return toast('No chart to export','err');
-  const svgEl=document.getElementById('prismaSvgEl');
-  const vb=svgEl.viewBox.baseVal;
-  const w=vb.width,h=vb.height;
-  // Build minimal PDF with embedded SVG as image
-  const scale=300/96;
-  const canvas=document.createElement('canvas');
-  canvas.width=w*scale;canvas.height=h*scale;
-  const ctx=canvas.getContext('2d');
-  const img=new Image();
-  img.onload=()=>{
-    const lt=document.documentElement.classList.contains('light');
-    ctx.fillStyle=lt?'#ffffff':'#1F1D2B';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(img,0,0,canvas.width,canvas.height);
-    canvas.toBlob(blob=>{
-      // Wrap in a simple HTML page that auto-prints as PDF
-      const reader=new FileReader();
-      reader.onload=()=>{
-        const dataUrl=reader.result;
-        const html=`<!DOCTYPE html><html><head><title>PRISMA 2020 Flow Diagram</title><style>@page{size:landscape;margin:0.5in}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}</style></head><body><img src="${dataUrl}"/><script>window.print()<\/script></body></html>`;
-        const w2=window.open('','_blank');
-        if(w2){w2.document.write(html);w2.document.close()}
-        else toast('Allow popups to export PDF','err');
-      };
-      reader.readAsDataURL(blob);
-    },'image/png');
-  };
-  img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(src)));
+  const src=_prismaGetSvgSource();if(!src)return toast('No chart','err');
+  const svgEl=document.getElementById('prismaSvgEl');const vb=svgEl.viewBox.baseVal;
+  const scale=300/96;const canvas=document.createElement('canvas');canvas.width=vb.width*scale;canvas.height=vb.height*scale;
+  const ctx=canvas.getContext('2d');const img=new Image();
+  img.onload=()=>{const lt=document.documentElement.classList.contains('light');ctx.fillStyle=lt?'#ffffff':'#1F1D2B';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    canvas.toBlob(blob=>{const rd=new FileReader();rd.onload=()=>{const html=`<!DOCTYPE html><html><head><title>PRISMA 2020 Flow Diagram</title><style>@page{size:landscape;margin:0.5in}body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}</style></head><body><img src="${rd.result}"/><script>window.print()<\/script></body></html>`;
+      const w2=window.open('','_blank');if(w2){w2.document.write(html);w2.document.close()}else toast('Allow popups to export PDF','err')};rd.readAsDataURL(blob)},'image/png');
+  };img.src='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(src)));
 }
-
 function _prismaExportDOCX(){
-  const v=k=>_prismaVal(k);
-  const totalDb=v('dbOA')+v('dbSS')+v('dbCR')+v('dbPM');
-  const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');
-  const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
-  const sReasons=(_prismaState?.screenExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join('; ');
-  const eReasons=(_prismaState?.eligExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join('; ');
-
-  const text=`PRISMA 2020 Flow Diagram\n${'='.repeat(40)}\n\nIDENTIFICATION\n`
-    +`Records identified from databases (n=${totalDb}):\n  OpenAlex (n=${v('dbOA')}), Semantic Scholar (n=${v('dbSS')}), CrossRef (n=${v('dbCR')}), PubMed (n=${v('dbPM')})\n`
-    +`Records from other sources (n=${totalOther}):\n  DOI import (n=${v('otherDOI')}), .bib/.ris import (n=${v('otherBib')}), Manual (n=${v('otherManual')})\n`
-    +`Duplicates removed (n=${v('duplicatesRemoved')})\nRecords after deduplication (n=${afterDedup})\n\n`
-    +`SCREENING\nRecords screened (n=${v('recordsScreened')})\nRecords excluded (n=${v('recordsExcluded')})${sReasons?'\n  Reasons: '+sReasons:''}\n\n`
-    +`ELIGIBILITY\nFull-text articles assessed (n=${v('fullTextAssessed')})\nFull-text articles excluded (n=${v('fullTextExcluded')})${eReasons?'\n  Reasons: '+eReasons:''}\n\n`
-    +`INCLUDED\nStudies included in review (n=${v('studiesIncluded')})\n`
-    +`  Quantitative synthesis (n=${v('quantSynthesis')})\n  Qualitative synthesis (n=${v('qualSynthesis')})\n`;
-
-  // Build minimal DOCX
-  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const lines=text.split('\n');
-  const xmlBody=lines.map(l=>{
-    const bold=l.match(/^(IDENTIFICATION|SCREENING|ELIGIBILITY|INCLUDED|PRISMA)/);
-    return`<w:p><w:r>${bold?'<w:rPr><w:b/></w:rPr>':''}<w:t xml:space="preserve">${esc(l)}</w:t></w:r></w:p>`;
-  }).join('');
-  const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${xmlBody}</w:body></w:document>`;
-
-  dl(text,'prisma_2020_flow.txt','text/plain');
-  toast('PRISMA flow exported as text (paste into Word)','ok');
+  const v=k=>_prismaVal(k);const totalDb=v('dbOA')+v('dbSS')+v('dbCR')+v('dbPM');
+  const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
+  const sR=(_prismaState?.screenExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join('; ');
+  const eR=(_prismaState?.eligExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join('; ');
+  const text=`PRISMA 2020 Flow Diagram\n${'='.repeat(40)}\n\nIDENTIFICATION\nRecords identified from databases (n=${totalDb}):\n  OpenAlex (n=${v('dbOA')}), Semantic Scholar (n=${v('dbSS')}), CrossRef (n=${v('dbCR')}), PubMed (n=${v('dbPM')})\nRecords from other sources (n=${totalOther}):\n  DOI import (n=${v('otherDOI')}), .bib/.ris import (n=${v('otherBib')}), Manual (n=${v('otherManual')})\nDuplicates removed (n=${v('duplicatesRemoved')})\nRecords after deduplication (n=${afterDedup})\n\nSCREENING\nRecords screened (n=${v('recordsScreened')})\nRecords excluded (n=${v('recordsExcluded')})${sR?'\n  Reasons: '+sR:''}\n\nELIGIBILITY\nFull-text articles assessed (n=${v('fullTextAssessed')})\nFull-text articles excluded (n=${v('fullTextExcluded')})${eR?'\n  Reasons: '+eR:''}\n\nINCLUDED\nStudies included in review (n=${v('studiesIncluded')})\n  Quantitative synthesis (n=${v('quantSynthesis')})\n  Qualitative synthesis (n=${v('qualSynthesis')})\n`;
+  dl(text,'prisma_2020_flow.txt','text/plain');toast('PRISMA flow exported as text','ok');
 }
-
 function _prismaCopyText(){
-  const v=k=>_prismaVal(k);
-  const totalDb=v('dbOA')+v('dbSS')+v('dbCR')+v('dbPM');
-  const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');
-  const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
-  const sReasons=(_prismaState?.screenExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join(', ');
-  const eReasons=(_prismaState?.eligExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join(', ');
-
-  let text=`A total of ${totalDb} records were identified through database searching (OpenAlex n=${v('dbOA')}, Semantic Scholar n=${v('dbSS')}, CrossRef n=${v('dbCR')}, PubMed n=${v('dbPM')})`;
-  if(totalOther>0)text+=`, with an additional ${totalOther} records from other sources (DOI import n=${v('otherDOI')}, file import n=${v('otherBib')}, manual n=${v('otherManual')})`;
-  text+=`. After removing ${v('duplicatesRemoved')} duplicates, ${afterDedup} records were screened`;
-  if(v('recordsExcluded')>0){text+=`, of which ${v('recordsExcluded')} were excluded`;if(sReasons)text+=` (${sReasons})`}
-  text+=`. ${v('fullTextAssessed')} full-text articles were assessed for eligibility`;
-  if(v('fullTextExcluded')>0){text+=`, with ${v('fullTextExcluded')} excluded`;if(eReasons)text+=` (${eReasons})`}
-  text+=`. ${v('studiesIncluded')} studies were included in the final review`;
-  if(v('quantSynthesis')>0||v('qualSynthesis')>0){
-    const parts=[];
-    if(v('quantSynthesis')>0)parts.push(`${v('quantSynthesis')} in quantitative synthesis`);
-    if(v('qualSynthesis')>0)parts.push(`${v('qualSynthesis')} in qualitative synthesis`);
-    text+=` (${parts.join(', ')})`;
-  }
-  text+='.';
-
-  navigator.clipboard.writeText(text).then(()=>toast('PRISMA text copied to clipboard','ok')).catch(()=>{
-    // Fallback
-    const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();
-    toast('PRISMA text copied','ok');
-  });
+  const v=k=>_prismaVal(k);const totalDb=v('dbOA')+v('dbSS')+v('dbCR')+v('dbPM');
+  const totalOther=v('otherDOI')+v('otherBib')+v('otherManual');const afterDedup=Math.max(0,totalDb+totalOther-v('duplicatesRemoved'));
+  const sR=(_prismaState?.screenExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join(', ');
+  const eR=(_prismaState?.eligExclReasons||[]).map(r=>`${r.reason} (n=${r.count})`).join(', ');
+  let t=`A total of ${totalDb} records were identified through database searching (OpenAlex n=${v('dbOA')}, Semantic Scholar n=${v('dbSS')}, CrossRef n=${v('dbCR')}, PubMed n=${v('dbPM')})`;
+  if(totalOther>0)t+=`, with an additional ${totalOther} records from other sources (DOI import n=${v('otherDOI')}, file import n=${v('otherBib')}, manual n=${v('otherManual')})`;
+  t+=`. After removing ${v('duplicatesRemoved')} duplicates, ${afterDedup} records were screened`;
+  if(v('recordsExcluded')>0){t+=`, of which ${v('recordsExcluded')} were excluded`;if(sR)t+=` (${sR})`}
+  t+=`. ${v('fullTextAssessed')} full-text articles were assessed for eligibility`;
+  if(v('fullTextExcluded')>0){t+=`, with ${v('fullTextExcluded')} excluded`;if(eR)t+=` (${eR})`}
+  t+=`. ${v('studiesIncluded')} studies were included in the final review`;
+  if(v('quantSynthesis')>0||v('qualSynthesis')>0){const p=[];if(v('quantSynthesis')>0)p.push(`${v('quantSynthesis')} in quantitative synthesis`);if(v('qualSynthesis')>0)p.push(`${v('qualSynthesis')} in qualitative synthesis`);t+=` (${p.join(', ')})`}
+  t+='.';
+  navigator.clipboard.writeText(t).then(()=>toast('PRISMA text copied to clipboard','ok')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('PRISMA text copied','ok')});
 }
 
-// Legacy wrapper — old button in Gap Analysis tab still works
-async function buildPRISMADiagram(){openPRISMAPanel()}
+// ── Legacy wrapper + button in Lit tab opens PRISMA tab ──
+async function buildPRISMADiagram(){goTab('prisma')}
+function openPRISMAPanel(){goTab('prisma')}
 
 // ═══ 4. BETTER SEARCH & DISCOVERY ═══
 let _queryRows=[{field:'all',op:'AND',term:''}];
@@ -3988,11 +3908,7 @@ function enhanceLitTab(){
     const greyBtn=document.createElement('button');greyBtn.className='bt sm';greyBtn.textContent='Grey Lit';
     greyBtn.onclick=greyLitSearch;greyBtn.style.cssText='color:var(--wa);border-color:rgba(212,160,74,.2)';
     const filtersWrap=$('#litFiltersBtn')?.parentElement;
-    if(filtersWrap)filterRow.insertBefore(greyBtn,filtersWrap);
-    // PRISMA Flow Chart button — placed near systematic review workflow elements
-    const prismaBtn=document.createElement('button');prismaBtn.className='bt sm';prismaBtn.innerHTML='PRISMA Flow';
-    prismaBtn.onclick=openPRISMAPanel;prismaBtn.title='Generate PRISMA 2020 flow diagram from your search and screening activity';prismaBtn.style.cssText='color:var(--lv);border-color:rgba(155,142,196,.25)';
-    if(filtersWrap)filterRow.insertBefore(prismaBtn,filtersWrap)}
+    if(filtersWrap)filterRow.insertBefore(greyBtn,filtersWrap)}
   // Add search log section — collapsed by default with summary line
   const logSection=document.createElement('div');logSection.id='litLogSection';
   logSection.innerHTML=`<div class="sec" style="margin-top:14px"><div class="sh" onclick="const sb=this.nextElementSibling;const open=sb.style.display!=='none';sb.style.display=open?'none':'block';this.querySelector('.sh-chevron').style.transform=open?'rotate(-90deg)':'';if(!open&&typeof renderSearchLog==='function')renderSearchLog()"><h4>Search Audit Log · ${_searchAudit.length} searches</h4><span class="sh-chevron" style="margin-left:auto;display:inline-flex;transform:rotate(-90deg);transition:transform .25s"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="var(--tm)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 4 10 8 6 12"/></svg></span></div><div class="sb" style="display:none" id="searchLogContent"></div></div>`;
@@ -4002,7 +3918,7 @@ setTimeout(enhanceLitTab,100);
 // ═══ UPDATE TAB NAVIGATION ═══
 // (goTab extensions consolidated into single patch below at breadcrumb section)
 // Update keyboard shortcuts for new tabs
-const tabsList=['lit','species','env','library','publications','archive','fielddata','workshop','graph','gaps','ecostats','studydesign','ai'];
+const tabsList=['lit','species','env','library','prisma','publications','archive','fielddata','workshop','graph','gaps','ecostats','studydesign','ai'];
 
 // Keyboard hint
 const kbHint=document.createElement('div');kbHint.className='kbd-hint';kbHint.innerHTML='Ctrl+1-8 tabs · Ctrl+B sidebar · Ctrl+Enter search · Ctrl+Z undo · Ctrl+Shift+E errors';document.body.appendChild(kbHint);
