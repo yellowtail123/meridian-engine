@@ -12,6 +12,7 @@ const FILES = [
   "meridian.css",
   "meridian-core.js",
   "meridian-data.js",
+  "meridian-boolean.js",
   "meridian-features.js",
   "meridian-workshop.js",
   "meridian-stats.js",
