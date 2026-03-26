@@ -3,13 +3,15 @@ const ALLOWED_ORIGINS = [
   'https://www.meridian-engine.com',
 ];
 
-const ALLOWED_PATHS = ['/api/fishbase/species', '/api/fishbase/ecology'];
-const RATE_LIMIT_MAX = 60; // per minute per IP
+const ALLOWED_ENDPOINTS = [
+  'species', 'comnames', 'ecology', 'estimate', 'taxa',
+  'synonyms', 'stocks', 'country', 'diet', 'morphology',
+  'maturity', 'popchar'
+];
 
-// In-memory rate limit counters
+const UPSTREAM = 'https://fishbase.ropensci.org';
+const RATE_LIMIT_MAX = 60;
 const rateLimits = new Map();
-// In-memory species cache (loaded from KV on first request)
-let speciesData = null;
 
 function isOriginAllowed(request) {
   const origin = request.headers.get('Origin') || '';
@@ -44,13 +46,11 @@ function checkRateLimit(ip) {
   return entry.count <= RATE_LIMIT_MAX;
 }
 
-async function loadData(env) {
-  if (speciesData) return speciesData;
-  const raw = await env.FISHBASE_DATA.get('species_lookup');
-  if (raw) {
-    speciesData = JSON.parse(raw);
-  }
-  return speciesData;
+function jsonResponse(body, status, cors) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
+  });
 }
 
 export default {
@@ -76,82 +76,55 @@ export default {
     const url = new URL(request.url);
     const pathname = url.pathname;
 
-    if (!ALLOWED_PATHS.some(p => pathname === p)) {
-      return new Response('Not found', { status: 404, headers: cors });
+    // Parse route: /api/fishbase/{endpoint} or /api/sealifebase/{endpoint}
+    let db = null, endpoint = null;
+    const fbMatch = pathname.match(/^\/api\/fishbase\/(\w+)$/);
+    const slbMatch = pathname.match(/^\/api\/sealifebase\/(\w+)$/);
+    if (fbMatch) { db = 'fishbase'; endpoint = fbMatch[1]; }
+    else if (slbMatch) { db = 'sealifebase'; endpoint = slbMatch[1]; }
+
+    if (!db || !endpoint || !ALLOWED_ENDPOINTS.includes(endpoint)) {
+      return jsonResponse({ error: 'Not found' }, 404, cors);
     }
 
-    // Load species data from KV
-    const data = await loadData(env);
-    if (!data) {
-      return jsonResponse({ error: 'Data not loaded' }, 503, cors);
+    // Build upstream URL
+    // FishBase: https://fishbase.ropensci.org/{endpoint}?params
+    // SeaLifeBase: https://fishbase.ropensci.org/sealifebase/{endpoint}?params
+    const upstreamPath = db === 'sealifebase' ? `/sealifebase/${endpoint}` : `/${endpoint}`;
+    const upstreamUrl = `${UPSTREAM}${upstreamPath}?${url.searchParams.toString()}`;
+
+    // Check Cloudflare cache first
+    const cacheKey = new Request(upstreamUrl, request);
+    const cache = caches.default;
+    let cached = await cache.match(cacheKey);
+    if (cached) {
+      const resp = new Response(cached.body, cached);
+      Object.entries(cors).forEach(([k, v]) => resp.headers.set(k, v));
+      return resp;
     }
 
-    const genus = url.searchParams.get('Genus') || '';
-    const species = url.searchParams.get('Species') || '';
-    const specCode = url.searchParams.get('SpecCode');
+    // Forward to upstream
+    try {
+      const upstream = await fetch(upstreamUrl, {
+        headers: { 'Accept': 'application/json', 'User-Agent': 'Meridian/1.0' },
+        cf: { cacheTtl: 86400, cacheEverything: true },
+      });
 
-    if (pathname === '/api/fishbase/species') {
-      // Look up by Genus + Species
-      if (genus) {
-        const key = species ? `${genus} ${species}` : null;
-        if (key && data[key]) {
-          // Exact match
-          const entry = { ...data[key] };
-          delete entry._eco; // /species only returns species data, not ecology
-          return jsonResponse({ data: [entry] }, 200, cors);
-        }
-        // Genus-level search: return all species in genus
-        const matches = [];
-        const prefix = genus + ' ';
-        for (const [k, v] of Object.entries(data)) {
-          if (k.startsWith(prefix)) {
-            const entry = { ...v };
-            entry.Genus = genus;
-            entry.Species = k.slice(prefix.length);
-            delete entry._eco;
-            matches.push(entry);
-          }
-          if (matches.length >= 50) break;
-        }
-        if (matches.length) return jsonResponse({ data: matches }, 200, cors);
+      if (!upstream.ok) {
+        return jsonResponse({ error: `Upstream error: ${upstream.status}` }, upstream.status, cors);
       }
-      // Search by SpecCode
-      if (specCode) {
-        const sc = parseInt(specCode);
-        for (const [k, v] of Object.entries(data)) {
-          if (v.SpecCode === sc) {
-            const entry = { ...v };
-            const parts = k.split(' ');
-            entry.Genus = parts[0];
-            entry.Species = parts.slice(1).join(' ');
-            delete entry._eco;
-            return jsonResponse({ data: [entry] }, 200, cors);
-          }
-        }
-      }
-      return jsonResponse({ data: [] }, 200, cors);
-    }
 
-    if (pathname === '/api/fishbase/ecology') {
-      // Look up ecology by SpecCode
-      if (specCode) {
-        const sc = parseInt(specCode);
-        for (const [k, v] of Object.entries(data)) {
-          if (v.SpecCode === sc && v._eco) {
-            return jsonResponse({ data: [{ SpecCode: sc, ...v._eco }] }, 200, cors);
-          }
-        }
-      }
-      return jsonResponse({ data: [] }, 200, cors);
-    }
+      const data = await upstream.json();
+      const resp = new Response(JSON.stringify(data), {
+        status: 200,
+        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
+      });
 
-    return jsonResponse({ error: 'Not found' }, 404, cors);
+      // Cache the response
+      ctx.waitUntil(cache.put(cacheKey, resp.clone()));
+      return resp;
+    } catch (e) {
+      return jsonResponse({ error: 'Upstream fetch failed' }, 502, cors);
+    }
   },
 };
-
-function jsonResponse(body, status, cors) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
-  });
-}
