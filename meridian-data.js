@@ -711,6 +711,66 @@ function clusterOcc(points,gridSize){
   });
   return Object.values(grid).map(c=>({lat:c.lat/c.n,lon:c.lon/c.n,n:c.n}));
 }
+
+// ═══ LAND MASK — filter occurrence records that fall on land ═══
+let _landGeo=null;let _landLoading=null;
+async function _loadLandMask(){
+  if(_landGeo)return _landGeo;
+  if(_landLoading)return _landLoading;
+  _landLoading=(async()=>{
+    try{const r=await fetch('ne_110m_land.min.geojson');if(r.ok){_landGeo=await r.json();return _landGeo}}catch(e){_warn('landmask',e)}
+    return null;
+  })();
+  return _landLoading;
+}
+function _pointInRing(lat,lon,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    if((yi>lat)!==(yj>lat)&&lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)inside=!inside;
+  }
+  return inside;
+}
+function _isOnLand(lat,lon){
+  if(!_landGeo?.features)return false;
+  for(const f of _landGeo.features){
+    const g=f.geometry;if(!g)continue;
+    const polys=g.type==='MultiPolygon'?g.coordinates:g.type==='Polygon'?[g.coordinates]:[];
+    for(const rings of polys){
+      if(!_pointInRing(lat,lon,rings[0]))continue;
+      let inHole=false;
+      for(let h=1;h<rings.length;h++){if(_pointInRing(lat,lon,rings[h])){inHole=true;break}}
+      if(!inHole)return true;
+    }
+  }
+  return false;
+}
+function _validateCoord(lat,lon){
+  if(lat==null||lon==null||typeof lat!=='number'||typeof lon!=='number')return false;
+  if(isNaN(lat)||isNaN(lon))return false;
+  if(lat<-90||lat>90||lon<-180||lon>180)return false;
+  if(lat===0&&lon===0)return false;
+  if(lat===lon&&lat!==0)return false;
+  if(Number.isInteger(lat)&&Number.isInteger(lon))return false;
+  return true;
+}
+let _spShowAll=false;
+function _filterOccurrences(gbifOcc,obisOcc,isMarine){
+  const raw={gbif:gbifOcc.length,obis:obisOcc.length};
+  let coordInvalid=0,landFiltered=0;
+  function filterArr(arr,latKey,lonKey){
+    return arr.filter(o=>{
+      const lat=o[latKey],lon=o[lonKey];
+      if(!_validateCoord(lat,lon)){coordInvalid++;return false}
+      if(isMarine&&_landGeo&&_isOnLand(lat,lon)){landFiltered++;return false}
+      return true;
+    });
+  }
+  const gF=filterArr(gbifOcc,'decimalLatitude','decimalLongitude');
+  const oF=filterArr(obisOcc,'decimalLatitude','decimalLongitude');
+  return{gbifOcc:gF,obisOcc:oF,stats:{rawTotal:raw.gbif+raw.obis,filtered:gF.length+oF.length,coordInvalid,landFiltered}};
+}
+
 const _speciesCache=new Map();
 const FB_PROXY='/api/fishbase';
 // ═══ SPECIES — WoRMS primary, GBIF+OBIS parallel, FishBase via proxy ═══
@@ -755,8 +815,8 @@ await Promise.all([
 (async()=>{try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(sciName)}&limit=300&hasCoordinate=true`,12000);if(r.ok){const d=await r.json();gbifOcc=d.results||[]}}catch{}})(),
 (async()=>{try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(sciName)}&size=300`,12000);if(r.ok){const d=await r.json();obisOcc=d.results||[]}}catch{}})(),
 (async()=>{if(!genus)return;try{
-  const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=3`,8000);
-  if(r.ok){const d=await r.json();fb=(d.data||[])[0]||{};
+  const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(genus)}&Species=${encodeURIComponent(species)}&limit=10`,8000);
+  if(r.ok){const d=await r.json();const fbAll=d.data||[];fb=fbAll.find(s=>s.Species&&s.Species.toLowerCase()===species.toLowerCase())||fbAll[0]||{};
     if(fb.SpecCode){try{const er=await fetchT(`${FB_PROXY}/ecology?SpecCode=${fb.SpecCode}&limit=1`,6000);
     if(er.ok){const ed=await er.json();fb._eco=(ed.data||[])[0]||{}}}catch{}}
   }}catch{}})(),
@@ -765,10 +825,16 @@ await Promise.all([
 (async()=>{if(!worms?.AphiaID)return;try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaAttributesByAphiaID/${worms.AphiaID}`,8000);if(r.ok)attributes=await r.json()||[]}catch{}})(),
 (async()=>{if(!worms?.AphiaID)return;try{const r=await fetchT(`https://www.marinespecies.org/rest/AphiaDistributionsByAphiaID/${worms.AphiaID}`,8000);if(r.ok)distributions=await r.json()||[]}catch{}})(),
 (async()=>{try{const nm=sciName||q;const r=await fetchT(`https://www.boldsystems.org/index.php/API_Public/combined?taxon=${encodeURIComponent(nm)}&format=json`,10000);if(r.ok){const txt=await r.text();try{const d=JSON.parse(txt);const recs=d.bold_records?.records;window._spBOLD=recs?Object.keys(recs).length:0}catch{window._spBOLD=0}}else window._spBOLD=0}catch{window._spBOLD=0}})(),
-(async()=>{try{const nm=sciName||q;const r=await fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term=${encodeURIComponent(nm)}[Organism]&retmode=json`,8000);if(r.ok){const d=await r.json();window._spGenBank=parseInt(d.esearchresult?.count||'0')}else window._spGenBank=0}catch{window._spGenBank=0}})()
+(async()=>{try{const nm=sciName||q;const r=await fetchT(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=nucleotide&term=${encodeURIComponent(nm)}[Organism]&retmode=json`,8000);if(r.ok){const d=await r.json();window._spGenBank=parseInt(d.esearchresult?.count||'0')}else window._spGenBank=0}catch{window._spGenBank=0}})(),
+_loadLandMask()
 ]);
 hi('#sload');
-window._sp={genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey,vernaculars,attributes,distributions};
+// Filter occurrences: coordinate validation + land mask for marine species
+const isMarine=worms?.isMarine===1||worms?.isMarine===true;
+const filt=_filterOccurrences(gbifOcc,obisOcc,isMarine);
+const _rawGbifOcc=gbifOcc,_rawObisOcc=obisOcc;
+if(!_spShowAll){gbifOcc=filt.gbifOcc;obisOcc=filt.obisOcc}
+window._sp={genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey,vernaculars,attributes,distributions,_rawGbifOcc,_rawObisOcc,_occStats:filt.stats};
 _speciesCache.set(cacheKey,window._sp);if(_speciesCache.size>10){const oldest=[..._speciesCache.keys()];_speciesCache.delete(oldest[0])}
 if(typeof _pushActivity==='function')_pushActivity('species',sciName||q,{name:sciName||q});
 renderSpeciesResult()}
@@ -811,7 +877,15 @@ if(ecoItems.length)h+=`<div class="sp-card"><div class="lbl">Ecology (WoRMS)</di
 const dists=distributions||[];
 if(dists.length)h+=`<div class="sp-card"><div class="lbl">Known Regions</div><div class="val" style="font-size:12px;line-height:1.6">${dists.slice(0,12).map(d=>`<span style="color:var(--ts)">${escHTML(d.locality||d.locationID||'')}</span>`).join(' · ')}${dists.length>12?` <span style="color:var(--tm)">+${dists.length-12} more</span>`:''}</div></div>`;
 // Occurrences
-h+=`<div class="sp-card"><div class="lbl">Occurrences</div><div class="val">GBIF: <b>${gbifOcc.length}</b> · OBIS: <b>${obisOcc.length}</b> · Total: <b style="color:var(--ac)">${tot}</b></div></div>`;
+const os=window._sp._occStats;
+let occHtml=`GBIF: <b>${gbifOcc.length}</b> · OBIS: <b>${obisOcc.length}</b> · Total: <b style="color:var(--ac)">${tot}</b>`;
+if(os&&(os.coordInvalid>0||os.landFiltered>0)){
+  occHtml+=`<div style="font-size:11px;color:var(--tm);margin-top:4px;font-family:var(--mf)">Showing ${os.filtered} of ${os.rawTotal} records`;
+  if(os.coordInvalid>0)occHtml+=` · ${os.coordInvalid} invalid coords removed`;
+  if(os.landFiltered>0)occHtml+=` · ${os.landFiltered} land-based records filtered`;
+  occHtml+=`</div><div style="margin-top:4px"><label style="font-size:11px;color:var(--tm);cursor:pointer;font-family:var(--mf)"><input type="checkbox" id="spShowAll" ${_spShowAll?'checked':''} onchange="_toggleShowAll(this.checked)" style="margin-right:4px">Show all records including unverified</label></div>`;
+}
+h+=`<div class="sp-card"><div class="lbl">Occurrences</div><div class="val">${occHtml}</div></div>`;
 // BOLD Barcodes
 if(window._spBOLD>0)h+=`<div class="sp-card"><div class="lbl">BOLD Barcodes</div><div class="val"><b style="color:var(--ac)">${window._spBOLD.toLocaleString()}</b> records<br><a href="https://www.boldsystems.org/index.php/Taxbrowser_Taxonpage?taxon=${encodeURIComponent(sciName)}" target="_blank" style="font-size:11px">View on BOLD →</a></div></div>`;
 // GenBank
@@ -888,15 +962,28 @@ function sendProfWS(){const d=window._sp;if(!d)return;S.wsC=['Field','Value'];S.
 function dlSpCSV(){const d=window._sp;if(!d)return;dl(['Source,Species,Lat,Lon,Depth,Year,Country',...d.gbifOcc.map(o=>`GBIF,"${d.sciName}",${o.decimalLatitude||''},${o.decimalLongitude||''},${o.depth||''},${o.year||''},${o.country||''}`),...d.obisOcc.map(o=>`OBIS,"${d.sciName}",${o.decimalLatitude||''},${o.decimalLongitude||''},${o.depth||''},${o.date_year||''},${o.country||''}`)].join('\n'),d.sciName.replace(/ /g,'_')+'.csv','text/csv')}
 async function loadMoreOcc(){
   if(!window._sp)return;const d=window._sp;const btn=$('#loadMoreOccBtn');if(btn)btn.textContent='Loading...';
-  try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(d.sciName)}&limit=300&hasCoordinate=true&offset=${d.gbifOcc.length}`,12000);
-    if(r.ok){const rd=await r.json();d.gbifOcc=[...d.gbifOcc,...(rd.results||[])]}}catch{}
-  try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(d.sciName)}&size=300&after=${d.obisOcc.length}`,12000);
-    if(r.ok){const rd=await r.json();d.obisOcc=[...d.obisOcc,...(rd.results||[])]}}catch{}
-  toast(`Now ${d.gbifOcc.length} GBIF + ${d.obisOcc.length} OBIS occurrences`,'ok');renderSpeciesResult()}
+  const rawG=d._rawGbifOcc||d.gbifOcc,rawO=d._rawObisOcc||d.obisOcc;
+  try{const r=await fetchT(`https://api.gbif.org/v1/occurrence/search?scientificName=${encodeURIComponent(d.sciName)}&limit=300&hasCoordinate=true&offset=${rawG.length}`,12000);
+    if(r.ok){const rd=await r.json();d._rawGbifOcc=[...rawG,...(rd.results||[])]}}catch{}
+  try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(d.sciName)}&size=300&after=${rawO.length}`,12000);
+    if(r.ok){const rd=await r.json();d._rawObisOcc=[...rawO,...(rd.results||[])]}}catch{}
+  const isMarine=d.worms?.isMarine===1||d.worms?.isMarine===true;
+  const filt=_filterOccurrences(d._rawGbifOcc,d._rawObisOcc,isMarine);
+  d._occStats=filt.stats;
+  if(_spShowAll){d.gbifOcc=d._rawGbifOcc;d.obisOcc=d._rawObisOcc}else{d.gbifOcc=filt.gbifOcc;d.obisOcc=filt.obisOcc}
+  toast(`Now ${d._rawGbifOcc.length} GBIF + ${d._rawObisOcc.length} OBIS raw occurrences`,'ok');renderSpeciesResult()}
 let _spMode='search';
 function _spSetMode(mode){_spMode=mode;const sq=$('#sq');const ssb=$('#ssb');$('#sp-mode-search').classList.toggle('on',mode==='search');$('#sp-mode-compare').classList.toggle('on',mode==='compare');if(mode==='compare'){sq.placeholder='Enter 2–3 species separated by commas';ssb.textContent='Compare';ssb.className='bt bt-sec'}else{sq.placeholder='Scientific or common name (e.g. Tursiops truncatus, humpback whale, clownfish)';ssb.textContent='Search';ssb.className='bt bt-pri'}}
 $('#ssb').addEventListener('click',()=>{if(_spMode==='compare')openSpeciesCompare($('#sq').value.trim());else speciesSearch()});$('#sq').addEventListener('keydown',e=>{if(e.key==='Enter'){if(_spMode==='compare')openSpeciesCompare($('#sq').value.trim());else speciesSearch()}});
 function pickSpecies(name){$('#sq').value=name;speciesSearch()}
+function _toggleShowAll(checked){
+  _spShowAll=checked;
+  if(!window._sp)return;
+  const d=window._sp;
+  if(_spShowAll){d.gbifOcc=d._rawGbifOcc||d.gbifOcc;d.obisOcc=d._rawObisOcc||d.obisOcc}
+  else{const isMarine=d.worms?.isMarine===1||d.worms?.isMarine===true;const filt=_filterOccurrences(d._rawGbifOcc||d.gbifOcc,d._rawObisOcc||d.obisOcc,isMarine);d.gbifOcc=filt.gbifOcc;d.obisOcc=filt.obisOcc;d._occStats=filt.stats}
+  renderSpeciesResult();
+}
 function searchSpeciesLit(){if(window._sp){$('#lq').value=window._sp.sciName;goTab('lit');_litPage=0;litSearch()}}
 function searchSpeciesGaps(){if(window._sp){goTab('gaps');const gi=$('#gapsSpecies');if(gi)gi.value=window._sp.sciName}}
 // ═══ P2.1 CONSERVATION & PROTECTION (lazy) ═══
@@ -1173,8 +1260,8 @@ async function openSpeciesCompare(namesInput){
       if(r.ok){const d=await r.json();data.gbifOcc=d.results||[]}}catch{}
     try{const r=await fetchT(`https://api.obis.org/v3/occurrence?scientificname=${encodeURIComponent(data.sciName)}&size=300`,10000);
       if(r.ok){const d=await r.json();data.obisOcc=d.results||[]}}catch{}
-    if(data.worms?.genus){try{const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(data.worms.genus)}&Species=${encodeURIComponent(data.worms.species||'')}&limit=3`,8000);
-      if(r.ok){const d=await r.json();data.fb=(d.data||[])[0]||{}}}catch{}}
+    if(data.worms?.genus){try{const r=await fetchT(`${FB_PROXY}/species?Genus=${encodeURIComponent(data.worms.genus)}&Species=${encodeURIComponent(data.worms.species||'')}&limit=10`,8000);
+      if(r.ok){const d=await r.json();const fbAll=d.data||[];data.fb=fbAll.find(s=>s.Species&&s.Species.toLowerCase()===(data.worms.species||'').toLowerCase())||fbAll[0]||{}}}catch{}}
     data.depths=[...data.gbifOcc.filter(o=>o.depth!=null).map(o=>o.depth),...data.obisOcc.filter(o=>o.depth!=null).map(o=>o.depth)];
     data.years=[...data.gbifOcc.filter(o=>o.year).map(o=>o.year),...data.obisOcc.filter(o=>o.date_year).map(o=>o.date_year)];
     results.push(data);await new Promise(r=>setTimeout(r,200))}
