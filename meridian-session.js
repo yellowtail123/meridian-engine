@@ -26,8 +26,17 @@ async function buildSessionSummary() {
 
   // ── ACTIVE PROJECT ──
   try {
-    const proj = S.activeProject || safeParse('meridian_active_project', 'Default') || 'Default';
-    sections.push(`ACTIVE PROJECT\n- Name: ${proj}`);
+    if(typeof MeridianProjects!=='undefined'&&MeridianProjects.active){
+      const p=MeridianProjects.active;
+      let s=`ACTIVE PROJECT\n- Name: ${p.name}`;
+      if(p.description)s+=`\n- Description: ${p.description}`;
+      const sp=MeridianProjects.focusSpecies;
+      if(sp&&sp.length)s+=`\n- Focus species: ${sp.map(x=>x.scientific_name).join(', ')}`;
+      sections.push(s);
+    }else{
+      const proj = S.activeProject || safeParse('meridian_active_project', 'Default') || 'Default';
+      sections.push(`ACTIVE PROJECT\n- Name: ${proj}`);
+    }
   } catch (e) {}
 
   // ── LITERATURE SEARCHES ──

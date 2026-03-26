@@ -2877,7 +2877,8 @@ function exportEvidenceMarkdown(){
 
 // ═══ PRISMA 2020 FLOW CHART — DEDICATED TAB ═══
 let _prismaState=null;
-const _PRISMA_KEY='meridian_prisma';
+function _PRISMA_KEY(){const pid=typeof MeridianProjects!=='undefined'&&MeridianProjects.activeId?MeridianProjects.activeId:'default';return'meridian_prisma_'+pid}
+const _PRISMA_KEY_LEGACY='meridian_prisma';
 let _prismaTableSort='stage';
 let _prismaTableDir=1;
 let _prismaTableFilter='all';
@@ -2886,11 +2887,11 @@ const _PRISMA_STAGES=['identification','screening','eligibility','included','exc
 const _PRISMA_STAGE_LABELS={identification:'Identification',screening:'Screening',eligibility:'Eligibility',included:'Included',excluded:'Excluded'};
 const _PRISMA_STAGE_COLORS={identification:'var(--ac)',screening:'var(--wa)',eligibility:'var(--lv)',included:'var(--sg)',excluded:'var(--co)'};
 
-function _prismaLoad(){_prismaState=safeParse(_PRISMA_KEY,null);return _prismaState}
+function _prismaLoad(){_prismaState=safeParse(_PRISMA_KEY(),null)||safeParse(_PRISMA_KEY_LEGACY,null);return _prismaState}
 function _prismaSave(){
   if(!_prismaState)return;
   _prismaState.updatedAt=new Date().toISOString();
-  safeStore(_PRISMA_KEY,_prismaState);
+  safeStore(_PRISMA_KEY(),_prismaState);
   if(typeof _queuePush==='function'&&typeof _supaUser!=='undefined'&&_supaUser)_queuePush({type:'save_settings'});
 }
 

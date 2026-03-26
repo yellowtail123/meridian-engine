@@ -8,10 +8,15 @@ function _getRecentActivity(){
 function _pushActivity(type,title,data){
   const items=_getRecentActivity();
   items.unshift({type,title,data,timestamp:new Date().toISOString()});
-  // deduplicate by type+title, keep max 20
   const seen=new Set();
   const deduped=items.filter(i=>{const k=i.type+':'+i.title;if(seen.has(k))return false;seen.add(k);return true}).slice(0,20);
   localStorage.setItem('meridian_activity',JSON.stringify(deduped));
+  // Also log to project activity
+  if(typeof MeridianProjects!=='undefined'&&MeridianProjects.activeId){
+    const actionMap={paper:'paper_added',species:'species_searched',env:'data_fetched',publication:'paper_added',dataset:'data_fetched'};
+    const action=actionMap[type]||type;
+    MeridianProjects.logActivity(action,{name:title,...(data||{})}).catch(()=>{});
+  }
 }
 window._pushActivity=_pushActivity;
 

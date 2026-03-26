@@ -30,6 +30,8 @@ function saveNote(id,txt){const p=S.lib.find(x=>x.id===id);if(p){p.notes=txt;dbP
 async function savePaper(p){_errPipeline.crumb('action','Save paper: '+(p.title||'').slice(0,50));if(!db)await openDB();const existing=S.lib.find(x=>x.id===p.id);const pp={...p,id:p.id||'m'+Date.now()+Math.random(),savedAt:existing?.savedAt||new Date().toISOString(),tags:existing?.tags||p.tags||[],notes:existing?.notes||p.notes||'',findings:existing?.findings||p.findings||null,project:existing?.project||p.project||S.activeProject||'Default'};await dbPut(pp);await loadLib();
 if(typeof PADI!=='undefined'&&PADI.onPaperSaved)PADI.onPaperSaved(pp);
 if(typeof _pushActivity==='function')_pushActivity('paper',(pp.title||'Untitled paper').slice(0,80),{id:pp.id,source:pp.source});
+// Auto-assign to active project
+if(typeof MeridianProjects!=='undefined'&&MeridianProjects.activeId){MeridianProjects.assignPaper(pp.id).catch(()=>{});MeridianProjects.logActivity('paper_added',{id:pp.id,title:(pp.title||'').slice(0,80)}).catch(()=>{})}
 // Flash confirmation on the button that triggered this
 const btns=document.querySelectorAll('.bt.sm.on');btns.forEach(b=>{if(b.textContent.includes('Save')&&!b._flashing){b._flashing=true;const orig=b.textContent;b.textContent='✓ Saved!';b.style.color='var(--sg)';b.style.borderColor='var(--sb)';setTimeout(()=>{b.textContent=orig;b.style.color='';b.style.borderColor='';b._flashing=false},1200)}})}
 async function saveAllToLib(){for(const p of S.litR)await savePaper(p);goTab('library')}
@@ -43,13 +45,17 @@ function renderLib(resetLimit){
   const sqLower=sq.toLowerCase();
   const advTokens=parseAdvancedQuery(sq);
   let fl=sq?(advTokens?S.lib.filter(p=>matchAdvancedQuery(p,advTokens)):S.lib.filter(p=>{const hay=[p.title||'',p.abstract||'',(p.authors||[]).join(' '),(p.concepts||[]).join(' '),(p.tags||[]).join(' '),p.journal||''].join(' ').toLowerCase();return sqLower.split(/\s+/).every(w=>hay.includes(w))})):S.lib;
-  // Project filter (applied before collection filter)
-  const projects=getProjects();const curProj=S.activeProject||'Default';
-  if(projects.length>1)fl=fl.filter(p=>(p.project||'Default')===curProj);
+  // Project filter via junction table (or legacy fallback)
+  if(typeof MeridianProjects!=='undefined'&&!MeridianProjects.getCrossProjectSearch()){
+    const ppIds=MeridianProjects.getProjectPaperIds();
+    if(ppIds&&ppIds.size)fl=fl.filter(p=>ppIds.has(p.id));
+    else{const curProj=S.activeProject||'Default';fl=fl.filter(p=>(p.project||'Default')===curProj)}
+  }
   if(S.activeCol&&S.cols[S.activeCol])fl=fl.filter(p=>S.cols[S.activeCol].paperIds.includes(p.id));
   const numP=/(\d+\.?\d*)\s*(°C|ppm|mg\/[lL]|cm|mm|kg|g|m|%|PSU|yr|years?|samples?|specimens?)/gi;
   const colKeys=Object.keys(S.cols);
-  const projBar=projects.length>1||S.lib.length>0?`<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Project:</span>${projects.map(p=>`<button class="bt sm ${curProj===p?'on':''}" onclick="switchProject('${escJSAttr(p)}')" ondblclick="renameProject('${escJSAttr(p)}')" title="Click to switch, double-click to rename">${escHTML(p)} (${S.lib.filter(x=>(x.project||'Default')===p).length})</button>`).join('')}<button class="bt sm" onclick="createProject()" title="Create a new project">+ New Project</button></div>`:'';
+  const _cpSearch=typeof MeridianProjects!=='undefined'&&MeridianProjects.getCrossProjectSearch();
+  const projBar=`<div style="margin-bottom:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><label style="font-size:12px;color:var(--tm);font-family:var(--mf);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="lib-cross-proj" ${_cpSearch?'checked':''} onchange="if(typeof MeridianProjects!=='undefined')MeridianProjects.setCrossProjectSearch(this.checked);renderLib(true)" style="accent-color:var(--proj-fg,var(--ac))"/> Show all projects</label></div>`;
   const colBar=`<div style="margin-bottom:10px;display:flex;gap:4px;flex-wrap:wrap;align-items:center"><span style="font-size:12px;color:var(--tm);font-family:var(--mf)">Collections:</span><button class="bt sm" onclick="newCol()">+ New</button>${colKeys.map(k=>`<button class="bt sm ${S.activeCol===k?'on':''}" onclick="S.activeCol=S.activeCol==='${k}'?'':('${k}');renderLib(true)">${escHTML(S.cols[k].name)} (${S.cols[k].paperIds.length})</button>`).join('')}${S.activeCol?`<button class="bt sm" onclick="S.activeCol='';renderLib(true)">All Papers</button>`:''}</div>`;
   // Compute status counts BEFORE status filter is applied
   const statusCounts={all:fl.length,unread:0,skimming:0,read:0,reviewed:0};
@@ -581,7 +587,7 @@ async function sBR(q,f,sig){
   }catch(e){console.warn('bioRxiv search error:',e);throw e}
 }
 
-function mkPC(p,i){const bgs=[];if(p.isPreprint)bgs.push('<span class="bg" style="background:rgba(212,160,74,.15);color:var(--wa);border:1px solid rgba(212,160,74,.3);font-size:10px" title="This paper has not been peer-reviewed. Treat results with appropriate caution.">Preprint</span>');if(p.isOA)bgs.push('<span class="bg oa">OA</span>');if(p.year)bgs.push(`<span class="bg yr">${escHTML(String(p.year))}</span>`);if(p.src)bgs.push(`<span class="src-badge src-${escHTML(p.src.toLowerCase())}">${escHTML(p.src)}</span>`);const _hlTerms=_litHighlightTerms&&_litHighlightTerms.length?_litHighlightTerms:(_litQuery?_litQuery.split(/\s+/).filter(t=>t.length>=2):[]);const pid=escJSAttr(p.id);const inLib=S.lib.some(x=>x.id===p.id);const doiHref=p.doi?escHTML(safeUrl(p.doi)):'';return`<div class="pc" style="animation:fadeIn .3s ease ${Math.min(i*.03,.6)}s both" onclick="const d=this.querySelector('.pd');const a=this.querySelector('.pc-expand-hint');d.style.display=d.style.display==='none'?'block':'none';if(a)a.textContent=d.style.display==='none'?'click to expand':'click to collapse';if(typeof PADI!=='undefined'&&PADI.engTrack&&S.lib.some(function(x){return x.id==='${pid}'}))PADI.engTrack('${pid}','view')"><div style="display:flex;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${bgs.join('')}${inLib?'<span class="bg" style="background:var(--sm);color:var(--sg);border:1px solid var(--sb);font-size:10px">In Library</span>':''}</div><h3 style="margin:4px 0 2px;font-size:15px;font-weight:500;line-height:1.45">${escHTML(p.title||'')}</h3><p style="margin:3px 0 0;font-size:13px;color:var(--ts)">${escHTML((p.authors||[]).join(', '))}${p.journal?` <span style="color:var(--tm)">— ${escHTML(p.journal)}</span>`:''}</p>${p.concepts&&p.concepts.length?`<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">${p.concepts.slice(0,4).map(c=>`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:var(--be);color:var(--tm);font-family:var(--mf)">${escHTML(c)}</span>`).join('')}</div>`:''}</div>${p.cited!=null?`<div style="text-align:right;flex-shrink:0;font-family:var(--mf)"><div style="font-size:20px;font-weight:700;color:var(--ac)">${Number(p.cited).toLocaleString()}</div><div style="font-size:11px;color:var(--tm)">cited</div></div>`:''}</div><span class="pc-expand-hint">click to expand</span><div class="pd" style="display:none;margin-top:12px;border-top:1px solid var(--bd);padding-top:12px">${p.abstract?`<p style="font-size:14px;color:var(--ts);line-height:1.65;margin:0 0 12px">${_hlTerms.length?highlightTerms(p.abstract,_hlTerms):escHTML(p.abstract)}</p>`:'<p style="font-size:13px;color:var(--tm);font-style:italic;margin:0 0 12px">No abstract available</p>'}<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="bt sm bt-pri" onclick="event.stopPropagation();var _p=S.litR.find(function(x){return x.id==='${pid}'});if(_p)savePaper(_p);this.textContent='Saved';this.style.color='var(--sg)';this.style.borderColor='var(--sb)';this.disabled=true">Save to Library</button>${p.pdfUrl?`<button class="bt sm" style="color:var(--sg)" onclick="event.stopPropagation();window.open('${escJSAttr(safeUrl(p.pdfUrl))}')">PDF</button>`:''}${doiHref?`<a class="bt sm" href="${doiHref}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none">DOI</a>`:''}<button class="bt sm" onclick="event.stopPropagation();searchCitedBy('${escJSAttr((p.title||'').slice(0,80))}')">Cited By</button>${p.src==='SS'?`<a class="bt sm" href="https://www.semanticscholar.org/paper/${escHTML(p.id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none">Refs</a>`:''}</div></div><button class="ask-ai-btn" onclick="event.stopPropagation();_askAI('Tell me about this paper: \\'${escJSAttr((p.title||'').slice(0,120))}\\'. Abstract: ${escJSAttr((p.abstract||'No abstract').slice(0,400))}')" title="Ask AI about this paper">✨</button></div>`}
+function mkPC(p,i){const bgs=[];if(p.isPreprint)bgs.push('<span class="bg" style="background:rgba(212,160,74,.15);color:var(--wa);border:1px solid rgba(212,160,74,.3);font-size:10px" title="This paper has not been peer-reviewed. Treat results with appropriate caution.">Preprint</span>');if(p.isOA)bgs.push('<span class="bg oa">OA</span>');if(p.year)bgs.push(`<span class="bg yr">${escHTML(String(p.year))}</span>`);if(p.src)bgs.push(`<span class="src-badge src-${escHTML(p.src.toLowerCase())}">${escHTML(p.src)}</span>`);const _hlTerms=_litHighlightTerms&&_litHighlightTerms.length?_litHighlightTerms:(_litQuery?_litQuery.split(/\s+/).filter(t=>t.length>=2):[]);const pid=escJSAttr(p.id);const inLib=S.lib.some(x=>x.id===p.id);const doiHref=p.doi?escHTML(safeUrl(p.doi)):'';return`<div class="pc" style="animation:fadeIn .3s ease ${Math.min(i*.03,.6)}s both" onclick="const d=this.querySelector('.pd');const a=this.querySelector('.pc-expand-hint');d.style.display=d.style.display==='none'?'block':'none';if(a)a.textContent=d.style.display==='none'?'click to expand':'click to collapse';if(typeof PADI!=='undefined'&&PADI.engTrack&&S.lib.some(function(x){return x.id==='${pid}'}))PADI.engTrack('${pid}','view')"><div style="display:flex;justify-content:space-between;gap:12px"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">${bgs.join('')}${inLib?'<span class="bg" style="background:var(--sm);color:var(--sg);border:1px solid var(--sb);font-size:10px">In Library</span>':''}</div><h3 style="margin:4px 0 2px;font-size:15px;font-weight:500;line-height:1.45">${escHTML(p.title||'')}</h3><p style="margin:3px 0 0;font-size:13px;color:var(--ts)">${escHTML((p.authors||[]).join(', '))}${p.journal?` <span style="color:var(--tm)">— ${escHTML(p.journal)}</span>`:''}</p>${p.concepts&&p.concepts.length?`<div style="margin-top:4px;display:flex;gap:3px;flex-wrap:wrap">${p.concepts.slice(0,4).map(c=>`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:var(--be);color:var(--tm);font-family:var(--mf)">${escHTML(c)}</span>`).join('')}</div>`:''}</div>${p.cited!=null?`<div style="text-align:right;flex-shrink:0;font-family:var(--mf)"><div style="font-size:20px;font-weight:700;color:var(--ac)">${Number(p.cited).toLocaleString()}</div><div style="font-size:11px;color:var(--tm)">cited</div></div>`:''}</div><span class="pc-expand-hint">click to expand</span><div class="pd" style="display:none;margin-top:12px;border-top:1px solid var(--bd);padding-top:12px">${p.abstract?`<p style="font-size:14px;color:var(--ts);line-height:1.65;margin:0 0 12px">${_hlTerms.length?highlightTerms(p.abstract,_hlTerms):escHTML(p.abstract)}</p>`:'<p style="font-size:13px;color:var(--tm);font-style:italic;margin:0 0 12px">No abstract available</p>'}<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="bt sm bt-pri" onclick="event.stopPropagation();var _p=S.litR.find(function(x){return x.id==='${pid}'});if(_p)savePaper(_p);this.textContent='Saved';this.style.color='var(--sg)';this.style.borderColor='var(--sb)';this.disabled=true">Save to Library</button>${p.pdfUrl?`<button class="bt sm" style="color:var(--sg)" onclick="event.stopPropagation();window.open('${escJSAttr(safeUrl(p.pdfUrl))}')">PDF</button>`:''}${doiHref?`<a class="bt sm" href="${doiHref}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none">DOI</a>`:''}<button class="bt sm" onclick="event.stopPropagation();searchCitedBy('${escJSAttr((p.title||'').slice(0,80))}')">Cited By</button>${p.src==='SS'?`<a class="bt sm" href="https://www.semanticscholar.org/paper/${escHTML(p.id)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="text-decoration:none">Refs</a>`:''}${inLib?`<button class="bt sm" onclick="event.stopPropagation();if(typeof MeridianProjects!=='undefined')MeridianProjects.showAssignModal('${pid}')" title="Assign to projects" style="color:var(--proj-fg,var(--ac))">Projects</button>`:''}</div></div><button class="ask-ai-btn" onclick="event.stopPropagation();_askAI('Tell me about this paper: \\'${escJSAttr((p.title||'').slice(0,120))}\\'. Abstract: ${escJSAttr((p.abstract||'No abstract').slice(0,400))}')" title="Ask AI about this paper">✨</button></div>`}
 function compileToWS(){if(!S.litR.length)return;S.wsC=['Title','Authors','Year','Journal','Citations','OA','Concepts','DOI'];S.wsD=S.litR.map(p=>({Title:p.title,Authors:(p.authors||[]).join('; '),Year:p.year,Journal:p.journal,Citations:p.cited,OA:p.isOA?'Y':'N',Concepts:(p.concepts||[]).join('; '),DOI:p.doi||''}));autoTypes();initWS();goTab('workshop')}
 async function litSearch(){const q=$('#lq').value.trim();if(!q)return;_errPipeline.crumb('search','Lit search: '+q.slice(0,60));if(_litAbort)_litAbort.abort();_litAbort=new AbortController();hi('#searchHist');saveSearchHist(q);const f={yf:$('#yf').value,yt:$('#yt').value,oa:S.oaF};_litQuery=q;
 const bq=typeof BoolSearch!=='undefined'?BoolSearch.analyze(q):null;_litBoolQ=bq;_litHighlightTerms=bq&&bq.positiveTerms?bq.positiveTerms:q.split(/\s+/).filter(t=>t.length>=2);
@@ -676,7 +682,13 @@ let _searchAudit=safeParse('meridian_search_audit',[]);
 function logSearchAudit(query,filters,engineStatus,srcCounts,totalHits,dedupedCount){
   const boolInfo=_litBoolQ&&_litBoolQ.isBoolean?{pubmed:_litBoolQ.pubmed,branches:_litBoolQ.branches,notTerms:_litBoolQ.notTerms,fields:_litBoolQ.fields}:null;
   _searchAudit.push({id:'sa-'+Date.now(),query,booleanParsed:boolInfo,filters:{yf:filters.yf||'',yt:filters.yt||'',oa:filters.oa||false},timestamp:new Date().toISOString(),apis:Object.fromEntries(Object.entries(srcCounts).map(([k,v])=>([k,{ok:engineStatus[k]==='ok',count:v}]))),totalHits,dedupedCount});
-  safeStore('meridian_search_audit',_searchAudit)}
+  safeStore('meridian_search_audit',_searchAudit);
+  // Log to project
+  if(typeof MeridianProjects!=='undefined'){
+    const engines=Object.keys(engineStatus).filter(k=>engineStatus[k]==='ok');
+    MeridianProjects.logProjectSearch(query,engines,dedupedCount,{yf:filters.yf,yt:filters.yt,oa:filters.oa}).catch(()=>{});
+    MeridianProjects.logActivity('search_performed',{query:query.slice(0,80),results:dedupedCount}).catch(()=>{});
+  }}
 function renderSearchLog(){
   const el=$('#searchLogContent');if(!el)return;
   if(!_searchAudit.length){el.innerHTML='<p style="color:var(--tm);font-size:12px">No searches recorded yet.</p>';return}
@@ -865,6 +877,7 @@ if(!_spShowAll){gbifOcc=filt.gbifOcc;obisOcc=filt.obisOcc}
 window._sp={genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey,vernaculars,attributes,distributions,_rawGbifOcc,_rawObisOcc,_occStats:filt.stats};
 _speciesCache.set(cacheKey,window._sp);if(_speciesCache.size>10){const oldest=[..._speciesCache.keys()];_speciesCache.delete(oldest[0])}
 if(typeof _pushActivity==='function')_pushActivity('species',sciName||q,{name:sciName||q});
+if(typeof MeridianProjects!=='undefined')MeridianProjects.logActivity('species_searched',{name:sciName||q}).catch(()=>{});
 renderSpeciesResult()}
 function renderSpeciesResult(){
 const{genus,species,sciName,worms,gbifTax,gbifOcc,obisOcc,fb,rank,gbifKey,vernaculars,attributes,distributions}=window._sp;
@@ -890,6 +903,7 @@ if(commonName)h+=`<div style="font-size:14px;color:var(--tx);margin-top:4px;font
 if(allEngNames.length>1)h+=`<div style="font-size:11px;color:var(--tm);margin-top:2px;font-family:var(--mf)">Also: ${allEngNames.slice(1,6).map(n=>escHTML(n)).join(' · ')}</div>`;
 if(vNames.length>1){const otherLangs=vNames.filter(v=>v.vernacular!==commonName).slice(0,3);if(otherLangs.length)h+=`<div style="font-size:11px;color:var(--ts);margin-top:2px">${otherLangs.map(v=>`<span style="color:var(--tm)">${escHTML(v.vernacular)} <span style="font-size:9px;opacity:.6">(${escHTML(v.language_code||v.language||'')})</span></span>`).join(' · ')}</div>`}
 h+=`<button class="ask-ai-btn ask-ai-inline" onclick="_askAI('Tell me about ${escJSAttr(sciName)}. Ecology, distribution, conservation status, and current research. Use lookup_species and get_conservation_status tools.')" title="Ask AI about this species">✨ Ask AI</button>`;
+h+=`<button class="bt sm" style="font-size:11px;margin-left:6px" onclick="if(typeof MeridianProjects!=='undefined')MeridianProjects.addFocusSpecies('${escJSAttr(sciName)}','${escJSAttr(commonName||'')}',null,'${escJSAttr(dbSrc)}');this.textContent='Added ✓';this.disabled=true" title="Add to project focus species">+ Project Species</button>`;
 h+=`</div>`;
 // ── DISTRIBUTION MAP ──
 if(tot>0||gbifKey)h+=`<div id="spmap" style="height:400px;border-radius:8px;border:1px solid var(--bd);overflow:hidden;margin-bottom:16px;position:relative"></div>`;
@@ -2898,12 +2912,13 @@ async function _doSaveAnnotation(){
     variables:Object.keys(pa.envR||S.envR).map(id=>{const r=(pa.envR||S.envR)[id];const v=EV.find(x=>x.id===id);
       return{id,name:r.nm,value:r.value,unit:r.u,source:v?.src,dataset:v?.ds,server:v?.server}})};
   try{
+    const _projId=typeof MeridianProjects!=='undefined'?MeridianProjects.activeId:null;
     const{data,error}=await SB.from('map_annotations').insert({
       user_id:_supaUser.id,name,notes,tags,color,
       latitude:lat,longitude:lon,
       date_range_start:df?df+'T00:00:00Z':null,
       date_range_end:dt?dt+'T23:59:59Z':null,
-      variable_data}).select().single();
+      variable_data,project_id:_projId}).select().single();
     if(error)throw error;
     toast('Annotation saved!','ok');
     document.getElementById('ann-save-modal')?.remove();
@@ -2911,13 +2926,17 @@ async function _doSaveAnnotation(){
     _mapAnnotations.push(data);
     _renderAnnotationMarkers();
     _renderAnnotationsList();
+    if(typeof MeridianProjects!=='undefined')MeridianProjects.logActivity('annotation_saved',{name,lat,lon}).catch(()=>{});
   }catch(e){console.error('Save annotation error:',e);toast('Failed to save: '+(e.message||e),'err')}}
 
 // ── Load Annotations from Supabase ──
 async function loadMapAnnotations(){
   if(!window.SB||!window._supaUser)return;
   try{
-    const{data,error}=await SB.from('map_annotations').select('*').eq('user_id',_supaUser.id).order('created_at',{ascending:false});
+    // Scope annotations to active project if available
+    let q=SB.from('map_annotations').select('*').eq('user_id',_supaUser.id);
+    if(typeof MeridianProjects!=='undefined'&&MeridianProjects.activeId)q=q.eq('project_id',MeridianProjects.activeId);
+    const{data,error}=await q.order('created_at',{ascending:false});
     if(error)throw error;
     _mapAnnotations=data||[];
     _renderAnnotationMarkers();
