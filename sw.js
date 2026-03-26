@@ -1,9 +1,9 @@
-const CACHE_NAME='meridian-v19';
+const CACHE_NAME='meridian-v20';
 const APP_SHELL=[
   '/','/meridian.html','/meridian.css',
   '/meridian-core.js','/meridian-stats.js','/meridian-ui.js',
   '/meridian-data.js','/meridian-boolean.js','/meridian-workshop.js','/meridian-features.js','/meridian-padi.js',
-  '/meridian-pdf.js','/meridian-research.js',
+  '/meridian-pdf.js','/meridian-projects.js','/meridian-research.js',
   '/ne_110m_land.min.geojson'
 ];
 

@@ -737,9 +737,12 @@ SB.auth.getSession().then(({data:{session}})=>{
     updateUISignedIn(session.user);
   }else{
     showAuthModal();
+    // Init projects even when not signed in (uses localStorage)
+    if(typeof MeridianProjects!=='undefined')MeridianProjects.init().catch(e=>console.warn('Projects init:',e));
   }
 }).catch(e=>{
   console.warn('getSession error:',e);
+  if(typeof MeridianProjects!=='undefined')MeridianProjects.init().catch(()=>{});
 });
 
 // ═══ SIGN IN / SIGN UP / SIGN OUT ═══
@@ -786,6 +789,7 @@ function updateUISignedIn(user){
   toast('Signed in as '+(user.email||''),'ok');
   _syncOnLogin().catch(e=>console.warn('Sync:',e));
   _flushQueue();
+  if(typeof MeridianProjects!=='undefined')MeridianProjects.onSignIn().catch(e=>console.warn('Projects:',e));
   if(typeof loadMapAnnotations==='function')setTimeout(loadMapAnnotations,800);
   if(typeof window._onAuthSuccess==='function'){window._onAuthSuccess();window._onAuthSuccess=null}
 }
