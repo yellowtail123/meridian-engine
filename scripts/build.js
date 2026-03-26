@@ -30,6 +30,7 @@ const FILES = [
   "meridian-research.js",
   "meridian-publications.js",
   "meridian-archive.js",
+  "meridian-forum.js",
   "meridian-audit-tests.js",
   "ne_110m_land.min.geojson",
   "manifest.json",

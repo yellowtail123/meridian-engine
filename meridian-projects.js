@@ -107,7 +107,7 @@ async function _fetchProjects(){
 }
 
 function _sharedProjectIds(){
-  return"'00000000-0000-0000-0000-000000000000'";
+  return"00000000-0000-0000-0000-000000000000";
 }
 
 // ═══ LOCAL STORAGE ═══
