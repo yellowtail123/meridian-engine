@@ -3,16 +3,9 @@
 // Feed, threads, voting, comments, moderation, UserBadge
 // ═══════════════════════════════════════════════════════════════════
 
-// Pre-set fallback so goTab always has something to call
-window.MeridianForum=window.MeridianForum||{};
-window.initForum=function(){
-  var el=document.getElementById('tab-forum');
-  if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#c97a5b"><h3>Research Hub</h3><p style="color:#999;margin-top:8px">Forum module failed to initialize. Check browser console (F12).</p></div>';
-};
-
 (function(){
 'use strict';
-try{
+
 // ── State ──
 let _posts=[];
 let _currentPost=null;
@@ -994,14 +987,8 @@ window.addEventListener('hashchange',()=>{
 
 // ═══ PUBLIC API ═══
 window.initForum=initForum;
+window.MeridianForum=window.MeridianForum||{};
 MeridianForum.initForum=initForum;
 MeridianForum._loadFeed=_loadFeed;
-console.log('[Forum] Module initialized successfully');
-}catch(iifeErr){
-  console.error('[Forum] IIFE init failed:',iifeErr);
-  window.initForum=function(){
-    var el=document.getElementById('tab-forum');
-    if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#c97a5b"><h3>Research Hub Error</h3><p style="color:#999;margin-top:8px">'+String(iifeErr.message||iifeErr).replace(/</g,'&lt;')+'</p><p style="color:#666;font-size:12px;margin-top:4px">Check browser console (F12) for details.</p></div>';
-  };
-}
+
 })();

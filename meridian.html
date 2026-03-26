@@ -749,7 +749,23 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <script src="meridian-padi.js"></script>
 <script src="meridian-projects.js"></script>
 <script src="meridian-pdf.js"></script>
-<script src="meridian-forum.js"></script>
-<script>if(typeof window.initForum!=='function'){console.error('[Forum] meridian-forum.js failed to load');window.initForum=function(){var e=document.getElementById('tab-forum');if(e)e.innerHTML='<div style="padding:40px;text-align:center"><h3 style="color:var(--ac)">Research Hub</h3><p style="color:var(--tm);margin:12px 0">Forum module failed to load. Try hard-refreshing (Ctrl+Shift+R).</p></div>'}}</script>
+<script src="meridian-forum.js?v=2" onerror="console.error('[Forum] Script 404/blocked');document.getElementById('tab-forum').innerHTML='<div style=\'padding:40px;text-align:center\'><h3 style=\'color:var(--ac)\'>Research Hub</h3><p style=\'color:var(--tm)\'>meridian-forum.js failed to load (404). Check DevTools Network tab.</p></div>'"></script>
+<script>
+(function(){
+  if(typeof window.initForum==='function')return;
+  // Script loaded but initForum not set — runtime error in module
+  console.error('[Forum] Script loaded but initForum is not defined. Checking for errors...');
+  window.initForum=function(){
+    var el=document.getElementById('tab-forum');
+    if(!el)return;
+    el.innerHTML='<div style="padding:40px;text-align:center">'
+      +'<h3 style="color:var(--ac);font-family:var(--sf)">Research Hub</h3>'
+      +'<p style="color:var(--tm);margin:12px 0">The forum module encountered an error during initialization.</p>'
+      +'<p style="color:var(--tm);font-size:12px">Open DevTools (F12) &rarr; Console tab for details.</p>'
+      +'<button class="bt" onclick="location.reload()" style="margin-top:12px">Reload Page</button>'
+      +'</div>';
+  };
+})();
+</script>
 </body>
 </html>
