@@ -350,18 +350,29 @@ async function createProject(name,desc,icon,color){
 
   if(_isSignedIn()&&typeof SB!=='undefined'){
     try{
-      const{data,error}=await SB.from('projects').insert({
-        owner_id:_supaUser.id,name:trimmed,description:desc||'',
-        icon:icon||'📁',color:color||'amber'
-      }).select().single();
-      if(error)throw error;
-      _projects.push(data);
-      _saveLocalProjects();
-      switchTo(data.id);
-      toast('Project created: '+trimmed,'ok');
-      return data;
+      // Verify live session before insert — _supaUser may be stale
+      const{data:sess}=await SB.auth.getSession();
+      if(!sess?.session){
+        console.warn('createProject: no active session, falling back to local');
+        toast('Session expired — sign in again to save to cloud','err');
+      }else{
+        const uid=sess.session.user.id;
+        const{data,error}=await SB.from('projects').insert({
+          owner_id:uid,name:trimmed,description:desc||'',
+          icon:icon||'📁',color:color||'amber'
+        }).select().single();
+        if(error){
+          console.error('createProject insert error:',error.code,error.message,error.details,error.hint);
+          throw error;
+        }
+        _projects.push(data);
+        _saveLocalProjects();
+        switchTo(data.id);
+        toast('Project created: '+trimmed,'ok');
+        return data;
+      }
     }catch(e){
-      console.error('Create project cloud error:',e);
+      console.error('Create project cloud error:',e?.code||'',e?.message||e);
       toast('Cloud save failed — saved locally','err');
     }
   }
