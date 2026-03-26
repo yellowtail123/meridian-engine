@@ -177,8 +177,9 @@ MeridianForum._showProfilePopover=async function(userId,anchor){
 
 // ═══ INITIALIZATION ═══
 async function initForum(){
+  console.log('[Forum] initForum called');
   const el=document.getElementById('tab-forum');
-  if(!el){console.error('initForum: tab-forum element not found');return}
+  if(!el){console.error('[Forum] tab-forum element not found');return}
   try{
     // Check hash for thread view
     const hash=location.hash;
@@ -188,50 +189,52 @@ async function initForum(){
       return;
     }
     _currentPost=null;
-    await _loadFeed();
+    _loadFeedSync(el);
+    await _fetchPosts();
   }catch(e){
-    console.error('initForum error:',e);
+    console.error('[Forum] initForum error:',e);
     el.innerHTML='<div style="padding:40px;text-align:center;color:var(--co)"><h3>Research Hub Error</h3><pre style="font-size:12px;color:var(--tm);margin-top:8px">'+String(e.message||e).replace(/</g,'&lt;')+'</pre><button class="bt" onclick="initForum()" style="margin-top:12px">Retry</button></div>';
   }
 }
 
 // ═══ FEED ═══
-async function _loadFeed(){
-  const el=document.getElementById('tab-forum');
+function _loadFeedSync(el){
+  if(!el)el=document.getElementById('tab-forum');
   if(!el)return;
   _currentPost=null;
+  el.innerHTML='<div class="fh-wrap">'
+    +'<div class="fh-topbar">'
+    +'<div class="fh-sort-row">'
+    +'<div class="seg-ctrl fh-sorts">'
+    +'<button class="seg-btn '+(_sort==='hot'?'on':'')+'" onclick="MeridianForum._setSort(\'hot\')">Hot</button>'
+    +'<button class="seg-btn '+(_sort==='new'?'on':'')+'" onclick="MeridianForum._setSort(\'new\')">New</button>'
+    +'<button class="seg-btn '+(_sort==='top'?'on':'')+'" onclick="MeridianForum._setSort(\'top\')">Top</button>'
+    +'<button class="seg-btn '+(_sort==='unanswered'?'on':'')+'" onclick="MeridianForum._setSort(\'unanswered\')">Unanswered</button>'
+    +'</div>'
+    +(_sort==='top'?'<select class="fh-time-select" onchange="MeridianForum._setTimePeriod(this.value)">'
+      +'<option value="day"'+(_timePeriod==='day'?' selected':'')+'>Today</option>'
+      +'<option value="week"'+(_timePeriod==='week'?' selected':'')+'>This Week</option>'
+      +'<option value="month"'+(_timePeriod==='month'?' selected':'')+'>This Month</option>'
+      +'<option value="all"'+(_timePeriod==='all'?' selected':'')+'>All Time</option>'
+      +'</select>':'')
+    +'<button class="bt bt-pri fh-new-post-btn" onclick="MeridianForum._showComposer()">New Post</button>'
+    +'</div>'
+    +'<div class="fh-flair-row">'
+    +Object.entries(FLAIRS).map(function(e){var k=e[0],f=e[1];return'<button class="fh-flair-pill '+(_flairFilter===k?'active':'')+'" style="--fc:'+f.color+';--fb:'+f.bg+'" onclick="MeridianForum._toggleFlair(\''+k+'\')">'+f.label+'</button>'}).join('')
+    +'</div>'
+    +'<div class="fh-search-row">'
+    +'<input class="si fh-search-input" placeholder="Search Research Hub..." value="'+_esc(_searchQuery)+'" oninput="MeridianForum._onSearch(this.value)"/>'
+    +'</div>'
+    +'</div>'
+    +'<div id="fh-feed-list">'
+    +'<div class="fh-skeleton"><div class="fh-skel-card"></div><div class="fh-skel-card"></div><div class="fh-skel-card"></div></div>'
+    +'</div>'
+    +'<div id="fh-feed-footer" style="display:none"></div>'
+    +'</div>';
+}
 
-  el.innerHTML=`
-<div class="fh-wrap">
-  <div class="fh-topbar">
-    <div class="fh-sort-row">
-      <div class="seg-ctrl fh-sorts">
-        <button class="seg-btn ${_sort==='hot'?'on':''}" onclick="MeridianForum._setSort('hot')">Hot</button>
-        <button class="seg-btn ${_sort==='new'?'on':''}" onclick="MeridianForum._setSort('new')">New</button>
-        <button class="seg-btn ${_sort==='top'?'on':''}" onclick="MeridianForum._setSort('top')">Top</button>
-        <button class="seg-btn ${_sort==='unanswered'?'on':''}" onclick="MeridianForum._setSort('unanswered')">Unanswered</button>
-      </div>
-      ${_sort==='top'?`<select class="fh-time-select" onchange="MeridianForum._setTimePeriod(this.value)">
-        <option value="day"${_timePeriod==='day'?' selected':''}>Today</option>
-        <option value="week"${_timePeriod==='week'?' selected':''}>This Week</option>
-        <option value="month"${_timePeriod==='month'?' selected':''}>This Month</option>
-        <option value="all"${_timePeriod==='all'?' selected':''}>All Time</option>
-      </select>`:''}
-      <button class="bt bt-pri fh-new-post-btn" onclick="MeridianForum._showComposer()">New Post</button>
-    </div>
-    <div class="fh-flair-row">
-      ${Object.entries(FLAIRS).map(([k,f])=>`<button class="fh-flair-pill ${_flairFilter===k?'active':''}" style="--fc:${f.color};--fb:${f.bg}" onclick="MeridianForum._toggleFlair('${k}')">${f.label}</button>`).join('')}
-    </div>
-    <div class="fh-search-row">
-      <input class="si fh-search-input" placeholder="Search Research Hub..." value="${_esc(_searchQuery)}" oninput="MeridianForum._onSearch(this.value)"/>
-    </div>
-  </div>
-  <div id="fh-feed-list">
-    <div class="fh-skeleton"><div class="fh-skel-card"></div><div class="fh-skel-card"></div><div class="fh-skel-card"></div></div>
-  </div>
-  <div id="fh-feed-footer" style="display:none"></div>
-</div>`;
-
+async function _loadFeed(){
+  _loadFeedSync();
   await _fetchPosts();
 }
 
