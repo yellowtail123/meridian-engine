@@ -4024,7 +4024,7 @@ function showPrivacyPolicy(){
     <h3 style="color:var(--ac);font-size:14px;margin:16px 0 6px">Analytics</h3>
     <p>We use privacy-respecting, cookie-free analytics (Cloudflare Web Analytics) to understand aggregate usage. No personal data is collected, and no tracking cookies are set.</p>
     <h3 style="color:var(--ac);font-size:14px;margin:16px 0 6px">Contact</h3>
-    <p>Questions? Email <b>privacy@meridian-engine.com</b></p>
+    <p>Questions? Email <b>help@meridian-engine.com</b></p>
   `);
 }
 function showTerms(){
@@ -4045,7 +4045,7 @@ function showTerms(){
     <h3 style="color:var(--ac);font-size:14px;margin:16px 0 6px">Changes</h3>
     <p>We may update these terms as the service evolves. Continued use after changes constitutes acceptance.</p>
     <h3 style="color:var(--ac);font-size:14px;margin:16px 0 6px">Contact</h3>
-    <p>Questions? Email <b>legal@meridian-engine.com</b></p>
+    <p>Questions? Email <b>help@meridian-engine.com</b></p>
   `);
 }
 
@@ -4123,15 +4123,20 @@ goTab=function(id){_origGoTabBase(id);
 (function(){const bc=$('#workflow-bc');if(bc){bc.style.display='none'}})();
 
 // ═══ PHASE 5a: SEARCH HISTORY INDICATOR ═══
+// Badge lives in #litSearchRow (not .si-wrap) to avoid DOM mutations inside
+// the input's parent flex container, which causes focus loss in Chrome/WebKit.
 (function(){
   const row=$('#litSearchRow');if(!row)return;
   const wrap=row.querySelector('.si-wrap');if(!wrap)return;
   const badge=document.createElement('span');
   badge.id='search-hist-badge';
-  badge.style.cssText='position:absolute;right:34px;top:50%;transform:translateY(-50%);font-size:11px;font-family:var(--mf);color:var(--tm);cursor:pointer;display:none;opacity:.6;transition:opacity .2s;z-index:1';
+  badge.style.cssText='position:absolute;right:34px;top:50%;transform:translateY(-50%);font-size:11px;font-family:var(--mf);color:var(--tm);cursor:pointer;display:none;opacity:.6;transition:opacity .2s;z-index:1;pointer-events:auto';
   badge.onmouseenter=()=>badge.style.opacity='1';
   badge.onmouseleave=()=>badge.style.opacity='.6';
   badge.onclick=()=>{const lq=$('#lq');if(lq){lq.focus();showSearchHist()}};
+  // Set SVG once; use textContent on a span for the count to avoid innerHTML rebuilds
+  badge.innerHTML='<svg width="12" height="12" viewBox="0 0 16 16" style="stroke:currentColor;fill:none;stroke-width:1.5;vertical-align:middle;margin-right:2px"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg><span></span>';
+  const countSpan=badge.querySelector('span');
   wrap.appendChild(badge);
   // Update badge on search
   const _origSaveHist=window.saveSearchHist;
@@ -4139,7 +4144,7 @@ goTab=function(id){_origGoTabBase(id);
   function updateHistBadge(){
     const n=_searchHist.length;
     badge.style.display=n?'':'none';
-    badge.innerHTML='<svg width="12" height="12" viewBox="0 0 16 16" style="stroke:currentColor;fill:none;stroke-width:1.5;vertical-align:middle;margin-right:2px"><circle cx="8" cy="8" r="6"/><polyline points="8,4 8,8 11,10"/></svg>'+n;
+    countSpan.textContent=n;
   }
   updateHistBadge();
 })();
