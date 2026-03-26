@@ -750,5 +750,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <script src="meridian-projects.js"></script>
 <script src="meridian-pdf.js"></script>
 <script src="meridian-forum.js"></script>
+<script>if(typeof window.initForum!=='function'){console.error('[Forum] meridian-forum.js failed to load');window.initForum=function(){var e=document.getElementById('tab-forum');if(e)e.innerHTML='<div style="padding:40px;text-align:center"><h3 style="color:var(--ac)">Research Hub</h3><p style="color:var(--tm);margin:12px 0">Forum module failed to load. Try hard-refreshing (Ctrl+Shift+R).</p></div>'}}</script>
 </body>
 </html>

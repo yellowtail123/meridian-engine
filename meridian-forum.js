@@ -3,9 +3,16 @@
 // Feed, threads, voting, comments, moderation, UserBadge
 // ═══════════════════════════════════════════════════════════════════
 
+// Pre-set fallback so goTab always has something to call
+window.MeridianForum=window.MeridianForum||{};
+window.initForum=function(){
+  var el=document.getElementById('tab-forum');
+  if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#c97a5b"><h3>Research Hub</h3><p style="color:#999;margin-top:8px">Forum module failed to initialize. Check browser console (F12).</p></div>';
+};
+
 (function(){
 'use strict';
-
+try{
 // ── State ──
 let _posts=[];
 let _currentPost=null;
@@ -139,7 +146,7 @@ function _userBadge(userId,profile,opts={}){
 }
 
 // ═══ PROFILE POPOVER ═══
-window.MeridianForum={};
+window.MeridianForum=window.MeridianForum||{};
 MeridianForum._showProfilePopover=async function(userId,anchor){
   document.querySelectorAll('.fh-popover').forEach(p=>p.remove());
   const profile=await _fetchProfile(userId);
@@ -241,20 +248,26 @@ async function _loadFeed(){
 async function _fetchPosts(){
   if(_loading)return;
   _loading=true;
-  if(!window.SB){console.warn('Forum: SB not available');_renderEmpty();_loading=false;return}
+  console.log('[Forum] _fetchPosts starting, SB=',!!window.SB);
+  if(!window.SB){
+    console.warn('[Forum] Supabase not available');
+    _renderEmpty('Supabase not connected. Sign in to access the Research Hub.');
+    _loading=false;
+    return;
+  }
   try{
     let q=SB.from('forum_posts').select('*',{count:'exact'});
 
     // Filters
     if(_flairFilter)q=q.eq('flair',_flairFilter);
     if(_sort==='unanswered')q=q.eq('flair','question').eq('has_accepted_answer',false);
-    if(_searchQuery)q=q.or(`title.ilike.%${_searchQuery}%,body.ilike.%${_searchQuery}%`);
+    if(_searchQuery)q=q.or('title.ilike.%'+_searchQuery+'%,body.ilike.%'+_searchQuery+'%');
     if(!_isAdmin())q=q.eq('hidden',false);
 
     // Time filter for "top"
     if(_sort==='top'&&_timePeriod!=='all'){
       const now=new Date();
-      let since;
+      var since;
       if(_timePeriod==='day')since=new Date(now-86400000);
       else if(_timePeriod==='week')since=new Date(now-604800000);
       else if(_timePeriod==='month')since=new Date(now-2592000000);
@@ -269,39 +282,60 @@ async function _fetchPosts(){
     // Pagination
     q=q.range(_page*PAGE_SIZE,(_page+1)*PAGE_SIZE-1);
 
-    const{data,count,error}=await q;
-    if(error)throw error;
+    // Race against timeout
+    var result=await Promise.race([
+      q,
+      new Promise(function(_,reject){setTimeout(function(){reject(new Error('Query timed out after 10s'))},10000)})
+    ]);
+    var data=result.data,count=result.count,error=result.error;
+    console.log('[Forum] Query result: data=',data?.length,'count=',count,'error=',error);
+    if(error){
+      // Check for missing table (PGRST205)
+      if(error.code==='PGRST205'||error.code==='42P01'||(error.message&&error.message.indexOf('does not exist')!==-1)){
+        console.error('[Forum] Table forum_posts does not exist. Run migration 007_research_hub.sql');
+        _renderEmpty('The forum_posts table has not been created yet. Run the Research Hub migration SQL in the Supabase dashboard.');
+        _loading=false;
+        return;
+      }
+      throw error;
+    }
     _posts=data||[];
     _totalCount=count||0;
 
     // Hot sort client-side
     if(_sort==='hot'){
-      _posts.sort((a,b)=>{
+      _posts.sort(function(a,b){
         if(a.pinned!==b.pinned)return a.pinned?-1:1;
-        const hoursA=(Date.now()-new Date(a.created_at).getTime())/3600000;
-        const hoursB=(Date.now()-new Date(b.created_at).getTime())/3600000;
+        var hoursA=(Date.now()-new Date(a.created_at).getTime())/3600000;
+        var hoursB=(Date.now()-new Date(b.created_at).getTime())/3600000;
         return((b.upvotes-b.downvotes)/Math.pow(hoursB+2,1.5))-((a.upvotes-a.downvotes)/Math.pow(hoursA+2,1.5));
       });
     }
 
     // Fetch author profiles
-    const authorIds=[...new Set(_posts.map(p=>p.author_id))];
+    var authorIds=[];
+    _posts.forEach(function(p){if(authorIds.indexOf(p.author_id)===-1)authorIds.push(p.author_id)});
     await _fetchProfiles(authorIds);
 
     // Fetch user votes
     if(_uid()){
-      const postIds=_posts.map(p=>p.id);
+      var postIds=_posts.map(function(p){return p.id});
       try{
-        const{data:votes}=await SB.from('forum_votes').select('post_id,vote_type').in('post_id',postIds);
+        var vr=await SB.from('forum_votes').select('post_id,vote_type').in('post_id',postIds);
         _userVotes={};
-        (votes||[]).forEach(v=>{_userVotes[v.post_id]=v.vote_type});
-      }catch(e){}
+        (vr.data||[]).forEach(function(v){_userVotes[v.post_id]=v.vote_type});
+      }catch(ve){console.warn('[Forum] Vote fetch:',ve)}
     }
 
     _renderFeed();
   }catch(e){
-    console.error('Forum fetch:',e);
-    toast('Failed to load posts','err');
+    console.error('[Forum] Fetch error:',e);
+    var list=document.getElementById('fh-feed-list');
+    if(list){
+      list.innerHTML='<div class="fh-empty"><div class="fh-empty-title">Failed to Load</div>'
+        +'<div class="fh-empty-desc" style="color:var(--co)">'+String(e.message||e).replace(/</g,'&lt;')+'</div>'
+        +'<button class="bt" onclick="MeridianForum._loadFeed()" style="margin-top:12px">Retry</button></div>';
+    }
   }
   _loading=false;
 }
@@ -320,15 +354,19 @@ function _renderFeed(){
   }
 }
 
-function _renderEmpty(){
-  const list=document.getElementById('fh-feed-list');
+function _renderEmpty(msg){
+  var list=document.getElementById('fh-feed-list');
   if(!list)return;
-  list.innerHTML=`<div class="fh-empty">
-    <div class="fh-empty-icon">💬</div>
-    <div class="fh-empty-title">No Posts Yet</div>
-    <div class="fh-empty-desc">Be the first to start a conversation.</div>
-    <button class="bt bt-pri" onclick="MeridianForum._showComposer()" style="margin-top:16px">Create a Post</button>
-  </div>`;
+  if(msg){
+    list.innerHTML='<div class="fh-empty"><div class="fh-empty-icon">&#x2139;</div><div class="fh-empty-title">'+msg.replace(/</g,'&lt;')+'</div></div>';
+  }else{
+    list.innerHTML='<div class="fh-empty">'
+      +'<div class="fh-empty-icon">&#x1F4AC;</div>'
+      +'<div class="fh-empty-title">No Discussions Yet</div>'
+      +'<div class="fh-empty-desc">Start the first one — ask a question, share a method, or post a field report.</div>'
+      +'<button class="bt bt-pri" onclick="MeridianForum._showComposer()" style="margin-top:16px">Create a Post</button>'
+      +'</div>';
+  }
 }
 
 // ═══ POST CARD ═══
@@ -958,5 +996,12 @@ window.addEventListener('hashchange',()=>{
 window.initForum=initForum;
 MeridianForum.initForum=initForum;
 MeridianForum._loadFeed=_loadFeed;
-
+console.log('[Forum] Module initialized successfully');
+}catch(iifeErr){
+  console.error('[Forum] IIFE init failed:',iifeErr);
+  window.initForum=function(){
+    var el=document.getElementById('tab-forum');
+    if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:#c97a5b"><h3>Research Hub Error</h3><p style="color:#999;margin-top:8px">'+String(iifeErr.message||iifeErr).replace(/</g,'&lt;')+'</p><p style="color:#666;font-size:12px;margin-top:4px">Check browser console (F12) for details.</p></div>';
+  };
+}
 })();
