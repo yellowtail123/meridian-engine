@@ -8,3 +8,7 @@ routes = [
   { pattern = "meridian-engine.com/api/sealifebase/*", zone_name = "meridian-engine.com" },
   { pattern = "www.meridian-engine.com/api/sealifebase/*", zone_name = "meridian-engine.com" }
 ]
+
+[[kv_namespaces]]
+binding = "FISHBASE_DATA"
+id = "2ecbbbb5c21f47768e9fc042cd2ea59d"

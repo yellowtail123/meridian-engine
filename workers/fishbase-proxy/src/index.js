@@ -9,9 +9,11 @@ const ALLOWED_ENDPOINTS = [
   'maturity', 'popchar'
 ];
 
-const UPSTREAM = 'https://fishbase.ropensci.org';
 const RATE_LIMIT_MAX = 60;
 const rateLimits = new Map();
+
+// In-memory caches (loaded from KV on first request)
+let fbSpeciesData = null;
 
 function isOriginAllowed(request) {
   const origin = request.headers.get('Origin') || '';
@@ -53,6 +55,73 @@ function jsonResponse(body, status, cors) {
   });
 }
 
+async function loadFBSpecies(env) {
+  if (fbSpeciesData) return fbSpeciesData;
+  try {
+    const raw = await env.FISHBASE_DATA.get('species_lookup');
+    if (raw) fbSpeciesData = JSON.parse(raw);
+  } catch {}
+  return fbSpeciesData;
+}
+
+// Serve FishBase species from KV
+function serveFBSpecies(data, url, cors) {
+  const genus = url.searchParams.get('Genus') || '';
+  const species = url.searchParams.get('Species') || '';
+  const specCode = url.searchParams.get('SpecCode');
+
+  if (genus) {
+    const key = species ? `${genus} ${species}` : null;
+    if (key && data[key]) {
+      const entry = { ...data[key] };
+      delete entry._eco;
+      return jsonResponse({ data: [entry] }, 200, cors);
+    }
+    // Genus-level search
+    const matches = [];
+    const prefix = genus + ' ';
+    for (const [k, v] of Object.entries(data)) {
+      if (k.startsWith(prefix)) {
+        const entry = { ...v };
+        entry.Genus = genus;
+        entry.Species = k.slice(prefix.length);
+        delete entry._eco;
+        matches.push(entry);
+      }
+      if (matches.length >= 50) break;
+    }
+    if (matches.length) return jsonResponse({ data: matches }, 200, cors);
+  }
+  if (specCode) {
+    const sc = parseInt(specCode);
+    for (const [k, v] of Object.entries(data)) {
+      if (v.SpecCode === sc) {
+        const entry = { ...v };
+        const parts = k.split(' ');
+        entry.Genus = parts[0];
+        entry.Species = parts.slice(1).join(' ');
+        delete entry._eco;
+        return jsonResponse({ data: [entry] }, 200, cors);
+      }
+    }
+  }
+  return jsonResponse({ data: [] }, 200, cors);
+}
+
+// Serve FishBase ecology from KV
+function serveFBEcology(data, url, cors) {
+  const specCode = url.searchParams.get('SpecCode');
+  if (specCode) {
+    const sc = parseInt(specCode);
+    for (const [k, v] of Object.entries(data)) {
+      if (v.SpecCode === sc && v._eco) {
+        return jsonResponse({ data: [{ SpecCode: sc, ...v._eco }] }, 200, cors);
+      }
+    }
+  }
+  return jsonResponse({ data: [] }, 200, cors);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || '';
@@ -87,44 +156,20 @@ export default {
       return jsonResponse({ error: 'Not found' }, 404, cors);
     }
 
-    // Build upstream URL
-    // FishBase: https://fishbase.ropensci.org/{endpoint}?params
-    // SeaLifeBase: https://fishbase.ropensci.org/sealifebase/{endpoint}?params
-    const upstreamPath = db === 'sealifebase' ? `/sealifebase/${endpoint}` : `/${endpoint}`;
-    const upstreamUrl = `${UPSTREAM}${upstreamPath}?${url.searchParams.toString()}`;
-
-    // Check Cloudflare cache first
-    const cacheKey = new Request(upstreamUrl, request);
-    const cache = caches.default;
-    let cached = await cache.match(cacheKey);
-    if (cached) {
-      const resp = new Response(cached.body, cached);
-      Object.entries(cors).forEach(([k, v]) => resp.headers.set(k, v));
-      return resp;
-    }
-
-    // Forward to upstream
-    try {
-      const upstream = await fetch(upstreamUrl, {
-        headers: { 'Accept': 'application/json', 'User-Agent': 'Meridian/1.0' },
-        cf: { cacheTtl: 86400, cacheEverything: true },
-      });
-
-      if (!upstream.ok) {
-        return jsonResponse({ error: `Upstream error: ${upstream.status}` }, upstream.status, cors);
+    // FishBase: serve species + ecology from KV
+    if (db === 'fishbase' && (endpoint === 'species' || endpoint === 'ecology')) {
+      const data = await loadFBSpecies(env);
+      if (!data) {
+        return jsonResponse({ data: [], _note: 'KV data not loaded' }, 200, cors);
       }
-
-      const data = await upstream.json();
-      const resp = new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' },
-      });
-
-      // Cache the response
-      ctx.waitUntil(cache.put(cacheKey, resp.clone()));
-      return resp;
-    } catch (e) {
-      return jsonResponse({ error: 'Upstream fetch failed' }, 502, cors);
+      if (endpoint === 'species') return serveFBSpecies(data, url, cors);
+      if (endpoint === 'ecology') return serveFBEcology(data, url, cors);
     }
+
+    // All other endpoints (comnames, synonyms, estimate, diet, maturity, country, etc.)
+    // and all SeaLifeBase endpoints: return empty data gracefully.
+    // The upstream API (fishbase.ropensci.org) is decommissioned.
+    // TODO: Build parquet-to-KV data loader for additional tables.
+    return jsonResponse({ data: [] }, 200, cors);
   },
 };
