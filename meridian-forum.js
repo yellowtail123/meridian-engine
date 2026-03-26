@@ -42,8 +42,8 @@ const REP_TIERS=[
 
 // ── Helpers ──
 function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function _uid(){return window._supaUser?.id||null}
-function _isAdmin(){return window._supaIsAdmin===true}
+function _uid(){try{return(window._supaUser||_supaUser)?.id||null}catch(e){return null}}
+function _isAdmin(){try{return(window._supaIsAdmin||_supaIsAdmin)===true}catch(e){return false}}
 function _ago(iso){const d=Date.now()-new Date(iso).getTime();if(d<60000)return'just now';if(d<3600000)return Math.floor(d/60000)+'m ago';if(d<86400000)return Math.floor(d/3600000)+'h ago';if(d<2592000000)return Math.floor(d/86400000)+'d ago';return new Date(iso).toLocaleDateString()}
 function _repTier(r){for(const[min,label]of REP_TIERS)if(r>=min)return label;return'New Researcher'}
 
@@ -178,18 +178,21 @@ MeridianForum._showProfilePopover=async function(userId,anchor){
 // ═══ INITIALIZATION ═══
 async function initForum(){
   const el=document.getElementById('tab-forum');
-  if(!el)return;
-
-  // Check hash for thread view
-  const hash=location.hash;
-  if(hash.startsWith('#research-hub/post/')){
-    const postId=hash.replace('#research-hub/post/','');
-    await _loadThread(postId);
-    return;
+  if(!el){console.error('initForum: tab-forum element not found');return}
+  try{
+    // Check hash for thread view
+    const hash=location.hash;
+    if(hash.startsWith('#research-hub/post/')){
+      const postId=hash.replace('#research-hub/post/','');
+      await _loadThread(postId);
+      return;
+    }
+    _currentPost=null;
+    await _loadFeed();
+  }catch(e){
+    console.error('initForum error:',e);
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--co)"><h3>Research Hub Error</h3><pre style="font-size:12px;color:var(--tm);margin-top:8px">'+String(e.message||e).replace(/</g,'&lt;')+'</pre><button class="bt" onclick="initForum()" style="margin-top:12px">Retry</button></div>';
   }
-
-  _currentPost=null;
-  await _loadFeed();
 }
 
 // ═══ FEED ═══
@@ -235,7 +238,7 @@ async function _loadFeed(){
 async function _fetchPosts(){
   if(_loading)return;
   _loading=true;
-  if(!window.SB){_renderEmpty();_loading=false;return}
+  if(!window.SB){console.warn('Forum: SB not available');_renderEmpty();_loading=false;return}
   try{
     let q=SB.from('forum_posts').select('*',{count:'exact'});
 
