@@ -158,6 +158,12 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <button class="sb-item sb-sub" data-tab="publications" title="Publications"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M3 1h7l3 3v11H3z" fill="none"/><path d="M10 1v3h3"/><path d="M5 7h6M5 9.5h6M5 12h4"/></svg></span><span class="sb-label">Publications</span></button>
 <button class="sb-item sb-sub" data-tab="archive" title="Archived Data"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M1 4h14v2H1z"/><path d="M2 6v7h12V6"/><path d="M6 9h4"/></svg></span><span class="sb-label">Archived Data</span></button>
 </div></div>
+<!-- COMMUNITY (collapsible) -->
+<div class="sb-group sb-collapsible" data-group="community" data-expanded="false">
+<button class="sb-ghdr" onclick="toggleSbGroup('community')" title="Community"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 3h12v8H5l-3 3V3z" fill="none"/><circle cx="6" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="7" r="1" fill="currentColor" stroke="none"/></svg></span><span class="sb-label">Community</span><span class="sb-gcount sb-label">1</span><span class="sb-chevron"><svg viewBox="0 0 16 16"><polyline points="6 4 10 8 6 12"/></svg></span></button>
+<div class="sb-gitems">
+<button class="sb-item sb-sub" data-tab="forum" title="Research Hub"><span class="sb-icon"><svg viewBox="0 0 16 16"><path d="M2 3h12v8H5l-3 3V3z" fill="none"/><circle cx="6" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="8" cy="7" r="1" fill="currentColor" stroke="none"/><circle cx="10" cy="7" r="1" fill="currentColor" stroke="none"/></svg></span><span class="sb-label">Research Hub</span></button>
+</div></div>
 <!-- ANALYSIS (collapsible) -->
 <div class="sb-group sb-collapsible" data-group="analysis" data-expanded="false">
 <button class="sb-ghdr" onclick="toggleSbGroup('analysis')" title="Analysis"><span class="sb-icon"><svg viewBox="0 0 16 16"><rect x="1" y="10" width="3" height="4" rx="0.5"/><rect x="5.5" y="6" width="3" height="8" rx="0.5"/><rect x="10" y="2" width="3" height="12" rx="0.5"/></svg></span><span class="sb-label">Analysis</span><span class="sb-gcount sb-label">3</span><span class="sb-chevron"><svg viewBox="0 0 16 16"><polyline points="6 4 10 8 6 12"/></svg></span></button>
@@ -623,17 +629,38 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 </div>
 </div>
 </div>
+<div class="tp" id="tab-forum"></div>
 <div class="tp" id="tab-settings">
 <h2 style="font-size:20px;font-weight:600;color:var(--ac);margin-bottom:20px;font-family:var(--sf)">Settings</h2>
 <!-- PROFILE -->
 <div class="sec settings-sec" id="settings-profile">
-<div class="sh" onclick="toggleSettingsGroup('profile')"><h4>Account</h4><span id="settings-profile-arrow" class="sh-chevron"><svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="sh" onclick="toggleSettingsGroup('profile')"><h4>Profile</h4><span id="settings-profile-arrow" class="sh-chevron"><svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
 <div class="sb" id="settings-profile-body">
-<div class="set-row"><label class="set-label" for="set-displayname">Display Name</label><input class="si" id="set-displayname" placeholder="Your name" style="max-width:360px"/></div>
-<div class="set-row"><label class="set-label" for="set-affiliation">Affiliation / Institution</label><input class="si" id="set-affiliation" placeholder="e.g. University of Cape Town" style="max-width:360px"/></div>
-<div class="set-row"><label class="set-label" for="set-orcid">ORCID iD</label><div style="display:flex;gap:8px;align-items:center;max-width:360px"><input class="si" id="set-orcid" placeholder="0000-0002-1825-0097" style="flex:1;font-family:var(--mf)"/><span id="set-orcid-status" style="font-size:12px;font-family:var(--mf)"></span></div></div>
-<div class="set-row"><label class="set-label">Email Preferences</label><div class="set-toggles"><label class="set-toggle"><input type="checkbox" id="set-notify-comments"/><span class="set-toggle-track"></span><span class="set-toggle-label">Receive notifications about comments on my publications</span></label><label class="set-toggle"><input type="checkbox" id="set-notify-flags"/><span class="set-toggle-track"></span><span class="set-toggle-label">Receive notifications about flags</span></label></div></div>
-<div class="set-row"><label class="set-label">Profile Visibility</label><div class="set-toggles"><label class="set-toggle"><input type="checkbox" id="set-public-profile"/><span class="set-toggle-track"></span><span class="set-toggle-label">Show my name and affiliation publicly on my publications</span></label></div></div>
+<div class="set-row"><label class="set-label" for="set-displayname">Display Name</label><input class="si" id="set-displayname" placeholder="Your name" maxlength="30" style="max-width:360px" oninput="_updateNamePreview()"/><div id="set-name-preview" style="font-size:12px;color:var(--tm);margin-top:4px"></div></div>
+<div class="set-row"><label class="set-label" for="set-bio">Bio</label><div style="position:relative;max-width:500px"><textarea class="si" id="set-bio" placeholder="Tell us about your research..." maxlength="500" rows="3" style="resize:vertical;width:100%" oninput="document.getElementById('set-bio-count').textContent=this.value.length+'/500'"></textarea><span id="set-bio-count" style="position:absolute;bottom:8px;right:10px;font-size:11px;color:var(--tm)">0/500</span></div></div>
+<div class="set-row"><label class="set-label" for="set-country">Country</label><select class="si" id="set-country" style="max-width:360px"><option value="">Select...</option></select></div>
+</div>
+</div>
+<!-- RESEARCHER CREDENTIALS -->
+<div class="sec settings-sec" id="settings-credentials">
+<div class="sh" onclick="toggleSettingsGroup('credentials')"><h4>Researcher Credentials</h4><span id="settings-credentials-arrow" class="sh-chevron"><svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="sb" id="settings-credentials-body">
+<div class="set-row"><label class="set-label" for="set-title">Title / Honorific</label><select class="si" id="set-title" style="max-width:280px" onchange="_updateNamePreview()"><option value="">None</option><option>Mr.</option><option>Ms.</option><option>Dr.</option><option>Prof.</option><option>PhD Candidate</option><option>MSc Student</option><option>Research Associate</option><option>Postdoc</option><option>Lecturer</option><option>Senior Lecturer</option><option>Associate Professor</option><option>Professor</option><option>Emeritus</option></select></div>
+<div class="set-row"><label class="set-label" for="set-fullname">Full Name</label><input class="si" id="set-fullname" placeholder="e.g. Jane Smith" style="max-width:360px"/></div>
+<div class="set-row"><label class="set-label" for="set-affiliation">Affiliation / Institution</label><input class="si" id="set-affiliation" placeholder="e.g. University of Gibraltar" style="max-width:360px" list="affiliation-suggestions"/><datalist id="affiliation-suggestions"></datalist></div>
+<div class="set-row"><label class="set-label" for="set-afftype">Affiliation Type</label><select class="si" id="set-afftype" style="max-width:280px"><option value="">Select...</option><option value="university">University</option><option value="government">Government Agency</option><option value="ngo">NGO</option><option value="private">Private Sector</option><option value="independent">Independent Researcher</option><option value="other">Other</option></select></div>
+<div class="set-row"><label class="set-label" for="set-department">Department / Field</label><input class="si" id="set-department" placeholder="e.g. Marine Biology" style="max-width:360px"/></div>
+<div class="set-row"><label class="set-label" for="set-orcid">ORCID iD</label><div style="display:flex;gap:8px;align-items:center;max-width:360px"><input class="si" id="set-orcid" placeholder="0000-0002-1825-0097" style="flex:1;font-family:var(--mf)"/><a id="set-orcid-link" href="#" target="_blank" style="display:none;color:var(--sg);font-size:12px;font-family:var(--mf)">View</a><span id="set-orcid-status" style="font-size:12px;font-family:var(--mf)"></span></div></div>
+<div class="set-row"><label class="set-label" for="set-website">Personal / Lab Website</label><input class="si" id="set-website" type="url" placeholder="https://..." style="max-width:360px"/></div>
+<div class="set-row"><label class="set-label">Research Interests</label><div style="max-width:500px"><div id="set-interests-tags" class="set-tags-wrap"></div><input class="si" id="set-interests-input" placeholder="Type an interest and press Enter (max 10)" style="max-width:360px" onkeydown="if(event.key==='Enter'){event.preventDefault();_addInterestTag(this.value)}"/></div></div>
+<div class="set-row"><label class="set-label">Credential Visibility</label><div class="set-toggles"><label class="set-toggle"><input type="radio" name="set-credvis" value="public" checked/><span class="set-toggle-label">Public (anyone can see)</span></label><label class="set-toggle"><input type="radio" name="set-credvis" value="members_only"/><span class="set-toggle-label">Members Only (logged-in users)</span></label><label class="set-toggle"><input type="radio" name="set-credvis" value="private"/><span class="set-toggle-label">Private (only you)</span></label></div></div>
+</div>
+</div>
+<!-- NOTIFICATIONS & SAVE -->
+<div class="sec settings-sec" id="settings-notif">
+<div class="sh" onclick="toggleSettingsGroup('notif')"><h4>Notifications</h4><span id="settings-notif-arrow" class="sh-chevron"><svg viewBox="0 0 10 6" width="10" height="6"><polyline points="1,1 5,5 9,1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+<div class="sb" id="settings-notif-body">
+<div class="set-row"><div class="set-toggles"><label class="set-toggle"><input type="checkbox" id="set-notify-comments"/><span class="set-toggle-track"></span><span class="set-toggle-label">Receive notifications about comments on my publications</span></label><label class="set-toggle"><input type="checkbox" id="set-notify-flags"/><span class="set-toggle-track"></span><span class="set-toggle-label">Receive notifications about flags</span></label></div></div>
 <div class="set-row" style="padding-top:8px"><button class="bt bt-pri" id="set-save-profile" onclick="saveProfile()">Save Profile</button><span id="set-profile-msg" style="margin-left:12px;font-size:13px;font-family:var(--mf)"></span></div>
 </div>
 </div>
@@ -717,5 +744,6 @@ new MutationObserver(function(m,o){for(var i=0;i<m.length;i++)for(var j=0;j<m[i]
 <script src="meridian-padi.js"></script>
 <script src="meridian-projects.js"></script>
 <script src="meridian-pdf.js"></script>
+<script src="meridian-forum.js"></script>
 </body>
 </html>

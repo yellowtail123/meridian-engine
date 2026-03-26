@@ -1034,26 +1034,82 @@ async function _getAuthUser(){
 async function _loadProfile(){
   const user=await _getAuthUser();
   if(!window.SB||!user)return;
+  _populateCountryDropdown();
   try{
     const{data}=await SB.from('user_profiles').select('*').eq('user_id',user.id).maybeSingle();
     if(data){
-      const dn=$('#set-displayname'),af=$('#set-affiliation'),or=$('#set-orcid');
-      if(dn)dn.value=data.display_name||'';
-      if(af)af.value=data.affiliation||'';
-      if(or)or.value=data.orcid||'';
-      const nc=$('#set-notify-comments'),nf=$('#set-notify-flags'),pp=$('#set-public-profile');
+      const v=(id,val)=>{const el=$('#'+id);if(el)el.value=val||''};
+      v('set-displayname',data.display_name);
+      v('set-bio',data.bio);
+      v('set-fullname',data.full_name);
+      v('set-affiliation',data.affiliation);
+      v('set-department',data.department);
+      v('set-orcid',data.orcid);
+      v('set-website',data.website);
+      v('set-country',data.country);
+      const titleEl=$('#set-title');if(titleEl)titleEl.value=data.title||'';
+      const atEl=$('#set-afftype');if(atEl)atEl.value=data.affiliation_type||'';
+      const nc=$('#set-notify-comments'),nf=$('#set-notify-flags');
       if(nc)nc.checked=!!data.notify_comments;
       if(nf)nf.checked=!!data.notify_flags;
-      if(pp)pp.checked=!!data.public_profile;
+      // Credential visibility
+      const cv=data.credential_visibility||'public';
+      const cvEl=document.querySelector(`input[name="set-credvis"][value="${cv}"]`);
+      if(cvEl)cvEl.checked=true;
+      // Research interests
+      _interestTags=data.research_interests||[];
+      _renderInterestTags();
+      // Bio counter
+      const bc=$('#set-bio-count');if(bc)bc.textContent=(data.bio||'').length+'/500';
+      // ORCID link
+      if(data.orcid){const ol=$('#set-orcid-link');if(ol){ol.href='https://orcid.org/'+data.orcid;ol.style.display=''}}
+      _updateNamePreview();
     }
+    // Load affiliation suggestions
+    _loadAffiliationSuggestions();
   }catch(e){console.warn('Load profile:',e)}
+}
+
+let _interestTags=[];
+function _addInterestTag(val){
+  const v=val.trim();if(!v||_interestTags.length>=10)return;
+  if(_interestTags.includes(v)){toast('Already added','info');return}
+  _interestTags.push(v);
+  _renderInterestTags();
+  const inp=$('#set-interests-input');if(inp)inp.value='';
+}
+function _removeInterestTag(idx){_interestTags.splice(idx,1);_renderInterestTags()}
+function _renderInterestTags(){
+  const el=$('#set-interests-tags');if(!el)return;
+  el.innerHTML=_interestTags.map((t,i)=>`<span class="set-tag">${t.replace(/</g,'&lt;')}<button onclick="_removeInterestTag(${i})">&times;</button></span>`).join('');
+}
+function _updateNamePreview(){
+  const dn=$('#set-displayname')?.value?.trim()||'';
+  const title=$('#set-title')?.value||'';
+  const preview=title&&title!=='None'?title+' '+dn:dn;
+  const el=$('#set-name-preview');
+  if(el)el.innerHTML=preview?'You\'ll appear as: <strong style="color:var(--ac)">'+preview.replace(/</g,'&lt;')+'</strong>':'';
+}
+async function _loadAffiliationSuggestions(){
+  if(!window.SB)return;
+  try{
+    const{data}=await SB.from('user_profiles').select('affiliation').not('affiliation','is',null);
+    const dl=$('#affiliation-suggestions');if(!dl)return;
+    const unique=[...new Set((data||[]).map(d=>d.affiliation).filter(Boolean))];
+    dl.innerHTML=unique.map(a=>'<option value="'+a.replace(/"/g,'&quot;')+'">').join('');
+  }catch(e){}
+}
+function _populateCountryDropdown(){
+  const sel=$('#set-country');if(!sel||sel.options.length>1)return;
+  const countries=['Afghanistan','Albania','Algeria','Argentina','Australia','Austria','Bangladesh','Belgium','Bolivia','Brazil','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt','El Salvador','Estonia','Ethiopia','Fiji','Finland','France','Germany','Ghana','Gibraltar','Greece','Guatemala','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kenya','Kuwait','Latvia','Lebanon','Libya','Lithuania','Luxembourg','Madagascar','Malaysia','Malta','Mexico','Mongolia','Morocco','Mozambique','Myanmar','Namibia','Nepal','Netherlands','New Zealand','Nicaragua','Nigeria','North Korea','Norway','Oman','Pakistan','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saudi Arabia','Senegal','Serbia','Singapore','Slovakia','Slovenia','Somalia','South Africa','South Korea','Spain','Sri Lanka','Sudan','Sweden','Switzerland','Taiwan','Tanzania','Thailand','Trinidad and Tobago','Tunisia','Turkey','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'];
+  countries.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o)});
 }
 
 async function saveProfile(){
   const user=await _getAuthUser();
   if(!window.SB||!user){toast('Sign in to save your profile','err');return}
   const msg=$('#set-profile-msg');
-  if(msg){msg.style.color='var(--ac)';msg.textContent='Saving…'}
+  if(msg){msg.style.color='var(--ac)';msg.textContent='Saving\u2026'}
   const orcid=$('#set-orcid')?.value?.trim();
   if(orcid){
     const valid=await _validateOrcid(orcid);
@@ -1062,23 +1118,35 @@ async function saveProfile(){
       return;
     }
   }
+  const credVis=document.querySelector('input[name="set-credvis"]:checked')?.value||'public';
   const row={
     user_id:user.id,
     display_name:$('#set-displayname')?.value?.trim()||null,
+    bio:$('#set-bio')?.value?.trim()||null,
+    title:$('#set-title')?.value||null,
+    full_name:$('#set-fullname')?.value?.trim()||null,
     affiliation:$('#set-affiliation')?.value?.trim()||null,
+    affiliation_type:$('#set-afftype')?.value||null,
+    department:$('#set-department')?.value?.trim()||null,
     orcid:orcid||null,
+    website:$('#set-website')?.value?.trim()||null,
+    research_interests:_interestTags.length?_interestTags:null,
+    country:$('#set-country')?.value||null,
+    credential_visibility:credVis,
     notify_comments:!!$('#set-notify-comments')?.checked,
     notify_flags:!!$('#set-notify-flags')?.checked,
-    public_profile:!!$('#set-public-profile')?.checked,
+    public_profile:credVis==='public',
     updated_at:new Date().toISOString()
   };
   try{
     const{data:existing}=await SB.from('user_profiles').select('id').eq('user_id',user.id).maybeSingle();
     if(existing)await SB.from('user_profiles').update(row).eq('id',existing.id);
     else await SB.from('user_profiles').insert(row);
+    toast('Profile saved','ok');
     if(msg){msg.style.color='var(--sg)';msg.textContent='Saved';setTimeout(()=>msg.textContent='',3000)}
   }catch(e){
     console.error('Save profile:',e);
+    toast('Error saving profile','err');
     if(msg){msg.style.color='var(--co)';msg.textContent='Error saving profile'}
   }
 }

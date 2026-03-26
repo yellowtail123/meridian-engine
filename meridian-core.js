@@ -445,9 +445,9 @@ function hi(e){if(typeof e==='string')e=$(e);if(e)e.style.display='none'}
 const mkL=()=>'<div class="ld">'+[0,1,2,3].map(i=>`<div class="ld-d" style="animation:glow 1.4s ease ${i*.15}s infinite"></div>`).join('')+'</div>';
 function dl(c,f,t){const b=new Blob([c],{type:t}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=f;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function recAbs(inv){if(!inv)return null;const w=[];for(const[word,pos]of Object.entries(inv))for(const p of pos)w[p]=word;return w.join(' ').slice(0,500)}
-function goTab(id,subtab){_errPipeline.crumb('nav','Tab → '+id+(subtab?' / '+subtab:''));$$('.sb-item').forEach(x=>{x.classList.remove('active');x.classList.remove('sub-active');x.setAttribute('aria-selected','false')});$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`.sb-item[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn){tabBtn.classList.add('active');tabBtn.setAttribute('aria-selected','true')}if(tabPane)tabPane.classList.add('on');_autoExpandSbGroup(id);if(window.innerWidth<768){const _sb=$('#sidebar');const _bd=$('#sidebar-backdrop');if(_sb)_sb.classList.remove('mobile-open');if(_bd)_bd.classList.remove('show')}if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign();if(id==='research'&&typeof initResearch==='function')initResearch();if(id==='research'&&subtab&&typeof _rpShowTool==='function')_rpShowTool(subtab);if(id==='prisma'&&typeof initPrisma==='function')initPrisma();if(id==='settings'&&typeof initSettings==='function')initSettings();if(id==='home'&&typeof initHome==='function')initHome();if(id==='project'&&typeof MeridianProjects!=='undefined')MeridianProjects.renderDashboard();if(id==='species'&&typeof MeridianProjects!=='undefined')MeridianProjects.renderSpeciesChips()}
+function goTab(id,subtab){_errPipeline.crumb('nav','Tab → '+id+(subtab?' / '+subtab:''));$$('.sb-item').forEach(x=>{x.classList.remove('active');x.classList.remove('sub-active');x.setAttribute('aria-selected','false')});$$('.tp').forEach(x=>x.classList.remove('on'));const tabBtn=document.querySelector(`.sb-item[data-tab="${id}"]`);const tabPane=$(`#tab-${id}`);if(tabBtn){tabBtn.classList.add('active');tabBtn.setAttribute('aria-selected','true')}if(tabPane)tabPane.classList.add('on');_autoExpandSbGroup(id);if(window.innerWidth<768){const _sb=$('#sidebar');const _bd=$('#sidebar-backdrop');if(_sb)_sb.classList.remove('mobile-open');if(_bd)_bd.classList.remove('show')}if(id==='env'){if(typeof initEnvMap==='function')requestAnimationFrame(initEnvMap);if(typeof _envMap==='object'&&_envMap)setTimeout(()=>_envMap.invalidateSize(),200)}if(id==='ai'&&typeof refreshAiCtxIndicator==='function')refreshAiCtxIndicator();if(id==='publications'&&typeof initPublications==='function')initPublications();if(id==='archive'&&typeof initArchive==='function')initArchive();if(id==='fielddata'&&typeof initFieldData==='function')initFieldData();if(id==='ecostats'&&typeof initEcoStats==='function')initEcoStats();if(id==='studydesign'&&typeof initStudyDesign==='function')initStudyDesign();if(id==='research'&&typeof initResearch==='function')initResearch();if(id==='research'&&subtab&&typeof _rpShowTool==='function')_rpShowTool(subtab);if(id==='prisma'&&typeof initPrisma==='function')initPrisma();if(id==='settings'&&typeof initSettings==='function')initSettings();if(id==='home'&&typeof initHome==='function')initHome();if(id==='project'&&typeof MeridianProjects!=='undefined')MeridianProjects.renderDashboard();if(id==='species'&&typeof MeridianProjects!=='undefined')MeridianProjects.renderSpeciesChips();if(id==='forum'&&typeof initForum==='function')initForum()}
 // Sidebar collapsible groups
-const _sbGroupMap={lit:'literature',library:'literature',gaps:'literature',graph:'literature',prisma:'literature',research:'research',publications:'publish',archive:'publish',workshop:'analysis',ecostats:'analysis',studydesign:'analysis',ai:'tools'};
+const _sbGroupMap={lit:'literature',library:'literature',gaps:'literature',graph:'literature',prisma:'literature',research:'research',publications:'publish',archive:'publish',workshop:'analysis',ecostats:'analysis',studydesign:'analysis',ai:'tools',forum:'community'};
 function _autoExpandSbGroup(tabId){const grp=_sbGroupMap[tabId];if(!grp)return;$$('.sb-collapsible').forEach(g=>{const isTarget=g.dataset.group===grp;g.dataset.expanded=isTarget?'true':'false';const h=g.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded',isTarget?'true':'false')})}
 function toggleSbGroup(groupId){const el=document.querySelector(`.sb-collapsible[data-group="${groupId}"]`);if(!el)return;const isOpen=el.dataset.expanded==='true';$$('.sb-collapsible').forEach(g=>{g.dataset.expanded='false';const h=g.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded','false')});if(!isOpen){el.dataset.expanded='true';const h=el.querySelector('.sb-ghdr');if(h)h.setAttribute('aria-expanded','true')}}
 function fetchT(url,ms=15000,externalSignal){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);if(externalSignal){externalSignal.addEventListener('abort',()=>c.abort(),{once:true});if(externalSignal.aborted)c.abort()}return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t))}
@@ -1272,6 +1272,14 @@ function showAdminDashboard(){
       <div id="adm-users-table" style="overflow-x:auto"></div>
     </div>
     <div class="adm-card">
+      <h2>Verify Researchers <span id="adm-verify-count" class="adm-count"></span></h2>
+      <div id="adm-verify-queue"><div class="adm-empty">Loading...</div></div>
+    </div>
+    <div class="adm-card">
+      <h2>Moderation Queue <span id="adm-mod-count" class="adm-count"></span></h2>
+      <div id="adm-mod-queue"><div class="adm-empty">Loading...</div></div>
+    </div>
+    <div class="adm-card">
       <h2>Admin Actions Log <span id="adm-log-count" class="adm-count"></span></h2>
       <div id="adm-logs"></div>
     </div>
@@ -1337,6 +1345,8 @@ async function _admLoadAll(supa){
   _admLoadUsers(supa).catch(e=>console.warn('Admin users:',e));
   _admLoadChart(supa).catch(e=>console.warn('Admin chart:',e));
   _admLoadLogs(supa).catch(e=>console.warn('Admin logs:',e));
+  _admLoadVerifyQueue(supa).catch(e=>console.warn('Admin verify:',e));
+  _admLoadModQueue(supa).catch(e=>console.warn('Admin mod:',e));
   }catch(e){console.error('Admin load error:',e);toast('Admin data failed to load','err')}
 }
 
@@ -1549,6 +1559,82 @@ function _admFormatAction(log){
     }
     default:return admin+' <span class="act">'+_admEsc(log.action)+'</span> '+target;
   }
+}
+
+// ═══ ADMIN: VERIFY RESEARCHERS ═══
+async function _admLoadVerifyQueue(supa){
+  const el=document.getElementById('adm-verify-queue');if(!el)return;
+  try{
+    const{data,error}=await supa.from('user_profiles')
+      .select('*')
+      .eq('verified',false)
+      .not('affiliation','is',null)
+      .not('title','is',null)
+      .order('updated_at',{ascending:false})
+      .limit(50);
+    if(error)throw error;
+    const ct=document.getElementById('adm-verify-count');
+    if(ct)ct.textContent='('+(data?.length||0)+')';
+    if(!data||!data.length){el.innerHTML='<div class="adm-empty">No researchers pending verification</div>';return}
+    el.innerHTML='<table><thead><tr><th>Name</th><th>Title</th><th>Affiliation</th><th>ORCID</th><th>Actions</th></tr></thead><tbody>'+
+      data.map(p=>{
+        const name=_admEsc(p.display_name||p.full_name||'(no name)');
+        const orcLink=p.orcid?'<a href="https://orcid.org/'+_admEsc(p.orcid)+'" target="_blank" style="color:var(--sg);font-family:var(--mf)">'+_admEsc(p.orcid)+'</a>':'—';
+        return'<tr><td>'+name+'</td><td>'+_admEsc(p.title||'—')+'</td><td>'+_admEsc(p.affiliation||'—')+'</td><td>'+orcLink+'</td><td class="adm-actions-cell">'+
+          '<button class="bt sm" style="color:var(--sg);border-color:var(--sg)" onclick="_admVerifyUser(\''+p.user_id+'\',true)">Verify</button>'+
+          '<button class="bt sm" style="color:var(--co);border-color:var(--co)" onclick="_admVerifyUser(\''+p.user_id+'\',false)">Reject</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }catch(e){el.innerHTML='<div class="adm-empty">Failed to load</div>'}
+}
+async function _admVerifyUser(userId,approve){
+  if(!approve){const note=prompt('Rejection note (optional):');/* log for now */}
+  try{
+    await SB.from('user_profiles').update({verified:approve}).eq('user_id',userId);
+    toast(approve?'Researcher verified':'Verification rejected','ok');
+    _admLoadVerifyQueue(SB);
+  }catch(e){toast('Action failed','err')}
+}
+
+// ═══ ADMIN: MODERATION QUEUE ═══
+async function _admLoadModQueue(supa){
+  const el=document.getElementById('adm-mod-queue');if(!el)return;
+  try{
+    const{data:flaggedPosts}=await supa.from('forum_posts').select('id,title,author_id,flag_count,hidden').gt('flag_count',0).order('flag_count',{ascending:false}).limit(30);
+    const{data:flaggedComments}=await supa.from('forum_comments').select('id,body,author_id,post_id,flag_count,hidden').gt('flag_count',0).order('flag_count',{ascending:false}).limit(30);
+    const items=[
+      ...(flaggedPosts||[]).map(p=>({type:'post',id:p.id,preview:p.title,flags:p.flag_count,hidden:p.hidden,authorId:p.author_id})),
+      ...(flaggedComments||[]).map(c=>({type:'comment',id:c.id,preview:(c.body||'').slice(0,80),flags:c.flag_count,hidden:c.hidden,authorId:c.author_id,postId:c.post_id}))
+    ].sort((a,b)=>b.flags-a.flags);
+
+    const ct=document.getElementById('adm-mod-count');
+    if(ct)ct.textContent='('+items.length+')';
+    if(!items.length){el.innerHTML='<div class="adm-empty">No flagged content</div>';return}
+    el.innerHTML='<table><thead><tr><th>Type</th><th>Preview</th><th>Flags</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+
+      items.map(i=>{
+        const statusBadge=i.hidden?'<span class="badge banned">Hidden</span>':'<span class="badge user">Visible</span>';
+        return'<tr><td>'+i.type+'</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">'+_admEsc(i.preview)+'</td><td>'+i.flags+'</td><td>'+statusBadge+'</td><td class="adm-actions-cell">'+
+          '<button class="bt sm" onclick="_admModAction(\''+i.type+'\',\''+i.id+'\',\'dismiss\')" style="color:var(--sg)">Dismiss</button>'+
+          '<button class="bt sm" onclick="_admModAction(\''+i.type+'\',\''+i.id+'\',\'hide\')" style="color:var(--wa)">Hide</button>'+
+          '<button class="bt sm" onclick="_admModAction(\''+i.type+'\',\''+i.id+'\',\'delete\')" style="color:var(--co)">Delete</button></td></tr>';
+      }).join('')+'</tbody></table>';
+  }catch(e){el.innerHTML='<div class="adm-empty">Failed to load</div>'}
+}
+async function _admModAction(type,id,action){
+  if(action==='delete'&&!confirm('Permanently delete this '+type+'?'))return;
+  try{
+    const table=type==='post'?'forum_posts':'forum_comments';
+    if(action==='dismiss'){
+      await SB.from('forum_flags').update({resolved:true,resolved_by:_supaUser?.id,resolved_action:'dismissed'}).eq(type==='post'?'post_id':'comment_id',id);
+      await SB.from(table).update({flag_count:0,hidden:false}).eq('id',id);
+    }else if(action==='hide'){
+      await SB.from(table).update({hidden:true}).eq('id',id);
+      await SB.from('forum_flags').update({resolved:true,resolved_by:_supaUser?.id,resolved_action:'hidden'}).eq(type==='post'?'post_id':'comment_id',id);
+    }else if(action==='delete'){
+      await SB.from(table).delete().eq('id',id);
+    }
+    toast('Action complete','ok');
+    _admLoadModQueue(SB);
+  }catch(e){toast('Action failed: '+(e.message||''),'err')}
 }
 
 // ═══ INIT — hook data layer after all scripts loaded ═══
