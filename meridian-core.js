@@ -417,7 +417,7 @@ const _keyVault=(function(){
   };
 })();
 let _searchHist=safeParse('meridian_search_hist',[]);
-let _litPage=0,_litQuery='',_litAllResults=[],_litAbort=null,_litBoolQ=null,_litHighlightTerms=[];
+let _litPage=0,_litQuery='',_litAllResults=[],_litAbort=null,_litBoolQ=null,_litHighlightTerms=[],_litEngineMeta={},_litRawAll=[];
 let _envBounds=null,_envMap=null,_envMarker=null,_envRect=null,_mapLayers={},_mapLayerDefs=null,_drawnItems=null;
 let _baseTileLayer=null,_satTileLayer=null,_labelsLayer=null,_landMaskLayer=null,_coastlineLayer=null,_envPolygon=null;
 let _coordDMS=false,_measureMode=false,_measurePoints=[],_measureLayers=[],_isobathLayer=null,_isobathCache=null;
